@@ -181,3 +181,21 @@ def test_long_notifications_split_under_the_limit():
            "payload": {"area": "狛江市", "town": "x" * 150, "price": i, "path": f"/p/nc_{i}/"}} for i in range(40)]
     msgs = compose(ev, T0)
     assert all(len(m) <= 2000 for m in msgs) and "ほか25件" in "".join(msgs)
+
+
+class EmptyAreaPage:
+    """Client whose area-selection page lists no areas (the area dropped off SUUMO's list)."""
+    def get(self, path):
+        return "<html><body></body></html>"
+
+
+def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    for day in (1, 2):
+        now = T0 + timedelta(days=day)
+        p = Pipeline(db, archive, EmptyAreaPage(), targets, now, f"r{day}", log=lambda *_: None)
+        p.crawl_lists()
+        db.commit()
+    assert status(db, 1) == status(db, 2) == "removed"
+    assert sorted(events(db, "removed")) == [("removed", "1"), ("removed", "2")]

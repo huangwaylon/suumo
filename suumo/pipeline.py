@@ -52,11 +52,21 @@ class Pipeline:
             html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
             self.archive.save_list(t.pref, self.day, t.type, "_city", html)
             areas = [a for a in parse_areas(html, TYPES[t.type], t.pref) if t.includes(a["code"])]
-            if t.areas:
-                missing = t.areas - {a["code"] for a in areas}
-                if missing:
-                    self.log(f"  ! area codes not found for {t.pref}/{t.type}: {sorted(missing)}")
             rep = {"pref": t.pref, "type": t.type, "areas": []}
+            # An area can drop off the area page entirely (e.g. new_condo lists only areas that currently have
+            # developments). Treat it as crawled with zero listings so what we hold there is reconciled too.
+            listed = {a["code"] for a in areas}
+            held = {r["area_code"]: r["area_name"] for r in self.db.x(
+                "SELECT DISTINCT area_code, area_name FROM listings WHERE pref=? AND type=? AND status='active'",
+                t.pref, t.type) if t.includes(r["area_code"])}
+            for code in sorted((set(held) | (t.areas or set())) - listed):
+                a = {"code": code, "name": held.get(code, code), "slug": None, "expected": 0}
+                self.db.upsert_area(t.pref, t.type, a)
+                if code in held:
+                    rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
+                else:
+                    self.log(f"  {code:<10} not on the area page (no listings, or a wrong code)")
+                    rep["areas"].append({"code": code, "status": "not_listed"})
             for a in areas:
                 self.db.upsert_area(t.pref, t.type, a)
                 if not a["slug"]:
