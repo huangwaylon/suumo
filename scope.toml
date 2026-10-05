@@ -7,6 +7,3 @@ pref = "tokyo"
 types = ["used_condo", "new_house", "used_house", "land", "new_condo"]
 areas = ["13219"]  # 狛江市 (test scope)
 
-[[scope]]
-pref = "chiba"
-areas = ["12218"]  # 勝浦市 (test scope)
