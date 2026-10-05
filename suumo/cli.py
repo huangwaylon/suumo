@@ -1,6 +1,8 @@
 """Command line: `uv run python -m suumo <command>` (see README)."""
 import argparse
+import fcntl
 import json
+import logging
 import os
 import re
 import time
@@ -123,6 +125,25 @@ def cmd_notify(c: Ctx):
     c.notify(datetime.now(JST))
 
 
+def cmd_bot(args):
+    """The search bot: a long-running process beside the daily crawl (see suumo/bot/)."""
+    load_dotenv(ROOT / ".env", override=True)
+    token, channel, state = (os.getenv(k) for k in ("DISCORD_TOKEN", "DISCORD_CHANNEL_ID", "DISCORD_STATE_CHANNEL_ID"))
+    if not (token and channel and state):
+        raise SystemExit("bot: set DISCORD_TOKEN, DISCORD_CHANNEL_ID and DISCORD_STATE_CHANNEL_ID in .env")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    with open(ROOT / "bot.lock", "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("bot: another copy is already running")  # exit 0: launchd doesn't restart it
+            return
+        from .bot.app import SuumoBot
+        bot = SuumoBot(ROOT / args.data, int(channel), int(state), ROOT / "bot_state.backup.json",
+                       lambda: datetime.now(JST).date(), proxy=os.getenv("HTTPS_PROXY") or None)
+        bot.run(token, log_handler=None)
+
+
 COMMANDS = {"run": cmd_run, "status": cmd_status, "prune": cmd_prune, "reparse": cmd_reparse, "notify": cmd_notify}
 READ_ONLY = {"status"}
 
@@ -146,7 +167,11 @@ def main():
     pr.add_argument("--yes", action="store_true")
     sub.add_parser("reparse", help="re-run parsers over the raw archive (no requests)")
     sub.add_parser("notify", help="post pending events to Discord")
+    sub.add_parser("bot", help="run the interactive search bot (long-running)")
     args = ap.parse_args()
+    if args.cmd == "bot":  # reads data/ only: no state.db, no run lock
+        cmd_bot(args)
+        return
     c = Ctx(args)
     if args.cmd in READ_ONLY:
         COMMANDS[args.cmd](c)

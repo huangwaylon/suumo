@@ -8,3 +8,5 @@ __pycache__/
 state.db*
 archive/
 logs/
+bot.lock
+bot_state.backup.json*

@@ -14,11 +14,13 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4",
     "ruff>=0.14",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [[tool.uv.index]]
