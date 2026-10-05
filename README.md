@@ -62,6 +62,22 @@ uv run python -m suumo run --budget 10m
 uv run python -m suumo status
 ```
 
+### Large scopes: the one-time backfill
+
+A new prefecture (all of Tokyo: ~64k listings) needs every listing page fetched once, about a day at 1.0 s per
+request. Run it in a Terminal on a Mac that stays awake and on power (`caffeinate -i` keeps it from sleeping):
+
+```sh
+uv run python -m suumo --delay 1.0 run --budget 0 --no-notify       # search results only, ~30 min: all listings known
+caffeinate -i uv run python -m suumo --delay 1.0 run --no-crawl --budget 40h --no-notify 2>&1 | tee -a logs/backfill.log
+```
+
+Follow it with `tail -f logs/backfill.log` (a progress line every 200 pages: done/total, s/page, ETA, current
+delay) or `uv run python -m suumo status` from another Terminal (shows the current run while it holds the lock).
+`data/` is exported every hour, so the bot can already search what's been fetched. Stopping it (Ctrl-C) is safe:
+the next run continues the queue. If SUUMO pushes back, the delay rises on its own (up to 10 s) and comes back
+down; if it's unreachable, the run pauses 10 minutes at a time without giving up on those listings.
+
 ### 6. Daily schedule
 
 ```sh
