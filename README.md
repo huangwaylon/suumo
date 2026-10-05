@@ -164,8 +164,8 @@ favorites changed price or were removed. If someone's DMs are closed it mentions
 | Path | In git | Contents |
 |---|---|---|
 | `scope.toml` | yes | what to crawl |
-| `data/<pref>/<type>.jsonl` | yes | active listings, one JSON object per line, sorted by id |
-| `data/<pref>/removed.jsonl` | yes | listings removed in the last 30 days |
+| `data/<pref>/<type>/<area_code>.jsonl` | yes | active listings of one type in one municipality, one JSON object per line, sorted by id |
+| `data/<pref>/removed/<type>.jsonl` | yes | listings removed in the last 30 days |
 | `data/<pref>/areas.json` | yes | area code → name |
 | `data/events/<run_id>.json` | yes | that run's events |
 | `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs |

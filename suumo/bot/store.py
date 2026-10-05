@@ -121,7 +121,7 @@ class Store:
 
     def drop_missing_favorites(self, snap, today):
         """Forget favorites missing from data/ for FORGET_AFTER_DAYS (purged 30 days after removal). A single
-        reload can miss a listing that the export is just moving into removed.jsonl, so never drop at once."""
+        reload can miss a listing that the export is just moving into removed/, so never drop at once."""
         for u in self.users.values():
             for k, fav in list(u.favorites.items()):
                 if snap.get(k) is not None:

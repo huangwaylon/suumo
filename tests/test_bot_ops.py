@@ -26,7 +26,7 @@ def data(tmp_path):
 
 
 def records(data, type_="used_condo"):
-    return [json.loads(line) for line in (data / "tokyo" / f"{type_}.jsonl").read_text().splitlines()]
+    return [json.loads(line) for line in (data / "tokyo" / type_ / "13219.jsonl").read_text().splitlines()]
 
 
 def event(kind, r, **payload):
@@ -96,7 +96,7 @@ def test_same_property_by_two_agents_alerts_once(data):
     condos = records(data)
     a = next(r for r in condos if r.get("dup_key"))
     b = {**a, "id": "99999999"}
-    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+    with open(data / "tokyo" / "used_condo" / "13219.jsonl", "a") as f:
         f.write(json.dumps(b, ensure_ascii=False) + "\n")
     snap = snap_of(data)
     u = Store().user(1)

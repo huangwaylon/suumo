@@ -15,7 +15,7 @@ launchd. `README.md` is the operator guide (setup, commands, record fields, bot 
 | `suumo/parse.py` | `TYPES`, area-selection pages (`parse_areas`), search-result pages (`parse_list_page`), shared value parsers (prices, m², stations, town) |
 | `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail` returns `(fields, meta)`) |
 | `suumo/db.py` | SQLite schema, small query helpers, `dumps` (canonical JSON), `exclusive` (flock) |
-| `suumo/export.py` | DB → `data/` JSONL; `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
+| `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
 | `suumo/notify.py` | Events → Japanese Discord messages (`compose`) and REST posting (`notify`) |
 | `suumo/maintenance.py` | `prune` (out-of-scope data) and `reparse` (rebuild parsed fields from `archive/`) |
 | `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page |

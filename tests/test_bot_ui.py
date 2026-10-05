@@ -248,10 +248,10 @@ async def test_extra_toggles(bot, interaction):
 async def test_area_screen_merges_choices_across_dropdowns(data):
     # a second prefecture's worth of areas: more than one dropdown
     extra = {f"13{n:03d}": f"市{n}" for n in range(201, 231)}
-    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo.jsonl").read_text().splitlines()]
+    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo" / "13219.jsonl").read_text().splitlines()]
     more = [{**recs[0], "id": str(9_000_000 + n), "area_code": code, "dup_key": None}
             for n, code in enumerate(extra)]
-    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+    with open(data / "tokyo" / "used_condo" / "13219.jsonl", "a") as f:
         f.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in more))
     (data / "tokyo" / "areas.json").write_text(json.dumps({"13219": "狛江市", **extra}, ensure_ascii=False))
     bot = FakeBot(data)
@@ -433,10 +433,10 @@ async def test_panel_edits_are_remembered_without_viewing(bot, interaction):
 
 
 async def test_long_lines_page_their_stations(data):
-    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo.jsonl").read_text().splitlines()]
+    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo" / "13219.jsonl").read_text().splitlines()]
     more = [{**recs[0], "id": str(8_000_000 + n), "dup_key": None,
              "stations": [{"line": "小田急線", "name": f"駅{n:02d}", "walk": 5}]} for n in range(30)]
-    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+    with open(data / "tokyo" / "used_condo" / "13219.jsonl", "a") as f:
         f.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in more))
     bot = FakeBot(data)
     interaction = make_interaction()
@@ -507,9 +507,9 @@ async def test_errors_in_a_change_show_a_short_message(bot, interaction):
 
 async def test_listings_that_look_alike_get_distinct_choices(data):
     """Regression: the 詳しく見る values were the descriptions, so two similar units broke the screen (HTTP 400)."""
-    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo.jsonl").read_text().splitlines()]
+    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo" / "13219.jsonl").read_text().splitlines()]
     twin = {**recs[0], "id": "7777777", "dup_key": None}
-    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+    with open(data / "tokyo" / "used_condo" / "13219.jsonl", "a") as f:
         f.write(json.dumps(twin, ensure_ascii=False) + "\n")
     bot = FakeBot(data)
     interaction = make_interaction()

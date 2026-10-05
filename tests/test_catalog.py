@@ -22,9 +22,16 @@ def rec(i, type_="used_condo", **kw):
 def write(data, pref="tokyo", areas=None, events=None, removed=(), **by_type):
     d = data / pref
     d.mkdir(parents=True, exist_ok=True)
+    lines = lambda rs: "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rs)  # noqa: E731
     for t, recs in by_type.items():
-        (d / f"{t}.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs))
-    (d / "removed.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in removed))
+        for old in (d / t).glob("*.jsonl"):
+            old.unlink()
+        for area in {r["area_code"] for r in recs}:
+            (d / t).mkdir(exist_ok=True)
+            (d / t / f"{area}.jsonl").write_text(lines(r for r in recs if r["area_code"] == area))
+    for t in {r["type"] for r in removed}:
+        (d / "removed").mkdir(exist_ok=True)
+        (d / "removed" / f"{t}.jsonl").write_text(lines(r for r in removed if r["type"] == t))
     (d / "areas.json").write_text(json.dumps(areas or {"13219": "狛江市"}, ensure_ascii=False))
     for run_id, evs in (events or {}).items():
         (data / "events").mkdir(exist_ok=True)

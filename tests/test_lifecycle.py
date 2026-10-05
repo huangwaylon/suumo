@@ -157,13 +157,42 @@ def test_export_is_deterministic_and_skips_volatile_fields(env):
     db, _, targets, crawl, tmp = env
     crawl(0, [rec(2), rec(10), rec(1)])
     export(db, targets, tmp / "data")
-    first = (tmp / "data/tokyo/used_condo.jsonl").read_text()
+    first = (tmp / "data/tokyo/used_condo/13219.jsonl").read_text()
     crawl(1, [rec(2), rec(10), rec(1)])                      # same listings, later day
     export(db, targets, tmp / "data")
-    assert (tmp / "data/tokyo/used_condo.jsonl").read_text() == first
+    assert (tmp / "data/tokyo/used_condo/13219.jsonl").read_text() == first
     ids = [json.loads(ln)["id"] for ln in first.splitlines()]
     assert ids == ["1", "2", "10"]
     assert "last_seen" not in first and "missed" not in first
+
+
+def test_export_one_file_per_area_and_cleans_up(env):
+    db, _, _, crawl, tmp = env
+    db.upsert_area("tokyo", "used_condo", {"code": "13208", "name": "調布市", "slug": "sc_chofu"})
+    targets = [Target("tokyo", "used_condo", None), Target("tokyo", "land", None)]
+    crawl(0, [rec(1)])
+    db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
+         "VALUES ('used_condo', '5', 'tokyo', '13208', '調布市', ?, '2026-10-05', 'x')", json.dumps(rec(5)))
+    db.commit()
+    data = tmp / "data"
+    (data / "tokyo").mkdir(parents=True)
+    (data / "tokyo/used_condo.jsonl").write_text("old layout\n")
+    export(db, targets, data)
+    files = sorted(str(p.relative_to(data)) for p in data.rglob("*.jsonl"))
+    assert files == ["tokyo/used_condo/13208.jsonl", "tokyo/used_condo/13219.jsonl"]   # old file gone, no empties
+    mtime = (data / "tokyo/used_condo/13219.jsonl").stat().st_mtime_ns
+    export(db, targets, data)
+    assert (data / "tokyo/used_condo/13219.jsonl").stat().st_mtime_ns == mtime          # unchanged: not rewritten
+    db.x("DELETE FROM listings WHERE id='5'")
+    db.commit()
+    export(db, targets, data)
+    assert not (data / "tokyo/used_condo/13208.jsonl").exists()                          # area emptied: file removed
+    crawl(1, [])
+    crawl(2, [])
+    export(db, targets, data)
+    assert [json.loads(x)["id"] for x in (data / "tokyo/removed/used_condo.jsonl").read_text().splitlines()] == ["1"]
+    export(db, [Target("tokyo", "land", None)], data)
+    assert not (data / "tokyo/used_condo").exists()                                      # type left the scope
 
 
 def test_notification_text():

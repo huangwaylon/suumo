@@ -1,9 +1,12 @@
 """Export state.db to git-tracked files that the bot reads.
 
-  data/<pref>/<type>.jsonl   active listings in scope, one per line, sorted by id, fixed key order
-  data/<pref>/removed.jsonl  listings removed in the last PURGE_DAYS days
-  data/<pref>/areas.json     area code -> name
-  data/events/<run_id>.json  this run's events
+  data/<pref>/<type>/<area_code>.jsonl  active listings in scope, one per line, sorted by id, fixed key order
+  data/<pref>/removed/<type>.jsonl      listings removed in the last PURGE_DAYS days
+  data/<pref>/areas.json                area code -> name
+  data/events/<run_id>.json             this run's events
+
+One file per type and area keeps files small (a whole prefecture in one file passes GitHub's 100 MB limit) and
+a day's git diff readable by ward. Files are only rewritten when their content changes.
 
 Output is deterministic: an unchanged listing produces an identical line, so an unchanged day is an empty
 git diff. Fields that change on their own (last_seen, missed, info_date, next_update, detail_fetched) stay
@@ -11,6 +14,8 @@ in the DB.
 """
 import hashlib
 import json
+import shutil
+from collections import defaultdict
 from pathlib import Path
 
 from .parse import TYPES, clean
@@ -67,40 +72,59 @@ def dup_key(r):
     return hashlib.sha1(repr((t,) + parts).encode()).hexdigest()[:12]
 
 
-def _write_jsonl(path, records):
+def _write(path, text):
+    """Replace atomically (the bot reads these while a run writes them), and only when the content changed."""
+    data = text.encode("utf-8")
+    if path.exists() and path.read_bytes() == data:
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n")
+    tmp.write_bytes(data)
     tmp.replace(path)
+
+
+def _write_jsonl(path, records):
+    _write(path, "".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n" for r in records))
 
 
 def _write_json(path, obj):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")  # the bot reads these while a run writes them: replace atomically
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    _write(path, json.dumps(obj, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+
+
+def _sync_dir(directory, files):
+    """Write {name: records} as directory/<name>.jsonl and delete the directory's other .jsonl files."""
+    for name, records in files.items():
+        _write_jsonl(directory / f"{name}.jsonl", records)
+    if directory.exists():
+        for p in directory.glob("*.jsonl"):
+            if p.stem not in files:
+                p.unlink()
 
 
 def export(db, targets, data_dir, run_id=None):
     data_dir = Path(data_dir)
     stats = {}
     for pref in sorted({t.pref for t in targets}):
-        removed = []
+        removed = {}
         for type_key in TYPES:
-            path = data_dir / pref / f"{type_key}.jsonl"
+            (data_dir / pref / f"{type_key}.jsonl").unlink(missing_ok=True)  # the old one-file-per-type layout
             if not any(t.pref == pref and t.type == type_key for t in targets):
-                path.unlink(missing_ok=True)
+                shutil.rmtree(data_dir / pref / type_key, ignore_errors=True)
                 continue
             rows = db.x("SELECT * FROM listings WHERE pref=? AND type=? ORDER BY CAST(id AS INTEGER)",
                         pref, type_key).fetchall()
             rows = [r for r in rows if in_scope(targets, pref, type_key, r["area_code"])]
-            active = [merge(r) for r in rows if r["status"] == "active"]
-            removed += [merge(r) for r in rows if r["status"] == "removed"]
-            _write_jsonl(path, active)
-            stats[f"{pref}/{type_key}"] = len(active)
-        _write_jsonl(data_dir / pref / "removed.jsonl", sorted(removed, key=lambda r: (r["type"], int(r["id"]))))
+            by_area = defaultdict(list)
+            for r in rows:
+                if r["status"] == "active":
+                    by_area[r["area_code"]].append(merge(r))
+            _sync_dir(data_dir / pref / type_key, by_area)
+            gone = [merge(r) for r in rows if r["status"] == "removed"]
+            if gone:
+                removed[type_key] = gone
+            stats[f"{pref}/{type_key}"] = sum(len(v) for v in by_area.values())
+        (data_dir / pref / "removed.jsonl").unlink(missing_ok=True)
+        _sync_dir(data_dir / pref / "removed", removed)
         areas = {}
         for a in db.x("SELECT code, name FROM areas WHERE pref=? ORDER BY code", pref):
             areas[a["code"]] = a["name"]

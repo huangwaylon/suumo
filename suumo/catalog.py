@@ -506,7 +506,7 @@ def signature(data_dir):
     """Cheap fingerprint of everything the catalog reads; changes whenever the export rewrites a file."""
     data_dir = Path(data_dir)
     sig = []
-    for p in sorted(data_dir.glob("*/*.jsonl")) + sorted(data_dir.glob("*/areas.json")):
+    for p in sorted(data_dir.glob("*/*/*.jsonl")) + sorted(data_dir.glob("*/areas.json")):
         st = p.stat()
         sig.append((str(p), st.st_mtime_ns, st.st_size))
     sig.append(tuple(sorted(p.name for p in data_dir.glob("events/*.json"))))
@@ -540,14 +540,14 @@ def load(data_dir, today: date):
     data_dir = Path(data_dir)
     items, removed, areas = [], [], {}
     for pref_dir in sorted(p for p in data_dir.iterdir() if p.is_dir() and p.name != "events"):
-        recs = {t: _read_jsonl(pref_dir / f"{t}.jsonl") for t in TYPES if (pref_dir / f"{t}.jsonl").exists()}
+        recs = {t: [x for p in sorted((pref_dir / t).glob("*.jsonl")) for x in _read_jsonl(p)] for t in TYPES}
         land_ids = {r["id"] for r, _ in recs.get("land", [])}
         for type_key, rs in recs.items():
             # land with a build condition is listed under both new_house and land: keep the land listing
             items += [Item(r, today, raw=raw) for r, raw in rs
                       if not (type_key == "new_house" and r["id"] in land_ids and "/tochi/" in r.get("url", ""))]
-        if (pref_dir / "removed.jsonl").exists():
-            removed += [Item(r, today, removed=True, raw=raw) for r, raw in _read_jsonl(pref_dir / "removed.jsonl")]
+        for p in sorted((pref_dir / "removed").glob("*.jsonl")):
+            removed += [Item(r, today, removed=True, raw=raw) for r, raw in _read_jsonl(p)]
         with contextlib.suppress(OSError, ValueError):
             areas.update(json.loads((pref_dir / "areas.json").read_text(encoding="utf-8")))
     history, runs, new_dates = defaultdict(list), [], {}
