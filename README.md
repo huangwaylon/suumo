@@ -137,7 +137,9 @@ and names are in `data/<pref>/areas.json` after a run.
 4. **Cleanup**: listings removed over 30 days ago are deleted (row, archived page); search-result snapshots are
    kept 14 days; event and run rows 90 days.
 5. **Export and notify**: `data/` is rewritten deterministically (an unchanged day is an empty git diff), and
-   pending events are posted to Discord. Events not posted within 48 hours are skipped.
+   pending events are posted to Discord: one line per listing on a quiet day (up to 20 events), otherwise a
+   summary with counts per type and per area (the listings themselves are in the bot's 🆕 / 💴). Events not
+   posted within 48 hours are skipped.
 
 ## Search bot
 

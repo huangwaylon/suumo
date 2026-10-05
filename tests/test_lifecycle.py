@@ -209,11 +209,29 @@ def test_notification_text():
 def test_long_notifications_split_under_the_limit():
     ev = [{"kind": "new", "type": "used_condo", "pref": "tokyo",
            "seq": i, "payload": {"area": "狛江市", "town": "x" * 150, "price": i, "path": f"/p/nc_{i}/"}}
-          for i in range(40)]
+          for i in range(18)]
     msgs = compose(ev, T0)
     assert len(msgs) > 1 and all(len(text) <= 2000 for text, _ in msgs)
-    assert "ほか25件" in "".join(text for text, _ in msgs)
-    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(40))  # every event in exactly one message
+    assert "ほか3件" in "".join(text for text, _ in msgs)
+    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(18))  # every event in exactly one message
+
+
+def test_busy_day_is_a_summary_per_type_and_area():
+    wards = [(f"131{n:02d}", f"区{n}") for n in range(1, 64)]
+    ev, seq = [], 0
+    for code, name in wards:
+        for kind, extra in (("new", {}), ("price_changed", {"old_price": 60_000_000}),
+                            ("price_changed", {"old_price": 40_000_000}), ("removed", {})):
+            ev.append({"seq": seq, "kind": kind, "type": "used_condo" if seq % 3 else "land", "pref": "tokyo",
+                       "area_code": code, "payload": {"area": name, "price": 50_000_000, **extra}})
+            seq += 1
+    msgs = compose(ev, T0)
+    text = "\n".join(t for t, _ in msgs)
+    assert all(len(t) <= 2000 for t, _ in msgs)
+    assert "🆕 新着 **63件** ・ ⬇️ 値下げ **63件** ・ ⬆️ 値上げ **63件** ・ 🔚 掲載終了 **63件**" in text
+    assert "- **区1**　🆕1 ⬇️1 ⬆️1 🔚1" in text and "- 土地　" in text
+    assert "[詳細]" not in text                                        # no per-listing lines
+    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(seq))
 
 
 class EmptyAreaPage:

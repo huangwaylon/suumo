@@ -126,7 +126,7 @@ shared formatters). `parse`, `detail`, `catalog` and `bot.alerts` are pure and n
 - **New bot screen:** a `draw_<name>` method on `Session` that adds components and returns `(content, embeds)`;
   switch to it with `self.go("<name>")`. Strings go in `bot/text.py`.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities),
-  `archive.LIST_DAYS`, `notify.PER_SECTION`/`STALE_HOURS`, `catalog.NEW_DAYS`/`DROP_DAYS`, `bot.ui` (page size,
+  `archive.LIST_DAYS`, `notify.PER_SECTION`/`STALE_HOURS`/`DETAIL_LIMIT` (listing lines vs summary), `catalog.NEW_DAYS`/`DROP_DAYS`, `bot.ui` (page size,
   session timeout), `bot.store` (max saved searches/favorites), `bot.text` (price/size/age choices).
 
 ## Development

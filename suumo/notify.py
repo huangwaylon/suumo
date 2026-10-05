@@ -13,6 +13,7 @@ import requests
 API = "https://discord.com/api/v10"
 LIMIT = 2000
 PER_SECTION = 15
+DETAIL_LIMIT = 20   # up to this many events: one line per listing; more (a wide scope): counts per area
 STALE_HOURS = 48
 
 TYPE_JA = {"used_condo": "中古マンション", "new_house": "新築一戸建て", "used_house": "中古一戸建て",
@@ -66,9 +67,16 @@ def compose(events, now):
     """Events -> [(text, [seq, ...])], each text under Discord's limit, carrying the events it shows."""
     if not events:
         return []
-    prefs = sorted({e["pref"] for e in events})
-    where = "、".join(PREF_JA.get(p, p) for p in prefs)
-    pieces = [(f"**🏠 SUUMO 新着・更新**\n-# {now:%Y-%m-%d %H:%M} ・ {where}", [])]
+    pieces = _detail_pieces(events, now) if len(events) <= DETAIL_LIMIT else _summary_pieces(events, now)
+    return _pack(pieces)
+
+
+def _where(events):
+    return "、".join(PREF_JA.get(p, p) for p in sorted({e["pref"] for e in events}))
+
+
+def _detail_pieces(events, now):
+    pieces = [(f"**🏠 SUUMO 新着・更新**\n-# {now:%Y-%m-%d %H:%M} ・ {_where(events)}", [])]
     for kind, label in SECTIONS:
         items = [e for e in events if e["kind"] == kind]
         if not items:
@@ -77,6 +85,54 @@ def compose(events, now):
         pieces += [(line(e), [e.get("seq")]) for e in items[:PER_SECTION]]
         if len(items) > PER_SECTION:
             pieces.append((f"-# ほか{len(items) - PER_SECTION}件", [e.get("seq") for e in items[PER_SECTION:]]))
+    return pieces
+
+
+def _kind(e):
+    """new / drop / rise / relisted / removed (a price change split by direction)."""
+    if e["kind"] != "price_changed":
+        return e["kind"]
+    p = e["payload"]
+    return "drop" if p.get("old_price") and p.get("price") and p["price"] < p["old_price"] else "rise"
+
+
+COUNTS = [("new", "🆕 新着"), ("drop", "⬇️ 値下げ"), ("rise", "⬆️ 値上げ"), ("relisted", "🔁 再掲載"),
+          ("removed", "🔚 掲載終了")]
+SUMMARY_FOOTER = "-# 物件の一覧は下のメニューの「🆕 新着」「💴 値下げ」から。条件を保存すると新着をDMでお知らせします。"
+
+
+def _counts(events, labels=True):
+    n = {}
+    for e in events:
+        n[_kind(e)] = n.get(_kind(e), 0) + 1
+    if labels:
+        return " ・ ".join(f"{label} **{n[k]:,}件**" for k, label in COUNTS if n.get(k))
+    return " ".join(f"{label.split()[0]}{n[k]:,}" for k, label in COUNTS if n.get(k))
+
+
+def _summary_pieces(events, now):
+    """Too many to list: totals, a line per type, a line per area. Listings are in the bot (🆕 / 💴)."""
+    pieces = [(f"**🏠 SUUMO 今日の動き**\n-# {now:%Y-%m-%d %H:%M} ・ {_where(events)}\n{_counts(events)}", [])]
+    by_type = {}
+    for e in events:
+        by_type.setdefault(e["type"], []).append(e)
+    pieces.append(("**種別**\n" + "\n".join(f"- {TYPE_JA[t]}　{_counts(by_type[t], labels=False)}"
+                                         for t in TYPE_JA if t in by_type), []))
+    by_area = {}
+    for e in events:
+        by_area.setdefault((e["pref"], e.get("area_code", "")), []).append(e)
+    multi = len({p for p, _ in by_area}) > 1
+    pieces.append(("**エリア別**", []))
+    for (pref, _code), items in sorted(by_area.items()):
+        name = items[0]["payload"].get("area") or _code
+        prefix = PREF_JA.get(pref, pref) if multi else ""
+        pieces.append((f"- **{prefix}{name}**　{_counts(items, labels=False)}", [e.get("seq") for e in items]))
+    pieces.append((SUMMARY_FOOTER, []))
+    return pieces
+
+
+def _pack(pieces):
+    """Join pieces into messages under Discord's limit; each message carries the seqs of its pieces."""
     messages, text, seqs = [], "", []
     for piece, piece_seqs in pieces:
         if text and len(text) + 1 + len(piece) > LIMIT:
