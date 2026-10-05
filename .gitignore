@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.cache/
+.env
+state.db
+state.db-*
+archive/

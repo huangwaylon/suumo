@@ -1,0 +1,8 @@
+# What to crawl. Add an entry and the next `run` baselines it silently, then queues its listing pages.
+# pref: SUUMO slug (tokyo, chiba, kanagawa, ...). types: omit for all five. areas: omit for the whole prefecture.
+# Area codes are JIS municipality codes (e.g. 13219 = 狛江市); see data/<pref>/areas.json after a run.
+
+[[scope]]
+pref = "tokyo"
+types = ["used_condo", "new_house", "used_house", "land", "new_condo"]
+areas = ["13219"]  # 狛江市 (test scope)
