@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 from collections import Counter
 from datetime import datetime
@@ -66,7 +67,7 @@ def cmd_run(c: Ctx):
     if not a.no_crawl:
         p.crawl_lists()
     if a.budget > 0:
-        p.process_queue(a.budget)
+        p.process_queue(a.budget, checkpoint=lambda: export(c.db, c.targets, c.data))
     p.purge()
     p.report.update(export=export(c.db, c.targets, c.data, run_id), requests=client.requests_made,
                     seconds=round(time.monotonic() - t0), mb=round(client.bytes_downloaded / 1e6, 1))
@@ -105,10 +106,42 @@ def cmd_status(c: Ctx):
     parse_failures = db.x("SELECT COUNT(*) FROM queue WHERE last_error LIKE 'parse:%'").fetchone()[0]
     if parse_failures:
         print(f"parse failures: {parse_failures} (fix the parser, then `reparse`)")
-    last = db.x("SELECT run_id, finished FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
-    if last:
-        print(f"last run: {last['run_id']} (finished {last['finished'] or 'not finished'})")
+    last = db.x("SELECT run_id, finished, report FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
+    if last and last["finished"]:
+        print(f"last run: {last['run_id']} (finished {last['finished']})")
+    elif last:
+        print_progress(last, running=is_locked(c.lock))
     c.out_of_scope_hint()
+
+
+def is_locked(lock_path):
+    """True while a writing command (a run) holds the lock."""
+    if not lock_path.exists():
+        return False
+    with open(lock_path) as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(f, fcntl.LOCK_UN)
+    return False
+
+
+def print_progress(run, running):
+    p = json.loads(run["report"] or "{}").get("progress") or {}
+    state = "running" if running else "not running (interrupted; the next run continues the queue)"
+    print(f"\ncurrent run: {run['run_id']} — {state}")
+    if not p:
+        return
+    ago = datetime.now(JST) - datetime.fromisoformat(p["at"])
+    print(f"  phase: {p['phase']} (updated {int(ago.total_seconds() // 60)} min ago)")
+    if p["phase"] == "search results":
+        print(f"  {p['target']}: area {p['areas_done'] + 1}/{p['areas']} ({p['area']})")
+    elif p["phase"] == "listing pages":
+        eta_h, eta_m = divmod(p["eta_seconds"] // 60, 60)
+        print(f"  {p['done']:,}/{p['total']:,} ({100 * p['done'] / p['total']:.1f}%) · {p['seconds_per_page']} s/page"
+              f" · ETA {eta_h}h{eta_m:02d}m · fetched {p['fetched']:,} failed {p['failed']:,} gone {p['gone']:,}"
+              + (f" · delay {p['delay']:.2f}s" if p.get("delay") else ""))
 
 
 def cmd_prune(c: Ctx):
@@ -149,6 +182,7 @@ READ_ONLY = {"status"}
 
 
 def main():
+    sys.stdout.reconfigure(line_buffering=True)  # progress shows up at once in `tee` / `tail -f`
     ap = argparse.ArgumentParser(prog="suumo")
     ap.add_argument("--scope", default="scope.toml")
     ap.add_argument("--db", default="state.db")

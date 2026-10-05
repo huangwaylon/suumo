@@ -121,3 +121,107 @@ def test_commit_data_commits_only_data(tmp_path):
     assert commit_data(tmp_path, "r1", log=lambda *_: None)
     assert git("log", "--name-only", "--format=").stdout.split() == ["data/x.jsonl"]
     assert not commit_data(tmp_path, "r2", log=lambda *_: None)     # unchanged -> no empty commit
+
+
+# ---------- polite fetching and long runs ----------
+
+class FakeResponse:
+    def __init__(self, status=200, body=b"<html/>", headers=None):
+        self.status_code, self.content, self.headers = status, body, headers or {}
+
+
+def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
+    from suumo import http
+    monkeypatch.setattr(http.time, "sleep", lambda s: None)
+    c = http.Client(delay=1.0, log=lambda *_: None)
+    replies = iter([FakeResponse(429, headers={"Retry-After": "30"}), FakeResponse(200)])
+    c.session.get = lambda url, timeout: next(replies)
+    assert c.get("/x/") == "<html/>"
+    assert c.delay == pytest.approx(2.0 * 0.95) and c.slowdowns == 1   # doubled, then eased once
+    c.session.get = lambda url, timeout: FakeResponse(200)
+    for _ in range(200):
+        c.get("/x/")
+    assert c.delay == 1.0                                   # back to the base after fast successes
+    c.session.get = lambda url, timeout: FakeResponse(503)
+    with pytest.raises(RuntimeError):
+        c.get("/x/")
+    assert c.delay == http.MAX_DELAY                        # doubled per failure, capped
+
+
+def test_client_404_is_gone_not_an_error(monkeypatch):
+    from suumo import http
+    monkeypatch.setattr(http.time, "sleep", lambda s: None)
+    c = http.Client(delay=1.0, log=lambda *_: None)
+    c.session.get = lambda url, timeout: FakeResponse(404)
+    with pytest.raises(FileNotFoundError):
+        c.get("/x/")
+    assert c.delay == 1.0
+
+
+def _queue_db(tmp_path, n):
+    db = DB(tmp_path / "s.db")
+    for i in range(n):
+        db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
+             "VALUES ('used_condo', ?, 'tokyo', '13219', '狛江市', ?, '2026-10-05', 'x')",
+             str(i), json.dumps({"id": str(i), "path": f"/ms/chuko/tokyo/sc_komae/nc_{i}/"}))
+        db.enqueue("used_condo", str(i), 0, "backfill", "x")
+    db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
+    db.commit()
+    return db
+
+
+def test_outage_pauses_without_using_up_attempts(tmp_path, monkeypatch):
+    from suumo import pipeline
+    from suumo.pipeline import Pipeline
+    monkeypatch.setattr(pipeline.time, "sleep", lambda s: None)
+    db = _queue_db(tmp_path, 8)
+    client = __import__("unittest.mock").mock.MagicMock()
+    client.get.side_effect = RuntimeError("failed after 4 attempts")
+    out = []
+    p = Pipeline(db, Archive(tmp_path / "a"), client, [Target("tokyo", "used_condo", None)], NOW, "r",
+                 log=out.append)
+    p.process_queue(3600)
+    attempts = [r[0] for r in db.x("SELECT attempts FROM queue ORDER BY CAST(id AS INT)")]
+    assert attempts == [0, 0, 0, 0, 0, 1, 1, 1]            # the first 5 were an outage: not counted
+    assert any("pausing" in line for line in out)
+
+
+def test_long_queue_reports_progress_and_checkpoints(tmp_path, monkeypatch):
+    from suumo import pipeline
+    from suumo.pipeline import Pipeline
+    monkeypatch.setattr(pipeline, "PROGRESS_EVERY", 2)
+    monkeypatch.setattr(pipeline, "CHECKPOINT_SECONDS", 0)
+    monkeypatch.setattr(pipeline, "apply_detail", lambda *a, **k: None)
+    db = _queue_db(tmp_path, 5)
+    client = __import__("unittest.mock").mock.MagicMock()
+    client.get.return_value = "<html/>"
+    client.delay = 1.0
+    out, checkpoints = [], []
+    p = Pipeline(db, Archive(tmp_path / "a"), client, [Target("tokyo", "used_condo", None)], NOW, "r",
+                 log=out.append)
+    seen = []
+    real_save = p.save_progress
+
+    def spy(**kw):
+        seen.append(kw)
+        real_save(**kw)
+
+    p.save_progress = spy
+    p.process_queue(3600, checkpoint=lambda: checkpoints.append(1))
+    assert [s["done"] for s in seen] == [2, 4] and seen[-1]["total"] == 5
+    assert any("listing pages 4/5 (80.0%)" in line for line in out)
+    assert checkpoints                                      # data/ exported during the run
+    assert "progress" not in p.report                       # cleared when the queue phase ends
+
+
+def test_status_shows_a_running_backfill(tmp_path, capsys):
+    from suumo.cli import is_locked, print_progress
+    progress = {"phase": "listing pages", "done": 1200, "total": 64000, "fetched": 1190, "failed": 3, "gone": 7,
+                "seconds_per_page": 1.31, "eta_seconds": 82_000, "delay": 1.0, "at": NOW.isoformat()}
+    print_progress({"run_id": "r1", "report": json.dumps({"progress": progress})}, running=True)
+    out = capsys.readouterr().out
+    assert "running" in out and "1,200/64,000 (1.9%)" in out and "ETA 22h46m" in out
+    lock = tmp_path / "state.db.lock"
+    assert not is_locked(lock)
+    with exclusive(lock):
+        assert is_locked(lock)

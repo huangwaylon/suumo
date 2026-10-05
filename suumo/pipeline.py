@@ -22,6 +22,10 @@ EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/event
 SUSPECT_DROP = 0.30      # an area losing more than this share at once is distrusted (no removals)
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
 MAX_DETAIL_ATTEMPTS = 3
+PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to the run's report for `status`)
+CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the bot can search what's fetched so far
+OUTAGE_STREAK = 5          # this many failed listing pages in a row = SUUMO (or the network) is down...
+OUTAGE_PAUSE = 600         # ...pause this long; those failures don't count toward MAX_DETAIL_ATTEMPTS
 
 # priorities in the detail queue
 P_NEW, P_CHANGED, P_BACKFILL = 2, 1, 0
@@ -47,6 +51,12 @@ class Pipeline:
         self.report = {"targets": [], "detail": {}, "purged": 0}
 
     # ---------- search results ----------
+
+    def save_progress(self, **progress):
+        """Put progress in the run's report so `status` (another process) can show it while the run goes on."""
+        self.report["progress"] = {**progress, "at": datetime.now(self.now.tzinfo).isoformat(timespec="seconds")}
+        self.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(self.report, ensure_ascii=False), self.run_id)
+        self.db.commit()
 
     def crawl_lists(self):
         for t in self.targets:
@@ -80,7 +90,9 @@ class Pipeline:
                 self.log(f"  {code:<10} not on the area page (no listings, or a wrong code)")
                 rep["areas"].append({"code": code, "status": "not_listed"})
 
-        for a in areas:
+        for k, a in enumerate(areas):
+            self.save_progress(phase="search results", target=f"{t.pref}/{t.type}", area=a["name"],
+                               areas_done=k, areas=len(areas))
             self.db.upsert_area(t.pref, t.type, a)
             if not a["slug"]:
                 status = "empty" if a["expected"] == 0 else "no_slug"
@@ -199,17 +211,28 @@ class Pipeline:
 
     # ---------- listing pages ----------
 
-    def process_queue(self, budget_seconds):
-        """Fetch listing pages, highest priority first, until the queue is empty or the budget is spent."""
-        deadline = time.monotonic() + budget_seconds
+    def process_queue(self, budget_seconds, checkpoint=None):
+        """Fetch listing pages, highest priority first, until the queue is empty or the budget is spent.
+        checkpoint(): called every CHECKPOINT_SECONDS (the CLI exports data/)."""
+        t0 = time.monotonic()
+        deadline = t0 + budget_seconds
+        last_checkpoint = t0
         done = failed = gone = 0
+        streak = []  # consecutive fetch failures
         rows = self.db.x("""SELECT q.type, q.id, l.pref, l.area_code, l.list_json, l.status
                             FROM queue q LEFT JOIN listings l ON l.type=q.type AND l.id=q.id
                             WHERE q.attempts < ? ORDER BY q.priority DESC, q.enqueued_at, q.id""",
                          MAX_DETAIL_ATTEMPTS).fetchall()
-        for r in rows:
-            if time.monotonic() >= deadline:
+        total = len(rows)
+        for n, r in enumerate(rows):
+            now = time.monotonic()
+            if now >= deadline:
                 break
+            if n and n % PROGRESS_EVERY == 0:
+                self._queue_progress(n, total, done, failed, gone, now - t0, deadline - now)
+            if checkpoint and now - last_checkpoint >= CHECKPOINT_SECONDS:
+                checkpoint()
+                last_checkpoint = time.monotonic()
             if r["status"] != "active":  # removed (or purged) since it was queued
                 self.db.dequeue(r["type"], r["id"])
                 continue
@@ -221,12 +244,18 @@ class Pipeline:
                 # gone from SUUMO; the next search-result crawls will mark it removed
                 self.db.dequeue(r["type"], r["id"])
                 gone += 1
+                streak = []
                 continue
             except Exception as e:
                 self.db.x("UPDATE queue SET attempts=attempts+1, last_error=? WHERE type=? AND id=?",
                           repr(e)[:300], r["type"], r["id"])
                 failed += 1
+                streak.append((r["type"], r["id"]))
+                if len(streak) >= OUTAGE_STREAK:
+                    self._pause_for_outage(streak, deadline)
+                    streak = []
                 continue
+            streak = []
             self.archive.save_detail(r["pref"], r["type"], r["id"], html)
             try:
                 apply_detail(self.db, r["type"], r["id"], html, self.today)
@@ -242,7 +271,29 @@ class Pipeline:
         self.db.commit()
         remaining = self.db.x("SELECT COUNT(*) FROM queue WHERE attempts < ?", MAX_DETAIL_ATTEMPTS).fetchone()[0]
         self.report["detail"] = {"fetched": done, "failed": failed, "gone": gone, "remaining": remaining}
+        self.report.pop("progress", None)
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
+
+    def _queue_progress(self, n, total, done, failed, gone, elapsed, budget_left):
+        per = elapsed / n
+        eta = (total - n) * per
+        delay = getattr(self.client, "delay", None)
+        self.log(f"  listing pages {n:,}/{total:,} ({100 * n / total:.1f}%) · {per:.2f} s/page · "
+                 f"ETA {_hm(min(eta, budget_left))}{' (budget ends first)' if budget_left < eta else ''} · "
+                 f"fetched {done:,} failed {failed:,} gone {gone:,}" + (f" · delay {delay:.2f}s" if delay else ""))
+        self.save_progress(phase="listing pages", done=n, total=total, fetched=done, failed=failed, gone=gone,
+                           seconds_per_page=round(per, 2), eta_seconds=round(min(eta, budget_left)), delay=delay)
+
+    def _pause_for_outage(self, streak, deadline):
+        """Several failures in a row: SUUMO or the network is down. Give the attempts back and wait."""
+        for type_key, lid in streak:
+            self.db.x("UPDATE queue SET attempts=MAX(0, attempts-1) WHERE type=? AND id=?", type_key, lid)
+        self.db.commit()
+        pause = max(0, min(OUTAGE_PAUSE, deadline - time.monotonic()))
+        self.log(f"  ! {len(streak)} listing pages failed in a row; pausing {pause / 60:.0f} min "
+                 "(these failures don't count toward the attempt limit)")
+        self.save_progress(phase="paused (SUUMO or network down)", resume_in_seconds=round(pause))
+        time.sleep(pause)
 
     # ---------- cleanup ----------
 
@@ -263,6 +314,11 @@ class Pipeline:
         self.report["purged"] = len(rows)
         if rows:
             self.log(f"purged {len(rows)} listings removed more than {PURGE_DAYS} days ago")
+
+
+def _hm(seconds):
+    h, m = divmod(int(seconds) // 60, 60)
+    return f"{h}h{m:02d}m" if h else f"{m}m"
 
 
 def apply_detail(db, type_key, lid, html, fetched=None):
