@@ -52,15 +52,20 @@ def _structure(s):
 
 
 def _tenure(s):
-    """Land rights category for filtering; the full text goes to land_rights_note."""
-    if ("賃借権" in s or "借地" in s) and "旧" in s and "定期" not in s:
-        return "旧法借地権"
-    for key in ("定期借地権", "旧法借地権", "普通借地権", "地上権", "借地権", "所有権"):
-        if key in s:
-            return key
-    if "賃借権" in s:
-        return "借地権"
-    return s.split("、")[0][:20]
+    """Land rights category for filtering; the full text goes to land_rights_note.
+
+    '一部地上権（旧）、借地期間…' -> 地上権, '賃借権（旧）' -> 旧法借地権, '賃借権（普）' -> 普通借地権.
+    """
+    head = s.split("、")[0]
+    if "定期借地" in head:
+        return "定期借地権"
+    if "地上権" in head:
+        return "地上権"
+    if "借地権" in head or "賃借権" in head:
+        return "旧法借地権" if "旧" in head else "普通借地権" if "普" in head else "借地権"
+    if "所有権" in head:
+        return "所有権"
+    return head[:20]
 
 
 def _floor(s):
