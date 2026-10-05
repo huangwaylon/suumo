@@ -7,6 +7,7 @@ people whose saved searches or favorites have news.
 import asyncio
 import contextlib
 import logging
+import time
 from pathlib import Path
 
 import discord
@@ -20,6 +21,9 @@ from .ui import SESSIONS_PER_USER, MainMenu
 WATCH_SECONDS = 60     # how often data/ is checked for a new export
 MENU_DELAY = 5         # seconds after a post before the menu is moved below it (a feed post is several messages)
 MENU_SCAN = 50         # recent channel messages searched for old menus
+LOAD_TRIES = 5         # attempts to read the saved state at startup before giving up (launchd restarts us)
+TAP_GRACE = 2.0        # seconds after which a tap nobody answered is acknowledged (double taps mid-redraw)
+RETRY_MAX = 3600       # longest wait between alert retries for one person after Discord errors
 
 log = logging.getLogger("suumo.bot")
 
@@ -38,6 +42,7 @@ class SuumoBot(discord.Client):
         self._menu_task = None
         self._save_lock = asyncio.Lock()
         self._tasks = set()
+        self._retry = {}                 # uid -> (failures, monotonic time of the next attempt)
 
     # ---------- lifecycle ----------
 
@@ -50,13 +55,25 @@ class SuumoBot(discord.Client):
     async def on_ready(self):
         if self.loaded:  # reconnects fire on_ready again
             return
-        data = await self.backend.load()
+        for attempt in range(1, LOAD_TRIES + 1):
+            try:
+                data = await self.backend.load()
+                break
+            except Exception:
+                log.exception("loading state failed (attempt %d/%d)", attempt, LOAD_TRIES)
+                await asyncio.sleep(10 * attempt)
+        else:
+            await self.close()  # non-zero exit: launchd starts a fresh process
+            raise SystemExit(1)
         self.store = Store.from_json(data) if data else Store()
-        self.store.drop_missing_favorites(self.catalog.snap)
+        self.store.drop_missing_favorites(self.catalog.snap, self.catalog.today_fn())
         self.loaded = True
         log.info("ready as %s; %d users", self.user, len(self.store.users))
-        await self.tidy_channel()
         self.spawn(self.watch_forever())
+        try:
+            await self.tidy_channel()
+        except Exception:
+            log.exception("posting the menu failed; retried after the next message in the channel")
 
     def ready_catalog(self):
         return self.loaded and self.catalog.sig is not None
@@ -86,9 +103,18 @@ class SuumoBot(discord.Client):
         if interaction.type is not discord.InteractionType.component:
             return
         cid = (interaction.data or {}).get("custom_id", "")
-        if cid.startswith("s:") and cid.split(":")[1] not in self.sessions:
+        if not cid.startswith("s:"):
+            return
+        if cid.split(":")[1] not in self.sessions:
             with contextlib.suppress(discord.HTTPException):
                 await interaction.response.edit_message(content=T.EXPIRED, embeds=[], view=None)
+            return
+        # A second tap while the screen is being redrawn hits a component that was just replaced and that
+        # discord.py drops silently; acknowledge it so Discord doesn't show an error.
+        await asyncio.sleep(TAP_GRACE)
+        if not interaction.response.is_done():
+            with contextlib.suppress(discord.HTTPException, discord.InteractionResponded):
+                await interaction.response.defer()
 
     # ---------- state ----------
 
@@ -162,7 +188,7 @@ class SuumoBot(discord.Client):
         if self.catalog.changed():
             await asyncio.to_thread(self.catalog.refresh)
             log.info("catalog reloaded: %d listings", len(self.catalog.snap.items))
-            self.store.drop_missing_favorites(self.catalog.snap)
+            self.store.drop_missing_favorites(self.catalog.snap, self.catalog.today_fn())
         await self.send_alerts()
         await self.after_change()
 
@@ -179,7 +205,7 @@ class SuumoBot(discord.Client):
                 self.store.dirty = True
                 continue
             runs = alerts.pending_runs(u, snap)
-            if not runs:
+            if not runs or self._retry.get(uid, (0, 0))[1] > time.monotonic():
                 continue
             for r in runs:
                 if r not in events:
@@ -187,7 +213,10 @@ class SuumoBot(discord.Client):
             sections = alerts.collect(u, snap, [(r, events[r]) for r in runs],
                                       lambda q: T.search_heading(q, snap), T.FAV_HEADING)
             if sections and not await self.deliver(uid, u, sections):
-                continue                       # Discord trouble: this person's runs are retried next time
+                failures = self._retry.get(uid, (0, 0))[0] + 1   # Discord trouble: retried later, backing off
+                self._retry[uid] = (failures, time.monotonic() + min(RETRY_MAX, 60 * 2 ** failures))
+                continue
+            self._retry.pop(uid, None)
             u.last_run = runs[-1]
             self.store.dirty = True
             await self.persist()               # record progress before the next person: nobody hears twice
@@ -200,6 +229,9 @@ class SuumoBot(discord.Client):
             if u.dm_failed:
                 u.dm_failed = False
                 self.store.dirty = True
+            return True
+        except discord.NotFound:
+            log.warning("user %s no longer exists; skipping their alerts", uid)
             return True
         except discord.Forbidden:
             log.info("DM refused by %s; posting in the channel", uid)

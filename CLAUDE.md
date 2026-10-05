@@ -84,8 +84,10 @@ shared formatters). `parse`, `detail`, `catalog` and `bot.alerts` are pure and n
 - 新着 is a `new`/`relisted` event within 7 days (baselines are never 新着); 値下げ is a drop within 30 days.
 - A building condition (間取り, 広さ, 築年数, 新耐震) excludes land unless the person chose 土地 explicitly.
 - **Alerts reach each person once per run:** `User.last_run` advances only after their DM (or the channel fallback)
-  is accepted, and is saved before the next person. A new saved search or favorite starts from the newest run.
-  こだわり conditions count as met while a listing's page isn't fetched yet.
+  is accepted, and is saved before the next person. Alerts that (re)start — first saved search or favorite,
+  notifications turned back on — start from the newest run (no backlog). こだわり conditions count as met while a
+  listing's page isn't fetched yet. Discord errors back off per person; a deleted account is skipped.
+- Favorites missing from `data/` are forgotten only after `store.FORGET_AFTER_DAYS` (a reload can land mid-export).
 - **Menu stays the newest message in the channel:** after any message there (the crawl's feed posts arrive from
   the same bot user), `tidy_channel` deletes our old menus and posts a new one, silently. Never delete feed posts.
 - `MainMenu` custom_ids (`suumo:*`) are fixed: don't rename them. Session custom_ids are `s:<sid>:<name>`;

@@ -96,13 +96,15 @@ class Query:
     def from_dict(cls, d):
         """Tolerant of unknown keys and bad values (state written by an older version)."""
         known = {f.name: f for f in fields(cls)}
+        allowed = {"types": lambda x: x in TYPES, "rooms": lambda x: x in ROOM_BUCKETS and isinstance(x, int)}
         q = cls()
         for k, v in (d or {}).items():
             if k not in known:
                 continue
             default = getattr(q, k)
             if isinstance(default, tuple) and isinstance(v, list):
-                q = q.set(**{k: v})
+                ok = allowed.get(k, lambda x: isinstance(x, str))
+                q = q.set(**{k: [x for x in v if ok(x)]})
             elif isinstance(default, bool) and isinstance(v, bool):
                 q = replace(q, **{k: v})
             elif k == "sort" and v in SORTS:
@@ -421,8 +423,9 @@ class Snapshot:
         return {k: (pool & table.get(k, 0)).bit_count() for k in keys}
 
     def facet_types(self, q):
-        c = self._counts(q, "types", self.b_type, TYPES)
-        return [(t, c[t]) for t in TYPES if c[t] or t in q.types]
+        """Every type present, counted as if it were the only one chosen (building conditions treat a chosen
+        土地 differently, so the type dimension can't simply be skipped)."""
+        return [(t, self.count(replace(q, types=(t,)))) for t in TYPES if t in self.b_type]
 
     def facet_areas(self, q):
         c = self._counts(q, "areas", self.b_area, set(self.b_area) | set(q.areas))

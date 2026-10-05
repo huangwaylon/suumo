@@ -9,6 +9,7 @@ import logging
 import os
 import secrets
 from dataclasses import dataclass, field
+from datetime import date
 
 import discord
 
@@ -17,6 +18,7 @@ from ..catalog import Query
 VERSION = 1
 MAX_SEARCHES = 5
 MAX_FAVORITES = 100
+FORGET_AFTER_DAYS = 7      # a favorite missing from data/ this long has been purged (not a mid-export reload)
 STATE_FILENAME = "state.json"
 HISTORY_SCAN_LIMIT = 50
 
@@ -75,6 +77,11 @@ class Store:
 
     # --- actions (raise ValueError with a user-facing message key) ---
 
+    def _alerts_from_now(self, u: User, was_on, newest_run):
+        """Alerts (re)starting start from now: not from the history in git, nor from runs while they were off."""
+        if not was_on and u.wants_alerts():
+            u.last_run = newest_run
+
     def save_search(self, u: User, q: Query, today, newest_run):
         q = q.set(sort="new")
         if q.is_empty():
@@ -83,9 +90,9 @@ class Store:
             raise ValueError("dup")
         if len(u.searches) >= MAX_SEARCHES:
             raise ValueError("full")
+        was_on = u.wants_alerts()
         u.searches.append(Saved(secrets.token_hex(3), q, today))
-        if u.last_run is None:
-            u.last_run = newest_run  # alerts start from now, not from the history in git
+        self._alerts_from_now(u, was_on, newest_run)
         self.dirty = True
 
     def delete_search(self, u: User, sid):
@@ -100,19 +107,32 @@ class Store:
             return False
         if len(u.favorites) >= MAX_FAVORITES:
             raise ValueError("full")
+        was_on = u.wants_alerts()
         u.favorites[key] = {"price": price, "added": today}
-        if u.last_run is None:
-            u.last_run = newest_run
+        self._alerts_from_now(u, was_on, newest_run)
         self.dirty = True
         return True
 
-    def drop_missing_favorites(self, snap):
-        """Favorites that are neither active nor recently removed have been purged from data/: forget them."""
+    def set_notify_favorites(self, u: User, on, newest_run):
+        was_on = u.wants_alerts()
+        u.notify_favorites = on
+        self._alerts_from_now(u, was_on, newest_run)
+        self.dirty = True
+
+    def drop_missing_favorites(self, snap, today):
+        """Forget favorites missing from data/ for FORGET_AFTER_DAYS (purged 30 days after removal). A single
+        reload can miss a listing that the export is just moving into removed.jsonl, so never drop at once."""
         for u in self.users.values():
-            gone = [k for k in u.favorites if snap.get(k) is None]
-            for k in gone:
-                del u.favorites[k]
-                self.dirty = True
+            for k, fav in list(u.favorites.items()):
+                if snap.get(k) is not None:
+                    if fav.pop("missing", None):
+                        self.dirty = True
+                elif "missing" not in fav:
+                    fav["missing"] = today.isoformat()
+                    self.dirty = True
+                elif (today - date.fromisoformat(fav["missing"])).days >= FORGET_AFTER_DAYS:
+                    del u.favorites[k]
+                    self.dirty = True
 
     # --- JSON ---
 

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
+from suumo.bot import app as app_mod
 from suumo.bot import text as T
 from suumo.bot.app import SuumoBot
 from suumo.bot.store import MAX_SEARCHES, Store
@@ -402,6 +403,53 @@ async def test_saved_screen_run_and_delete(bot, interaction):
     assert T.DELETED in content and not u.searches
 
 
+async def test_saved_search_results_lead_back_to_saved_list(bot, interaction):
+    u = bot.store.user(42)
+    bot.store.save_search(u, Query(types=("land",)), "2026-10-06", "x")
+    await Session.open(bot, interaction, "saved")
+    s = session_of(bot)
+    await pick(s, "saved", interaction, u.searches[0].id)
+    await tap(s, "run_saved", interaction)
+    assert u.last_query == Query()                         # a saved search isn't "your last conditions"
+    await tap(s, "to_saved", interaction)
+    assert s.screen == "saved"
+    await tap(s, "new_search", interaction)
+    assert s.screen == "panel" and s.q == Query()
+
+
+async def test_panel_edits_are_remembered_without_viewing(bot, interaction):
+    await Session.open(bot, interaction, "panel")
+    s = session_of(bot)
+    await pick(s, "types", interaction, "land")
+    await Session.open(bot, interaction, "panel")
+    assert session_of(bot).q == Query(types=("land",))
+    s = session_of(bot)
+    await tap(s, "reset", interaction)
+    await Session.open(bot, interaction, "panel")
+    assert session_of(bot).q == Query()
+
+
+async def test_long_lines_page_their_stations(data):
+    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo.jsonl").read_text().splitlines()]
+    more = [{**recs[0], "id": str(8_000_000 + n), "dup_key": None,
+             "stations": [{"line": "小田急線", "name": f"駅{n:02d}", "walk": 5}]} for n in range(30)]
+    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+        f.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in more))
+    bot = FakeBot(data)
+    interaction = make_interaction()
+    await Session.open(bot, interaction, "panel")
+    s = session_of(bot)
+    await tap(s, "stations", interaction)
+    await pick(s, "line", interaction, "小田急線")
+    first = set(options(s, "station"))
+    content, embeds = await tap(s, "station_next", interaction)
+    assert_discord_limits(s, content, embeds)
+    second = set(options(s, "station"))
+    assert len(first) == 25 and second and not first & second
+    await pick(s, "station", interaction, sorted(second)[0])
+    assert s.q.stations == (sorted(second)[0],)
+
+
 async def test_favorite_notifications_toggle(bot, interaction):
     await Session.open(bot, interaction, "saved")
     s = session_of(bot)
@@ -419,19 +467,27 @@ async def test_old_sessions_are_forgotten(bot):
     assert [s.uid for s in bot.sessions.values()] == [42, 42, 42, 7]
 
 
-async def test_tap_on_forgotten_session_says_so(bot):
+async def test_tap_on_forgotten_session_says_so(bot, monkeypatch):
     i = make_interaction()
     i.type = discord.InteractionType.component
     i.data = {"custom_id": "s:deadbeef:show"}
     await bot.on_interaction(i)
     assert i.response.edit_message.await_args.kwargs == {"content": T.EXPIRED, "embeds": [], "view": None}
-    # a live session is left to its own view
+    # a live session is left to its own view...
+    monkeypatch.setattr(app_mod, "TAP_GRACE", 0)
     await Session.open(bot, make_interaction(), "panel")
     live = make_interaction()
     live.type = discord.InteractionType.component
     live.data = {"custom_id": session_of(bot).cid("show")}
+    live.response.is_done = MagicMock(return_value=True)
+    live.response.defer = AsyncMock()
     await bot.on_interaction(live)
     live.response.edit_message.assert_not_awaited()
+    live.response.defer.assert_not_awaited()
+    # ...unless the view dropped it (a second tap during a redraw): acknowledged quietly
+    live.response.is_done = MagicMock(return_value=False)
+    await bot.on_interaction(live)
+    live.response.defer.assert_awaited()
 
 
 async def test_errors_in_a_change_show_a_short_message(bot, interaction):

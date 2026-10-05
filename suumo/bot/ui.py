@@ -96,7 +96,9 @@ class Session(ui.View):
         self.pos = 0                 # index in hits of the listing on the detail screen
         self.line = None             # station screen: chosen line
         self.line_page = 0
+        self.station_page = 0
         self.area_page = 0
+        self.origin = None           # "saved" when results came from a saved search (offers a way back)
         self.picked = None           # saved screen: chosen saved search id
         self.notice = None           # one-time line shown at the top of the next redraw
         bot.register(self)
@@ -204,7 +206,8 @@ class Session(ui.View):
         self.add_button("show", f"{count:,}件を見る", "🔎", self.show_search, row, GREEN, disabled=count == 0)
 
     def show_search(self):
-        self.title = "🔎 検索結果"
+        if self.origin is None:
+            self.title = "🔎 検索結果"
         self.open_results()
 
     def add_back(self, row):
@@ -253,9 +256,17 @@ class Session(ui.View):
 
     def set(self, **kw):
         self.q = self.q.set(**kw)
+        self.remember()
 
     def reset(self):
         self.q = Query(sort=self.q.sort)
+        self.remember()
+
+    def remember(self):
+        """Panel edits in a normal search are kept for next time (saved with the next save, not on every tap);
+        the 🆕 / 💴 shortcuts and saved searches don't overwrite them."""
+        if self.title == "🔎 検索結果" and self.origin is None:
+            self.user.last_query = self.q
 
     def save(self):
         try:
@@ -304,11 +315,12 @@ class Session(ui.View):
         self.add_select("line", T.PH_LINE, [
             (ln, ln, f"{n:,}件", ln == self.line) for ln, n in shown
         ], lambda v: self._pick_line(v[0]), 0)
+        station_pages = 1
         if self.line:
             on_line = snap.facet_stations(q, self.line)
-            chosen = [s for s in on_line if s[0] in q.stations]
-            others = [s for s in on_line if s[0] not in q.stations]
-            options = (chosen + others)[:25]
+            station_pages = max(1, math.ceil(len(on_line) / per))
+            self.station_page = min(self.station_page, station_pages - 1)
+            options = on_line[self.station_page * per:][:per]
             names = {n for n, _ in options}
             self.add_select("station", f"🚉 {self.line}の駅（いくつでも）", [
                 (f"{n}駅", n, f"{c:,}件", n in q.stations) for n, c in options
@@ -321,6 +333,11 @@ class Session(ui.View):
                             disabled=self.line_page == 0)
             self.add_button("line_next", "次の路線", "▶️", lambda: self._line_page(1), 3,
                             disabled=self.line_page >= pages - 1)
+        if station_pages > 1:
+            self.add_button("station_prev", "前の駅", "⏪", lambda: self._station_page(-1), 3,
+                            disabled=self.station_page == 0)
+            self.add_button("station_next", "次の駅", "⏩", lambda: self._station_page(1), 3,
+                            disabled=self.station_page >= station_pages - 1)
         self.add_back(4)
         self.add_results_button(4)
         self.add_button("clear_stations", "駅をクリア", "🧹", lambda: self.set(stations=(), walk_max=None), 4,
@@ -329,10 +346,14 @@ class Session(ui.View):
 
     def _pick_line(self, line):
         self.line = line
+        self.station_page = 0
 
     def _line_page(self, step):
         self.line_page += step
         self.line = None
+
+    def _station_page(self, step):
+        self.station_page += step
 
     def draw_size(self):
         q = self.q
@@ -397,7 +418,7 @@ class Session(ui.View):
         self.hits = self.snap.search(self.q)
         self.page = 0
         self.screen = "results"
-        if self.title == "🔎 検索結果" and self.user.last_query != self.q:
+        if self.title == "🔎 検索結果" and self.origin is None:
             self.user.last_query = self.q
             self.bot.store.dirty = True
 
@@ -445,6 +466,8 @@ class Session(ui.View):
             self.add_button("to_panel", "物件をさがす", "🔎", self.go("panel"), 2)
         else:
             self.add_button("to_panel", "条件を変える", "↩️", self.go("panel"), 2)
+        if self.origin == "saved":
+            self.add_button("to_saved", "保存した条件", "🔔", self.go("saved"), 2)
         return content, embeds
 
     def _page(self, step):
@@ -490,7 +513,8 @@ class Session(ui.View):
         hit = self.hits[self.pos]
         try:
             added = self.bot.store.toggle_favorite(self.user, hit.key, hit.item.price_lo, today(), self.newest_run())
-            self.notice = T.FAV_ADDED if added else T.FAV_REMOVED
+            self.notice = (T.FAV_ADDED if self.user.notify_favorites else T.FAV_ADDED_QUIET) if added \
+                else T.FAV_REMOVED
         except ValueError:
             self.notice = T.FAV_FULL.format(n=MAX_FAVORITES)
 
@@ -504,8 +528,7 @@ class Session(ui.View):
             ], self._pick_saved, 0)
             self.add_button("run_saved", "この条件でさがす", "🔎", self._run_saved, 1, BLUE, disabled=not self.picked)
             self.add_button("delete_saved", "削除", "🗑️", self._delete_saved, 1, RED, disabled=not self.picked)
-        else:
-            self.add_button("to_panel", "物件をさがす", "🔎", self.go("panel"), 1, BLUE)
+        self.add_button("new_search", "新しくさがす", "➕", self._new_search, 1, GREY if u.searches else BLUE)
         self.add_button("fav_notify", f"お気に入りの通知：{'オン' if u.notify_favorites else 'オフ'}", "⭐",
                         self._toggle_fav_notify, 2, GREEN if u.notify_favorites else GREY)
         content = T.saved_list(u, snap, self.picked) if u.searches else T.SAVED_EMPTY + (
@@ -521,8 +544,13 @@ class Session(ui.View):
     def _run_saved(self):
         s = self._saved()
         if s:
-            self.q, self.title = s.query, "🔎 検索結果"
+            self.q, self.title, self.origin = s.query, "🔔 保存した条件", "saved"
             self.open_results()
+
+    def _new_search(self):
+        """To the search panel with the person's own last conditions (not a saved search's)."""
+        self.q, self.title, self.origin = self.user.last_query, "🔎 検索結果", None
+        self.screen = "panel"
 
     def _delete_saved(self):
         if self._saved():
@@ -531,8 +559,7 @@ class Session(ui.View):
             self.notice = T.DELETED
 
     def _toggle_fav_notify(self):
-        self.user.notify_favorites = not self.user.notify_favorites
-        self.bot.store.dirty = True
+        self.bot.store.set_notify_favorites(self.user, not self.user.notify_favorites, self.newest_run())
 
 
 def _int(values):

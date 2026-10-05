@@ -10,7 +10,8 @@ everything is buttons and dropdowns, no typed commands, no text input.
 > per-listing reference (`Snapshot.matches`); alerts treat page-only conditions as met until the page is
 > fetched, send one message per person per check, and save progress after each person; the channel fallback
 > for closed DMs notifies normally; sessions idle out after 6 h instead of 14 min; the detail photo uses
-> SUUMO's resize URL at 600×450; the menu has no 30 s on-tap reload (a 60 s watcher reloads data).
+> SUUMO's resize URL at 600×450; the menu has no 30 s on-tap reload (a 60 s watcher reloads data); there is no
+> test DM when saving: a refused DM is noted on the 🔔 screen after the first alert.
 
 ## Goals
 

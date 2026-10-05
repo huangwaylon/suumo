@@ -175,6 +175,12 @@ def test_sorts(tmp_path, sort, expected):
     assert ids(s.search(Query(sort=sort))) == expected
 
 
+def test_land_stays_offered_while_building_conditions_are_set(tmp_path):
+    s = snap_of(tmp_path, rec(1), rec(2, "land", layout=None, floor_m2=None, land_m2=90.0))
+    q = Query(types=("used_condo",), rooms=(3,))
+    assert dict(s.facet_types(q)) == {"used_condo": 1, "land": 1}   # choosing 土地 would add it
+
+
 def test_facets_ignore_their_own_dimension(tmp_path):
     s = snap_of(tmp_path, rec(1), rec(2, area_code="13208"), rec(3, "used_house", building_m2=90.0),
                 areas={"13219": "狛江市", "13208": "調布市"})
@@ -196,6 +202,8 @@ def test_query_round_trip_and_tolerance():
     assert Query.from_dict(q.to_dict()) == q
     assert Query().to_dict() == {}
     assert Query.from_dict({"bogus": 1, "price_max": "x", "sort": "nope", "rooms": [3]}) == Query(rooms=(3,))
+    assert Query.from_dict({"rooms": ["3", 9, 2], "types": ["land", "castle"], "areas": [1, "13219"]}) == \
+        Query(rooms=(2,), types=("land",), areas=("13219",))
     assert Query(sort="price_asc").is_empty() and not q.is_empty()
 
 

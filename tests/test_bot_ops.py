@@ -131,8 +131,38 @@ def test_favorite_toggle_and_purged_favorites(data):
     assert s.toggle_favorite(u, "used_condo:1", 5, "d", "r") is True
     assert s.toggle_favorite(u, "used_condo:1", 5, "d", "r") is False
     s.toggle_favorite(u, "used_condo:404", 5, "d", "r")
-    s.drop_missing_favorites(snap_of(data))
+    snap = snap_of(data)
+    s.drop_missing_favorites(snap, date(2026, 10, 6))      # one reload can catch the export mid-way: kept
+    assert u.favorites["used_condo:404"]["missing"] == "2026-10-06"
+    s.drop_missing_favorites(snap, date(2026, 10, 12))
+    assert "used_condo:404" in u.favorites
+    s.drop_missing_favorites(snap, date(2026, 10, 13))     # gone for a week: purged from data/
     assert u.favorites == {}
+
+
+def test_favorite_that_reappears_is_no_longer_missing(data):
+    s = Store()
+    u = s.user(1)
+    key = f"used_condo:{records(data)[0]['id']}"
+    u.favorites[key] = {"price": 1, "added": "d", "missing": "2026-10-01"}
+    s.drop_missing_favorites(snap_of(data), date(2026, 10, 20))
+    assert u.favorites[key] == {"price": 1, "added": "d"}
+
+
+def test_alerts_restart_from_now_after_being_off():
+    s = Store()
+    u = s.user(1)
+    s.save_search(u, Query(types=("land",)), "d", "r1")
+    s.delete_search(u, u.searches[0].id)
+    s.save_search(u, Query(types=("used_condo",)), "d", "r9")   # weeks later: no backlog of r2..r9
+    assert u.last_run == "r9"
+    s.save_search(u, Query(types=("land",)), "d", "r10")        # already on: progress kept
+    assert u.last_run == "r9"
+    u2 = s.user(2)
+    s.toggle_favorite(u2, "land:1", 1, "d", "r3")
+    s.set_notify_favorites(u2, False, "r3")
+    s.set_notify_favorites(u2, True, "r7")
+    assert u2.last_run == "r7"
 
 
 # ---------- the bot process (Discord mocked) ----------
@@ -148,6 +178,7 @@ class AlertBot:
         self.persist = AsyncMock()
         self.delivered = []
         self.fail = False
+        self._retry = {}
 
     async def deliver(self, uid, u, sections):
         if self.fail:
@@ -167,8 +198,11 @@ async def test_alerts_advance_per_person_and_retry_on_failure(data):
     bot.catalog.refresh()
     bot.fail = True
     await bot.send_alerts()
-    assert u.last_run == "20261004T040000"            # not delivered: retried next time
+    assert u.last_run == "20261004T040000"            # not delivered: retried later
     bot.fail = False
+    await bot.send_alerts()
+    assert bot.delivered == []                        # backing off
+    bot._retry.clear()                                # time passes
     await bot.send_alerts()
     assert [uid for uid, _ in bot.delivered] == ["1"] and u.last_run == "20261005T040000"
     bot.persist.assert_awaited()
