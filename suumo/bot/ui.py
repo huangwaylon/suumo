@@ -454,7 +454,8 @@ class Session(ui.View):
             content = f"{self.notice}\n\n{content}"
         if shown:
             self.add_select("detail", T.PH_DETAIL, [
-                (*T.detail_option(h, start + n + 1), str(start + n), False) for n, h in enumerate(shown)
+                (label, str(start + n), desc, False)
+                for n, h in enumerate(shown) for label, desc in [T.detail_option(h, start + n + 1)]
             ], self._open_detail, 0)
             self.add_select("sort", T.PH_SORT, [
                 (label, key, None, key == self.q.sort) for key, label in T.SORTS.items()
@@ -524,7 +525,8 @@ class Session(ui.View):
         u, snap = self.user, self.snap
         if u.searches:
             self.add_select("saved", T.PH_SAVED, [
-                (*T.saved_option(s, snap, n), s.id, s.id == self.picked) for n, s in enumerate(u.searches, 1)
+                (label, s.id, desc, s.id == self.picked)
+                for n, s in enumerate(u.searches, 1) for label, desc in [T.saved_option(s, snap, n)]
             ], self._pick_saved, 0)
             self.add_button("run_saved", "この条件でさがす", "🔎", self._run_saved, 1, BLUE, disabled=not self.picked)
             self.add_button("delete_saved", "削除", "🗑️", self._delete_saved, 1, RED, disabled=not self.picked)

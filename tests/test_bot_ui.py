@@ -78,6 +78,9 @@ async def tap(view, name, interaction):
 
 
 async def pick(view, name, interaction, *values):
+    """Choose options as Discord would: only values the dropdown offers."""
+    offered = options(view, name)
+    assert all(v in offered for v in values), (values, offered)
     interaction.data = {"values": list(values)}
     await item(view, name).callback(interaction)
     return last(interaction)
@@ -500,3 +503,21 @@ async def test_errors_in_a_change_show_a_short_message(bot, interaction):
     s.add_button("boom", "boom", None, boom, 4)
     content, _ = await tap(s, "boom", interaction)
     assert T.ERROR in content
+
+
+async def test_listings_that_look_alike_get_distinct_choices(data):
+    """Regression: the 詳しく見る values were the descriptions, so two similar units broke the screen (HTTP 400)."""
+    recs = [json.loads(line) for line in (data / "tokyo" / "used_condo.jsonl").read_text().splitlines()]
+    twin = {**recs[0], "id": "7777777", "dup_key": None}
+    with open(data / "tokyo" / "used_condo.jsonl", "a") as f:
+        f.write(json.dumps(twin, ensure_ascii=False) + "\n")
+    bot = FakeBot(data)
+    interaction = make_interaction()
+    await Session.open(bot, interaction, "panel")
+    s = session_of(bot)
+    await pick(s, "types", interaction, "used_condo")
+    content, embeds = await tap(s, "show", interaction)
+    for page in range(len(s.hits) // PAGE_SIZE + 1):
+        assert_discord_limits(s, content, embeds)
+        if page < len(s.hits) // PAGE_SIZE:
+            content, embeds = await tap(s, "next", interaction)
