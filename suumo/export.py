@@ -78,7 +78,9 @@ def _write_jsonl(path, records):
 
 def _write_json(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    tmp = path.with_suffix(".tmp")  # the bot reads these while a run writes them: replace atomically
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def export(db, targets, data_dir, run_id=None):
