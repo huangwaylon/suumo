@@ -41,7 +41,7 @@ def parse_budget(s):
 
 
 def ctx(args):
-    load_dotenv(ROOT / ".env")
+    load_dotenv(ROOT / ".env", override=True)
     return (DB(ROOT / args.db), Archive(ROOT / args.archive), scope_mod.load(ROOT / args.scope))
 
 
