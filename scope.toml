@@ -3,7 +3,4 @@
 # Area codes are JIS municipality codes (e.g. 13219 = 狛江市); see data/<pref>/areas.json after a run.
 
 [[scope]]
-pref = "tokyo"
-types = ["used_condo", "new_house", "used_house", "land", "new_condo"]
-areas = ["13219"]  # 狛江市 (test scope)
-
+pref = "tokyo"   # all 62 municipalities, all five types

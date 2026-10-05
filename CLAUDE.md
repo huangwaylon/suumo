@@ -53,7 +53,9 @@ shared formatters). `parse`, `detail`, `catalog` and `bot.alerts` are pure and n
 
 - **Only robots.txt-allowed paths.** Search results: `/{TYPES[type]}/{pref}/{slug}/?pc=100&page=N`; area pages:
   `/{type path}/{pref}/city/`; listing pages: the `path` from the search result. `/jj/bukken/ichiran/...` and any
-  `sort=` parameter are disallowed. One request at a time, `--delay` 1.5 s + up to 50% jitter.
+  `sort=` parameter are disallowed. One request at a time, `--delay` 1.5 s + up to 50% jitter (a one-off
+  backfill may use 1.0 s; never lower, never parallel). `http.Client` slows itself down on 429/5xx/network
+  errors/slow responses (doubling, max 10 s, honours `Retry-After`) and eases back; keep that behaviour.
 - **Removal needs evidence.** A listing is removed only after `REMOVE_AFTER_MISSES` (2) consecutive *complete*
   crawls of its area miss it. Incomplete/error areas never count; `suspect` areas (lost >30% of ≥20) never remove.
   An area that vanishes from the area page is reconciled as complete with 0 hits (same guards apply).
