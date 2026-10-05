@@ -2,7 +2,8 @@
 
 Crawls SUUMO for-sale listings in the areas listed in `scope.toml`, fetches each listing's own page once for the
 full spec, tracks listings as they appear, change price and disappear, exports the data as JSONL to `data/`
-(committed to git), and posts the changes to a Discord channel in Japanese.
+(committed to git), and posts the changes to a Discord channel in Japanese. A search bot in the same channel
+lets people browse the listings with buttons, keep favorites and get DMs for saved searches.
 
 ## Setting up on a new Mac
 
@@ -40,7 +41,7 @@ cp .env.example .env && chmod 600 .env && open -e .env
 |---|---|
 | `DISCORD_TOKEN` | Developer Portal → application `suumo` → Bot → Reset Token |
 | `DISCORD_CHANNEL_ID` | the #suumo channel (right-click → Copy Channel ID, with Developer Mode on) |
-| `DISCORD_STATE_CHANNEL_ID` | the #state channel (reserved, not used yet) |
+| `DISCORD_STATE_CHANNEL_ID` | the #state channel, where the search bot keeps its data (favorites, saved searches) |
 
 Without `DISCORD_TOKEN`/`DISCORD_CHANNEL_ID`, runs print a preview of the messages instead of posting.
 
@@ -74,6 +75,25 @@ The job runs `python -m suumo run --push` daily at 04:00 (on wake if the Mac was
 remote that pushes without a prompt (an SSH key in the agent/Keychain); a failed push is logged and retried next
 run. To stop it: `launchctl bootout gui/$(id -u)/local.suumo`.
 
+### 7. Search bot
+
+The bot is a second, always-running job beside the daily crawl. It reads `data/` and needs the three `.env` keys.
+
+In Discord (once): the bot needs **View Channel, Send Messages, Embed Links, Read Message History** in #suumo and
+**View Channel, Send Messages, Attach Files, Read Message History** in #state. No privileged intents are needed.
+Optional but recommended: deny members **Send Messages** in #suumo so the menu stays at the bottom; hide #state
+from members.
+
+```sh
+sed "s#__SUUMO_DIR__#$PWD#g" local.suumo-bot.plist > ~/Library/LaunchAgents/local.suumo-bot.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.suumo-bot.plist
+tail -f logs/bot.log                               # "ready as suumo#…"; the menu appears in #suumo
+```
+
+After a code update: `launchctl kickstart -k gui/$(id -u)/local.suumo-bot`. To stop it:
+`launchctl bootout gui/$(id -u)/local.suumo-bot`. When moving to a new Mac, stop it on the old one first: two
+copies would both answer every button.
+
 ## Commands
 
 | Command | What it does |
@@ -87,6 +107,7 @@ run. To stop it: `launchctl bootout gui/$(id -u)/local.suumo`.
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
 | `uv run python -m suumo reparse` | re-run the parsers over `archive/` and re-export (no requests) |
 | `uv run python -m suumo notify` | post pending events to Discord |
+| `uv run python -m suumo bot` | run the search bot in the foreground (what the launchd job runs) |
 
 Only one writing command runs at a time (`state.db.lock`); a second one exits with a message.
 
@@ -118,6 +139,26 @@ and names are in `data/<pref>/areas.json` after a run.
 5. **Export and notify**: `data/` is rewritten deterministically (an unchanged day is an empty git diff), and
    pending events are posted to Discord. Events not posted within 48 hours are skipped.
 
+## Search bot
+
+Everything is buttons and dropdowns; nothing is typed. The menu at the bottom of #suumo has:
+
+| Button | Opens (only the person who tapped sees it) |
+|---|---|
+| 🔎 物件をさがす | the search panel: 種別, 予算, 間取り, and buttons for エリア, 駅・徒歩, 広さ・築年数など (予算の下限, 広さ, 土地面積, 築年数, 新耐震), こだわり (SUUMO tags, 所有権のみ, 建築条件なし, 新着のみ, 値下げのみ). The count updates on every choice; 「N件を見る」 lists them |
+| 🆕 新着 / 💴 値下げ | listings that were new in the last 7 days / dropped in price in the last 30 days |
+| ⭐ お気に入り | listings starred from their detail screen, with the price change since starring |
+| 🔔 保存した条件 | saved searches (5 per person) and the favorites-notification switch |
+| ❓ 使い方 | help |
+
+Results show 5 listings per page with photos; 「詳しく見る」 opens the full record (photo, price per m²/坪, fees,
+stations, land rights, zoning, tags, price history, other agents listing the same property, a SUUMO link).
+The same property listed by several agents (same `dup_key`) counts once. A condition that doesn't apply to a
+type (間取り for 土地) doesn't exclude land the person explicitly chose.
+
+After each crawl the bot DMs people whose saved searches have new, relisted or price-dropped matches, and whose
+favorites changed price or were removed. If someone's DMs are closed it mentions them in #suumo instead.
+
 ## Files
 
 | Path | In git | Contents |
@@ -130,6 +171,8 @@ and names are in `data/<pref>/areas.json` after a run.
 | `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs |
 | `archive/` | no | raw HTML: search-result snapshots by day, latest copy of each listing page |
 | `logs/run.log` | no | output of scheduled runs |
+| `logs/bot.log` | no | output of the search bot |
+| `bot_state.backup.json` | no | local copy of the bot's data; the copy in #state is the source of truth |
 | `.env` | no | Discord settings |
 
 ## Listing records
@@ -162,6 +205,10 @@ IDs are per agent listing; `dup_key` groups the same property listed by several 
 | `discord: send failed` | token/channel in `.env`; the bot must be in the server with View Channel and Send Messages |
 | `parse failures: N` in `status` | fix the parser, then `reparse` (the pages are already archived) |
 | An area shows `incomplete` or `suspect` | transient on SUUMO's side; no listings are removed for it; the next run retries |
+| Buttons say 「インタラクションに失敗しました」 | the bot isn't running: `tail logs/bot.log`, `launchctl kickstart -k gui/$(id -u)/local.suumo-bot` |
+| 「この画面は古くなりました」 | the bot restarted since that screen was opened; open it again from the menu |
+| `bot: another copy is already running` | expected when launchd starts a second copy; only one runs (`bot.lock`) |
+| `bot state version … refusing` | the #state data is from a newer version of the code; update the code |
 
 ## Tests
 

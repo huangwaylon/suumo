@@ -2,7 +2,9 @@
 
 Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml`: crawls search results daily, fetches each
 listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to `data/`, and posts changes
-to Discord. Runs locally on a Mac under launchd. `README.md` is the operator guide (setup, commands, record fields).
+to Discord. A separate always-running search bot (`python -m suumo bot`) lets non-technical, Japanese-speaking
+people browse `data/` with buttons, star listings and get DMs for saved searches. Both run locally on a Mac under
+launchd. `README.md` is the operator guide (setup, commands, record fields, bot screens).
 
 ## Layout
 
@@ -20,10 +22,18 @@ to Discord. Runs locally on a Mac under launchd. `README.md` is the operator gui
 | `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `in_scope` |
 | `suumo/http.py` | `Client`: one request at a time, delay + jitter, retries; 404/410 → `FileNotFoundError` |
 | `suumo/gitdata.py` | `commit_data`: commit `data/` only, optionally push |
+| `suumo/catalog.py` | `data/` → in-memory search index: `Query` (conditions), `Item`, `Snapshot` (bitset `mask`, reference `matches`, `search`, `count`, facets, `loosen`), `Catalog.refresh` |
+| `suumo/bot/app.py` | `SuumoBot`: lifecycle, keeps the menu newest in the channel, data watcher, DM alerts, state saving |
+| `suumo/bot/ui.py` | `MainMenu` (persistent) and `Session` (one person's ephemeral screens: panel, sub-screens, results, detail, favorites, saved) |
+| `suumo/bot/text.py` | Every Japanese string of the bot and the embed/text formatters |
+| `suumo/bot/store.py` | Per-person data (`User`, `Store`) and `DiscordStateBackend` (state.json in #state + local backup) |
+| `suumo/bot/alerts.py` | Which run events go to whom (pure) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
+| `local.suumo-bot.plist` | launchd template for the bot (always running) |
 
 Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`notify`/`gitdata` → `detail`/`parse`/`db`/`archive`/`scope`/`http`.
-`parse` and `detail` are pure (HTML in, dicts out) and never touch the DB or network.
+The bot: `cli` → `bot.app` → `bot.ui` → `bot.text`/`bot.store`/`bot.alerts` → `catalog` → `parse` (and `notify` for
+shared formatters). `parse`, `detail`, `catalog` and `bot.alerts` are pure and never touch the DB or network.
 
 ## Data model
 
@@ -57,7 +67,33 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`notify`/`gitd
 - **Discord posts are exactly-once per message.** `compose` returns `(text, seqs)`; events are marked posted only
   after their own message is accepted.
 - **One writer.** Writing commands hold `state.db.lock`; `status` is read-only.
-- **All user-facing (Discord) text is Japanese** and lives in `notify.py`. Code, logs and docs are English.
+- **All user-facing (Discord) text is Japanese** and lives in `notify.py` (feed) and `bot/text.py` (bot). Code,
+  logs and docs are English.
+
+## Search bot rules
+
+- **Reads `data/` only**, never `state.db`, and takes no run lock: the crawl and the bot never block each other.
+  `export` replaces every file atomically; an events file that doesn't parse is skipped until it does.
+- **Buttons only.** No typed commands, no Message Content intent (default intents). Everything a menu button opens
+  is ephemeral and edited in place: state change → redraw in the same response (Discord's 3 s), save afterwards.
+- **Filters have two implementations that must agree:** `Snapshot.mask` (bitsets, used for search/counts/facets)
+  and `Snapshot.matches` (per listing, used for alerts). `test_bitset_index_agrees_with_the_reference_rules`
+  checks them on random data; change both together.
+- Duplicates (`dup_key`) count once everywhere (counts, results, alerts). Land listed under both `new_house` and
+  `land` is kept once, as land. Stations are identified by name (the same station on two lines is one choice).
+- 新着 is a `new`/`relisted` event within 7 days (baselines are never 新着); 値下げ is a drop within 30 days.
+- A building condition (間取り, 広さ, 築年数, 新耐震) excludes land unless the person chose 土地 explicitly.
+- **Alerts reach each person once per run:** `User.last_run` advances only after their DM (or the channel fallback)
+  is accepted, and is saved before the next person. A new saved search or favorite starts from the newest run.
+  こだわり conditions count as met while a listing's page isn't fetched yet.
+- **Menu stays the newest message in the channel:** after any message there (the crawl's feed posts arrive from
+  the same bot user), `tidy_channel` deletes our old menus and posts a new one, silently. Never delete feed posts.
+- `MainMenu` custom_ids (`suumo:*`) are fixed: don't rename them. Session custom_ids are `s:<sid>:<name>`;
+  unknown sessions (after a restart) get 「古くなりました」 from `on_interaction`.
+- Discord limits are asserted in `test_bot_ui.assert_discord_limits` (5 rows, 25 options, 100/80-char labels,
+  2000-char content, 6000-char embeds); run it over any new screen.
+- State in #state: `state.json`, `store.VERSION` (refuses other versions). Bump it and migrate when the shape
+  changes incompatibly. `Query.from_dict` ignores unknown keys, so adding a condition needs no migration.
 
 ## SUUMO quirks the parsers rely on
 
@@ -82,19 +118,26 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`notify`/`gitd
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
   add `TYPE_JA` in `notify.py`.
 - **New event kind:** emit it in `Pipeline.reconcile`, add a section to `notify.SECTIONS`.
-- **Filters / interactive bot:** read `data/<pref>/*.jsonl` or `state.db`; keep crawling separate from the bot.
-  `DISCORD_STATE_CHANNEL_ID` is reserved for bot settings (as in the gym bot: state as a message attachment).
+- **New search condition:** a `Query` field, its rule in both `Snapshot.mask` and `Snapshot.matches` (plus the
+  random agreement test's query generator), a control on a `Session` screen, its label in `text.condition_lines`
+  and `text.FIELD_JA`, and tests in `test_catalog.py` / `test_bot_ui.py`.
+- **New bot screen:** a `draw_<name>` method on `Session` that adds components and returns `(content, embeds)`;
+  switch to it with `self.go("<name>")`. Strings go in `bot/text.py`.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities),
-  `archive.LIST_DAYS`, `notify.PER_SECTION`/`STALE_HOURS`.
+  `archive.LIST_DAYS`, `notify.PER_SECTION`/`STALE_HOURS`, `catalog.NEW_DAYS`/`DROP_DAYS`, `bot.ui` (page size,
+  session timeout), `bot.store` (max saved searches/favorites), `bot.text` (price/size/age choices).
 
 ## Development
 
-- `uv sync`, then `uv run pytest -q` (offline, <1 s) and `uv run ruff check suumo tests` (line length 120).
+- `uv sync`, then `uv run pytest -q` (offline, ~1 s) and `uv run ruff check suumo tests` (line length 120).
 - Tests: `test_lifecycle.py` (reconcile/purge/export/notify text with synthetic records), `test_parsers.py` (value
   parsers), `test_pages.py` (real pages in `tests/fixtures/`), `test_ops.py` (Discord posting, prune, reparse, lock,
-  git commit). Tests never touch the network or Discord.
+  git commit), `test_catalog.py` (every filter, folding, sorts, facets, reload), `test_bot_ui.py` (screens with
+  fake interactions over real listings in `tests/fixtures/data/`), `test_bot_ops.py` (alerts, store, state
+  message, menu upkeep). Tests never touch the network or Discord.
+- Try the bot on test data: `python -m suumo --data /tmp/x/data bot` (it uses the real channels in `.env`).
 - Try changes on a copy: `--db`, `--archive`, `--data` point anywhere (`python -m suumo --db /tmp/s.db ... run`).
 - Testing parser changes without requests: `reparse`, then `git diff -- data` shows exactly what changed.
 - The user's shell auto-loads `.env` on `cd`; the CLI loads `.env` with `override=True` so the file always wins.
 - Scheduled runs can't read `~/Documents`, `~/Desktop`, `~/Downloads` (macOS privacy); the README installs to `~/suumo`.
-- Never commit `.env`, `state.db*`, `archive/`, `logs/`.
+- Never commit `.env`, `state.db*`, `archive/`, `logs/`, `bot.lock`, `bot_state.backup.json`.

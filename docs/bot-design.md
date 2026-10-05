@@ -3,6 +3,15 @@
 An interactive Discord bot for browsing the tracked listings. Users are non-technical and Japanese-speaking:
 everything is buttons and dropdowns, no typed commands, no text input.
 
+> **As built.** Changed after the design review (rules now in CLAUDE.md "Search bot rules"):
+> stations are identified by name; 新着 comes from `new`/`relisted` events, not `first_seen`; land listed under
+> both `new_house` and `land` is kept once as land; building conditions exclude land only when 土地 wasn't
+> chosen; 新耐震 and 建築条件なし were added; filtering is a bitset index (`Snapshot.mask`) checked against a
+> per-listing reference (`Snapshot.matches`); alerts treat page-only conditions as met until the page is
+> fetched, send one message per person per check, and save progress after each person; the channel fallback
+> for closed DMs notifies normally; sessions idle out after 6 h instead of 14 min; the detail photo uses
+> SUUMO's resize URL at 600×450; the menu has no 30 s on-tap reload (a 60 s watcher reloads data).
+
 ## Goals
 
 - Find listings by the conditions house hunters use, in a few taps, on a phone.
