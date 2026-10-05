@@ -2,8 +2,10 @@
 
 Not in git. The git-tracked JSONL files are exported from here (export.py).
 """
+import fcntl
 import json
 import sqlite3
+from contextlib import contextmanager
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS listings (
@@ -41,8 +43,10 @@ CREATE TABLE IF NOT EXISTS events (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL, kind TEXT NOT NULL,   -- new | price_changed | removed | relisted
     type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL, area_code TEXT NOT NULL,
-    payload TEXT NOT NULL, posted INTEGER NOT NULL DEFAULT 0
+    payload TEXT NOT NULL,
+    posted INTEGER NOT NULL DEFAULT 0           -- 0 pending, 1 posted, -1 skipped (too old to post)
 );
+CREATE INDEX IF NOT EXISTS events_posted ON events (posted);
 
 CREATE TABLE IF NOT EXISTS runs (
     run_id TEXT PRIMARY KEY, started TEXT, finished TEXT, report TEXT
@@ -50,10 +54,28 @@ CREATE TABLE IF NOT EXISTS runs (
 """
 
 
+def dumps(obj):
+    """Canonical compact JSON (sorted keys) so equal data is equal text."""
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+@contextmanager
+def exclusive(lock_path):
+    """Hold an exclusive lock for the duration; a second writer exits instead of interleaving."""
+    with open(lock_path, "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise SystemExit(f"another suumo process is running ({lock_path} is locked)") from None
+        yield
+
+
 class DB:
     def __init__(self, path):
         self.conn = sqlite3.connect(path)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
 
     def x(self, sql, *args):
@@ -66,9 +88,11 @@ class DB:
     def listing(self, type_key, lid):
         return self.x("SELECT * FROM listings WHERE type=? AND id=?", type_key, lid).fetchone()
 
-    def area_listings(self, pref, type_key, code, status="active"):
-        return self.x("SELECT * FROM listings WHERE pref=? AND type=? AND area_code=? AND status=?",
-                      pref, type_key, code, status).fetchall()
+    def area_listings(self, pref, type_key, code, status=None):
+        sql = "SELECT * FROM listings WHERE pref=? AND type=? AND area_code=?"
+        if status:
+            return self.x(sql + " AND status=?", pref, type_key, code, status).fetchall()
+        return self.x(sql, pref, type_key, code).fetchall()
 
     # areas
     def area(self, pref, type_key, code):
@@ -88,8 +112,11 @@ class DB:
                     reason=CASE WHEN excluded.priority > priority THEN excluded.reason ELSE reason END""",
                type_key, lid, priority, reason, ts)
 
+    def dequeue(self, type_key, lid):
+        self.x("DELETE FROM queue WHERE type=? AND id=?", type_key, lid)
+
     # events
-    def add_event(self, run_id, kind, row_or_rec, payload):
+    def add_event(self, run_id, kind, ident, payload):
+        """ident: anything with type, id, pref, area_code (a listings row or a dict)."""
         self.x("INSERT INTO events (run_id, kind, type, id, pref, area_code, payload) VALUES (?,?,?,?,?,?,?)",
-               run_id, kind, row_or_rec["type"], row_or_rec["id"], row_or_rec["pref"], row_or_rec["area_code"],
-               json.dumps(payload, ensure_ascii=False))
+               run_id, kind, ident["type"], ident["id"], ident["pref"], ident["area_code"], dumps(payload))

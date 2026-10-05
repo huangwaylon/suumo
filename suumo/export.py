@@ -25,8 +25,8 @@ FIELD_ORDER = [
     "site_m2", "road",
     "built", "built_planned", "floor", "floors_above", "floors_below", "structure", "total_units", "units_for_sale",
     "direction", "builder", "reform", "energy", "insulation",
-    "land_rights", "land_rights_note", "zoning", "coverage_pct", "far_pct", "land_status", "build_condition", "land_category",
-    "restrictions", "utilities",
+    "land_rights", "land_rights_note", "zoning", "coverage_pct", "far_pct", "land_status", "build_condition",
+    "land_category", "restrictions", "utilities",
     "features", "deal_type", "agent", "handover", "sale_schedule", "top_price_band",
     "url", "image", "first_seen", "removed_at", "has_detail", "dup_key",
 ]

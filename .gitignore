@@ -1,7 +1,10 @@
 .venv/
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 .cache/
+.claude/scheduled_tasks.lock
 .env
-state.db
-state.db-*
+state.db*
 archive/
+logs/

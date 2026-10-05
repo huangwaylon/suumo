@@ -11,12 +11,14 @@ import time
 from datetime import datetime, timedelta
 
 from .archive import Archive
+from .db import dumps
 from .detail import parse_detail
-from .parse import TYPES, PAGE_SIZE, page_count, parse_areas, parse_list_page
+from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import in_scope
 
 REMOVE_AFTER_MISSES = 2
 PURGE_DAYS = 30
+EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/events/ in git keeps all)
 SUSPECT_DROP = 0.30      # an area losing more than this share at once is distrusted (no removals)
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
 MAX_DETAIL_ATTEMPTS = 3
@@ -26,13 +28,13 @@ P_NEW, P_CHANGED, P_BACKFILL = 2, 1, 0
 
 # list-page fields whose change means the listing page is worth re-fetching
 CHANGE_FIELDS = ("price", "price_max", "title", "layout", "floor_m2", "land_m2", "building_m2")
+SUMMARY_FIELDS = ("name", "title", "price", "price_max", "layout", "floor_m2", "land_m2", "building_m2", "built",
+                  "town", "stations", "path")
 
 
-def summary(type_key, rec, area_name):
+def summary(rec, area_name):
     """Small snapshot stored with events so a notification can be written even after the row is purged."""
-    keys = ("name", "title", "price", "price_max", "layout", "floor_m2", "land_m2", "building_m2", "built",
-            "town", "stations", "path")
-    return {"area": area_name, **{k: rec[k] for k in keys if k in rec}}
+    return {"area": area_name, **{k: rec[k] for k in SUMMARY_FIELDS if k in rec}}
 
 
 class Pipeline:
@@ -49,33 +51,44 @@ class Pipeline:
     def crawl_lists(self):
         for t in self.targets:
             self.log(f"\n=== {t.pref} / {t.type} ===")
-            html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
-            self.archive.save_list(t.pref, self.day, t.type, "_city", html)
-            areas = [a for a in parse_areas(html, TYPES[t.type], t.pref) if t.includes(a["code"])]
-            rep = {"pref": t.pref, "type": t.type, "areas": []}
-            # An area can drop off the area page entirely (e.g. new_condo lists only areas that currently have
-            # developments). Treat it as crawled with zero listings so what we hold there is reconciled too.
-            listed = {a["code"] for a in areas}
-            held = {r["area_code"]: r["area_name"] for r in self.db.x(
-                "SELECT DISTINCT area_code, area_name FROM listings WHERE pref=? AND type=? AND status='active'",
-                t.pref, t.type) if t.includes(r["area_code"])}
-            for code in sorted((set(held) | (t.areas or set())) - listed):
-                a = {"code": code, "name": held.get(code, code), "slug": None, "expected": 0}
-                self.db.upsert_area(t.pref, t.type, a)
-                if code in held:
-                    rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
-                else:
-                    self.log(f"  {code:<10} not on the area page (no listings, or a wrong code)")
-                    rep["areas"].append({"code": code, "status": "not_listed"})
-            for a in areas:
-                self.db.upsert_area(t.pref, t.type, a)
-                if not a["slug"]:
-                    status = "empty" if a["expected"] == 0 else "no_slug"
-                    rep["areas"].append({"code": a["code"], "name": a["name"], "status": status})
-                    continue
-                rep["areas"].append(self.crawl_area(t.pref, t.type, a))
-                self.db.commit()
+            try:
+                rep = self._crawl_target(t)
+            except Exception as e:  # e.g. the area page itself failed; other targets still run
+                self.log(f"  ERROR {e!r}")
+                rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
             self.report["targets"].append(rep)
+            self.db.commit()
+
+    def _crawl_target(self, t):
+        html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
+        self.archive.save_list(t.pref, self.day, t.type, "_city", html)
+        areas = [a for a in parse_areas(html, TYPES[t.type], t.pref) if t.includes(a["code"])]
+        rep = {"pref": t.pref, "type": t.type, "areas": []}
+
+        # An area can drop off the area page entirely (e.g. new_condo lists only areas that currently have
+        # developments). Treat it as crawled with zero listings so what we hold there is reconciled too.
+        listed = {a["code"] for a in areas}
+        held = {r["area_code"]: r["area_name"] for r in self.db.x(
+            "SELECT DISTINCT area_code, area_name FROM listings WHERE pref=? AND type=? AND status='active'",
+            t.pref, t.type) if t.includes(r["area_code"])}
+        for code in sorted((set(held) | (t.areas or set())) - listed):
+            a = {"code": code, "name": held.get(code, code), "slug": None, "expected": 0}
+            if code in held:
+                self.db.upsert_area(t.pref, t.type, a)
+                rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
+            else:
+                self.log(f"  {code:<10} not on the area page (no listings, or a wrong code)")
+                rep["areas"].append({"code": code, "status": "not_listed"})
+
+        for a in areas:
+            self.db.upsert_area(t.pref, t.type, a)
+            if not a["slug"]:
+                status = "empty" if a["expected"] == 0 else "no_slug"
+                rep["areas"].append({"code": a["code"], "name": a["name"], "status": status})
+                continue
+            rep["areas"].append(self.crawl_area(t.pref, t.type, a))
+            self.db.commit()
+        return rep
 
     def _fetch_area(self, pref, type_key, a):
         path = f"/{TYPES[type_key]}/{pref}/{a['slug']}/?pc={PAGE_SIZE}"
@@ -113,22 +126,24 @@ class Pipeline:
         return self.reconcile(pref, type_key, a, hits, recs, complete, errors)
 
     def reconcile(self, pref, type_key, a, hits, recs, complete, errors=()):
+        """Apply one area's crawl result to the DB: inserts, events, queue, misses/removals, area state."""
         area_row = self.db.area(pref, type_key, a["code"])
         baselined = bool(area_row["baselined"])
         prev_hits = area_row["last_hits"]
         suspect = (complete and prev_hits is not None and prev_hits >= SUSPECT_MIN_HITS
                    and hits < prev_hits * (1 - SUSPECT_DROP))
         counts = {"new": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
+        held = {r["id"]: r for r in self.db.area_listings(pref, type_key, a["code"])}
 
         for lid, rec in recs.items():
-            row = self.db.listing(type_key, lid)
+            row = held.get(lid) or self.db.listing(type_key, lid)  # fallback: moved from another area
             ident = {"type": type_key, "id": lid, "pref": pref, "area_code": a["code"]}
             if row is None:
-                self.db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen)
-                             VALUES (?,?,?,?,?,?,?,?)""",
-                          type_key, lid, pref, a["code"], a["name"], _dumps(rec), self.today, self.ts)
+                self.db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen,
+                             last_seen) VALUES (?,?,?,?,?,?,?,?)""",
+                          type_key, lid, pref, a["code"], a["name"], dumps(rec), self.today, self.ts)
                 if baselined:
-                    self.db.add_event(self.run_id, "new", ident, summary(type_key, rec, a["name"]))
+                    self.db.add_event(self.run_id, "new", ident, summary(rec, a["name"]))
                     self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
                     counts["new"] += 1
                 else:
@@ -138,39 +153,39 @@ class Pipeline:
             old = json.loads(row["list_json"])
             if row["status"] == "removed":
                 counts["relisted"] += 1
-                self.db.add_event(self.run_id, "relisted", ident, summary(type_key, rec, a["name"]))
+                self.db.add_event(self.run_id, "relisted", ident, summary(rec, a["name"]))
             if old.get("price") != rec.get("price"):
                 counts["price_changed"] += 1
                 self.db.add_event(self.run_id, "price_changed", ident,
-                                  {**summary(type_key, rec, a["name"]), "old_price": old.get("price")})
+                                  {**summary(rec, a["name"]), "old_price": old.get("price")})
             if any(old.get(k) != rec.get(k) for k in CHANGE_FIELDS):
                 self.db.enqueue(type_key, lid, P_CHANGED, "changed", self.ts)
             elif row["detail_json"] is None:
                 self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
             self.db.x("""UPDATE listings SET list_json=?, area_code=?, area_name=?, pref=?, status='active',
                          removed_at=NULL, missed=0, last_seen=? WHERE type=? AND id=?""",
-                      _dumps(rec), a["code"], a["name"], pref, self.ts, type_key, lid)
+                      dumps(rec), a["code"], a["name"], pref, self.ts, type_key, lid)
 
         if complete and not suspect:
-            for row in self.db.area_listings(pref, type_key, a["code"]):
-                if row["id"] in recs:
+            for lid, row in held.items():
+                if lid in recs or row["status"] != "active":
                     continue
                 missed = row["missed"] + 1
                 if missed >= REMOVE_AFTER_MISSES:
                     self.db.x("UPDATE listings SET status='removed', removed_at=?, missed=? WHERE type=? AND id=?",
-                              self.ts, missed, type_key, row["id"])
-                    self.db.x("DELETE FROM queue WHERE type=? AND id=?", type_key, row["id"])
+                              self.ts, missed, type_key, lid)
+                    self.db.dequeue(type_key, lid)
                     self.db.add_event(self.run_id, "removed", row,
-                                      summary(type_key, json.loads(row["list_json"]), row["area_name"]))
+                                      summary(json.loads(row["list_json"]), row["area_name"]))
                     counts["removed"] += 1
                 else:
-                    self.db.x("UPDATE listings SET missed=? WHERE type=? AND id=?", missed, type_key, row["id"])
+                    self.db.x("UPDATE listings SET missed=? WHERE type=? AND id=?", missed, type_key, lid)
                     counts["missing"] += 1
 
         status = "suspect" if suspect else ("complete" if complete else "incomplete")
         self.db.x("""UPDATE areas SET last_hits=?, last_status=?, last_crawled=?, baselined=?
                      WHERE pref=? AND type=? AND code=?""",
-                  hits if not suspect else prev_hits, status, self.ts,
+                  prev_hits if suspect else hits, status, self.ts,
                   1 if (baselined or (complete and not suspect)) else 0, pref, type_key, a["code"])
         line = f"  {a['name']:<10} hits={hits:>5} parsed={len(recs):>5} {status}"
         if not baselined and complete:
@@ -196,7 +211,7 @@ class Pipeline:
             if time.monotonic() >= deadline:
                 break
             if r["status"] != "active":  # removed (or purged) since it was queued
-                self.db.x("DELETE FROM queue WHERE type=? AND id=?", r["type"], r["id"])
+                self.db.dequeue(r["type"], r["id"])
                 continue
             if not in_scope(self.targets, r["pref"], r["type"], r["area_code"]):
                 continue  # left for `prune`
@@ -204,7 +219,7 @@ class Pipeline:
                 html = self.client.get(json.loads(r["list_json"])["path"])
             except FileNotFoundError:
                 # gone from SUUMO; the next search-result crawls will mark it removed
-                self.db.x("DELETE FROM queue WHERE type=? AND id=?", r["type"], r["id"])
+                self.db.dequeue(r["type"], r["id"])
                 gone += 1
                 continue
             except Exception as e:
@@ -214,28 +229,20 @@ class Pipeline:
                 continue
             self.archive.save_detail(r["pref"], r["type"], r["id"], html)
             try:
-                self._apply_detail(r["type"], r["id"], html)
+                apply_detail(self.db, r["type"], r["id"], html, self.today)
+                self.db.dequeue(r["type"], r["id"])
+                done += 1
             except Exception as e:
-                # the page is archived; fix the parser and `reparse` (no re-fetch needed)
+                # the page is archived: fix the parser and `reparse` (no re-fetch needed)
                 self.log(f"  ! parse failed for {r['type']}/{r['id']}: {e!r}")
                 self.db.x("UPDATE queue SET attempts=?, last_error=? WHERE type=? AND id=?",
                           MAX_DETAIL_ATTEMPTS, f"parse: {e!r}"[:300], r["type"], r["id"])
-                self.db.commit()
                 failed += 1
-                continue
-            self.db.x("DELETE FROM queue WHERE type=? AND id=?", r["type"], r["id"])
             self.db.commit()
-            done += 1
         self.db.commit()
         remaining = self.db.x("SELECT COUNT(*) FROM queue WHERE attempts < ?", MAX_DETAIL_ATTEMPTS).fetchone()[0]
         self.report["detail"] = {"fetched": done, "failed": failed, "gone": gone, "remaining": remaining}
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
-
-    def _apply_detail(self, type_key, lid, html):
-        detail, meta = parse_detail(html)
-        self.db.x("""UPDATE listings SET detail_json=?, detail_fetched=?, info_date=?, next_update=?
-                     WHERE type=? AND id=?""",
-                  _dumps(detail), self.today, meta.get("info_date"), meta.get("next_update"), type_key, lid)
 
     # ---------- cleanup ----------
 
@@ -245,8 +252,11 @@ class Pipeline:
                          cutoff).fetchall()
         for r in rows:
             self.db.x("DELETE FROM listings WHERE type=? AND id=?", r["type"], r["id"])
-            self.db.x("DELETE FROM queue WHERE type=? AND id=?", r["type"], r["id"])
+            self.db.dequeue(r["type"], r["id"])
             self.archive.delete_detail(r["pref"], r["type"], r["id"])
+        old_runs = (self.now - timedelta(days=EVENT_DAYS)).strftime("%Y%m%dT%H%M%S")
+        self.db.x("DELETE FROM events WHERE run_id < ? AND posted != 0", old_runs)
+        self.db.x("DELETE FROM runs WHERE run_id < ?", old_runs)
         for pref in {t.pref for t in self.targets}:
             self.archive.prune_lists(pref, self.now.date())
         self.db.commit()
@@ -255,5 +265,9 @@ class Pipeline:
             self.log(f"purged {len(rows)} listings removed more than {PURGE_DAYS} days ago")
 
 
-def _dumps(obj):
-    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+def apply_detail(db, type_key, lid, html, fetched=None):
+    """Parse a listing page into the DB row (used by the queue and by `reparse`)."""
+    detail, meta = parse_detail(html)
+    db.x("""UPDATE listings SET detail_json=?, detail_fetched=COALESCE(?, detail_fetched), info_date=?,
+            next_update=? WHERE type=? AND id=?""",
+         dumps(detail), fetched, meta.get("info_date"), meta.get("next_update"), type_key, lid)

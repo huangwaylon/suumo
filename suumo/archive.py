@@ -5,7 +5,7 @@
 """
 import gzip
 import shutil
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 LIST_DAYS = 14
@@ -60,6 +60,3 @@ class Archive:
     def drop_pref(self, pref):
         shutil.rmtree(self.root / pref, ignore_errors=True)
 
-
-def today_str(d: date):
-    return d.strftime("%Y%m%d")

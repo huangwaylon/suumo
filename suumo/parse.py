@@ -29,9 +29,8 @@ def text(el):
 
 
 def yen(s):
-    """'1万5480円' -> 15480, '1億2000万円' -> 120000000, '8702万8000円' -> 87028000."""
-    vals = parse_prices(s)
-    return vals[0]
+    """First amount: '1万5480円' -> 15480, '1億2000万円' -> 120000000, '8702万8000円' -> 87028000."""
+    return parse_prices(s)[0]
 
 
 def parse_prices(s):
@@ -65,6 +64,8 @@ def parse_station(s):
             return None
         st = {"line": m.group(1), "name": m.group(2)}
         rest = s[m.end():]
+    if st["line"] and "バス" in st["line"]:  # a bus line's stop listed as access, not a rail station
+        st["bus_stop"] = True
     b = _bus.search(rest)
     if b:
         st["bus"] = int(b.group(1))
@@ -128,7 +129,7 @@ def parse_list_page(html, type_key, area):
     return hit_count(soup), [r for r in (parse(u, area) for u in units) if r]
 
 
-def _base(u, area):
+def _base(u):
     a = u.find("a", href=_nc)
     if not a:
         return None
@@ -152,7 +153,7 @@ def _m2_into(r, key, s):
 
 
 def _standard_unit(u, area):
-    r = _base(u, area)
+    r = _base(u)
     if not r:
         return None
     r["title"] = text(u.select_one(".property_unit-title"))
@@ -192,7 +193,7 @@ def _standard_unit(u, area):
 
 
 def _new_condo_unit(u, area):
-    r = _base(u, area)
+    r = _base(u)
     if not r:
         return None
     r["name"] = text(u.select_one(".cassette_header-title")) or text(u.find("a", href=_nc))

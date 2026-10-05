@@ -91,18 +91,26 @@ def _parking(s, notes):
 
 
 def _road(s):
-    """'無、北4ｍ幅（接道幅8ｍ）' / '23.73m2、北西4ｍ幅' -> {private_m2, dir, width_m}."""
+    """Private-road share and frontage road:
+    '無、北4ｍ幅（接道幅8ｍ）' -> {dir: 北, width_m: 4}; '23.73m2、北西4ｍ幅' -> {private_m2: 23.73, ...};
+    '道路幅：10ｍ、アスファルト舗装、セットバック：48.24m2' -> {width_m: 10, setback_m2: 48.24}."""
     if not s or s == "-":
         return None
     r = {}
     m = re.search(r"([北南東西]{1,2})\s*(\d+(?:\.\d+)?)\s*[ｍm]幅", s)
     if m:
         r["dir"], r["width_m"] = m.group(1), float(m.group(2))
-    lo, _ = parse_m2(s)
-    if lo and not s.startswith("無"):
-        r["private_m2"] = lo
+    elif m := re.search(r"道路幅：\s*(\d+(?:\.\d+)?)\s*[ｍm]", s):
+        r["width_m"] = float(m.group(1))
+    head = s.split("、")[0]
+    if m := re.search(r"私道部分\s*(\d+(?:\.\d+)?)\s*m", s):
+        r["private_m2"] = float(m.group(1))
+    elif "：" not in head and not head.startswith("無"):  # leading private-road area, e.g. '23.73m2'
+        r["private_m2"] = parse_m2(head)[0]
+    if m := re.search(r"セットバック：\s*(\d+(?:\.\d+)?)\s*m", s):
+        r["setback_m2"] = float(m.group(1))
     r["text"] = s
-    return r
+    return clean(r)
 
 
 def _features(soup):
@@ -115,7 +123,11 @@ def _features(soup):
 def parse_detail(html):
     soup = BeautifulSoup(html, "lxml")
     spec = spec_table(soup)
-    g = lambda *keys: next((spec[k] for k in keys if spec.get(k) not in (None, "", "-")), None)  # noqa: E731
+
+    def g(*keys):
+        """First non-empty value among the labels (SUUMO uses '-' for 'not stated')."""
+        return next((spec[k] for k in keys if spec.get(k) not in (None, "", "-")), None)
+
     notes = g("その他概要・特記事項")
     r = {}
 

@@ -1,7 +1,8 @@
-"""Post unposted events to a Discord channel (REST, no gateway). User-facing text is Japanese.
+"""Post pending events to a Discord channel (REST, no gateway). User-facing text is Japanese.
 
-Events are marked posted only after Discord accepts the message, so a failed send is retried next run.
-Events older than STALE_HOURS are dropped unposted (avoids a flood after Discord was off for a while).
+Each message records which events it carries; events are marked posted only after their message is accepted,
+so a failure part-way retries just the rest next run. Events older than STALE_HOURS are skipped (posted=-1)
+to avoid a flood after Discord was unreachable for a while.
 """
 import json
 import time
@@ -21,7 +22,7 @@ SECTIONS = [("new", "🆕 新着"), ("price_changed", "💴 価格変更"), ("re
 
 
 def man(yen):
-    """87028000 -> '8,702万円', 131800000 -> '1億3,180万円'."""
+    """87028000 -> '8,703万円', 131800000 -> '1億3,180万円'."""
     if yen is None:
         return "価格未定"
     m = round(yen / 10000)
@@ -32,19 +33,13 @@ def man(yen):
 
 
 def _price(p):
-    s = man(p.get("price"))
-    return s + (f"〜{man(p['price_max'])}" if p.get("price_max") else "")
+    return man(p.get("price")) + (f"〜{man(p['price_max'])}" if p.get("price_max") else "")
 
 
 def _size(p):
     if p.get("floor_m2"):
         return f"{p['floor_m2']:g}㎡"
-    parts = []
-    if p.get("land_m2"):
-        parts.append(f"土地{p['land_m2']:g}㎡")
-    if p.get("building_m2"):
-        parts.append(f"建物{p['building_m2']:g}㎡")
-    return " ".join(parts)
+    return " ".join(f"{label}{p[k]:g}㎡" for k, label in (("land_m2", "土地"), ("building_m2", "建物")) if p.get(k))
 
 
 def _station(p):
@@ -55,66 +50,46 @@ def _station(p):
     return f"{st['name']}駅 {how}".strip()
 
 
-def line(kind, e):
-    p = e["payload"]
-    where = f"{p.get('area', '')}{p.get('town', '')}"
-    url = "https://suumo.jp" + p["path"] if p.get("path") else None
+def line(e):
+    kind, p = e["kind"], e["payload"]
     head = f"**{_price(p)}**"
     if kind == "price_changed" and p.get("old_price") and p.get("price"):
         diff = p["price"] - p["old_price"]
-        arrow = "⬇️" if diff < 0 else "⬆️"
-        head = f"{man(p['old_price'])} → **{man(p['price'])}** {arrow}{man(abs(diff))}"
+        head = f"{man(p['old_price'])} → **{man(p['price'])}** {'⬇️' if diff < 0 else '⬆️'}{man(abs(diff))}"
+    link = f" [詳細](<https://suumo.jp{p['path']}>)" if p.get("path") and kind != "removed" else ""
     bits = [TYPE_JA[e["type"]], p.get("layout"), _size(p), f"築{p['built'][:4]}年" if p.get("built") else None,
             _station(p)]
-    detail = "・".join(b for b in bits if b)
-    link = f" [詳細](<{url}>)" if url and kind != "removed" else ""
-    return f"- {head} {where}{link}\n  -# {detail}"
+    return f"- {head} {p.get('area', '')}{p.get('town', '')}{link}\n  -# {'・'.join(b for b in bits if b)}"
 
 
 def compose(events, now):
-    """Events -> list of message strings (each under Discord's 2000-char limit)."""
+    """Events -> [(text, [seq, ...])], each text under Discord's limit, carrying the events it shows."""
     if not events:
         return []
     prefs = sorted({e["pref"] for e in events})
-    head = f"**🏠 SUUMO 新着・更新**\n-# {now:%Y-%m-%d %H:%M} ・ {'、'.join(PREF_JA.get(p, p) for p in prefs)}"
-    blocks = [head]
+    where = "、".join(PREF_JA.get(p, p) for p in prefs)
+    pieces = [(f"**🏠 SUUMO 新着・更新**\n-# {now:%Y-%m-%d %H:%M} ・ {where}", [])]
     for kind, label in SECTIONS:
         items = [e for e in events if e["kind"] == kind]
         if not items:
             continue
-        lines = [line(kind, e) for e in items[:PER_SECTION]]
+        pieces.append((f"**{label} {len(items)}件**", []))
+        pieces += [(line(e), [e.get("seq")]) for e in items[:PER_SECTION]]
         if len(items) > PER_SECTION:
-            lines.append(f"-# ほか{len(items) - PER_SECTION}件")
-        blocks.append(f"**{label} {len(items)}件**\n" + "\n".join(lines))
-    messages, cur = [], ""
-    for block in blocks:
-        for chunk in _split(block):
-            if len(cur) + len(chunk) + 1 > LIMIT:
-                messages.append(cur)
-                cur = chunk
-            else:
-                cur = f"{cur}\n{chunk}" if cur else chunk
-    if cur:
-        messages.append(cur)
+            pieces.append((f"-# ほか{len(items) - PER_SECTION}件", [e.get("seq") for e in items[PER_SECTION:]]))
+    messages, text, seqs = [], "", []
+    for piece, piece_seqs in pieces:
+        if text and len(text) + 1 + len(piece) > LIMIT:
+            messages.append((text, seqs))
+            text, seqs = "", []
+        text = f"{text}\n{piece}" if text else piece
+        seqs = seqs + piece_seqs
+    messages.append((text, seqs))
     return messages
 
 
-def _split(block):
-    """A block longer than the limit is split on line boundaries."""
-    if len(block) <= LIMIT:
-        return [block]
-    out, cur = [], ""
-    for ln in block.split("\n"):
-        if len(cur) + len(ln) + 1 > LIMIT:
-            out.append(cur)
-            cur = ln
-        else:
-            cur = f"{cur}\n{ln}" if cur else ln
-    return out + ([cur] if cur else [])
-
-
 def send(token, channel_id, content):
-    for attempt in range(5):
+    for _ in range(5):
         r = requests.post(f"{API}/channels/{channel_id}/messages",
                           headers={"Authorization": f"Bot {token}"},
                           json={"content": content, "flags": 4,  # 4 = suppress link previews
@@ -128,25 +103,30 @@ def send(token, channel_id, content):
 
 
 def notify(db, now: datetime, token=None, channel_id=None, log=print):
-    """Post every unposted event. Without token/channel, print a preview and leave events unposted."""
-    stale = (now - timedelta(hours=STALE_HOURS)).isoformat(timespec="seconds")
-    db.x("UPDATE events SET posted=-1 WHERE posted=0 AND run_id IN (SELECT run_id FROM runs WHERE started < ?)", stale)
+    """Post every pending event. Without token/channel, print a preview and leave events pending."""
+    stale = (now - timedelta(hours=STALE_HOURS)).strftime("%Y%m%dT%H%M%S")
+    db.x("UPDATE events SET posted=-1 WHERE posted=0 AND run_id < ?", stale)
+    db.commit()
     rows = db.x("SELECT * FROM events WHERE posted=0 ORDER BY seq").fetchall()
-    events = [dict(r, payload=json.loads(r["payload"])) for r in rows]
-    messages = compose(events, now)
+    messages = compose([dict(r, payload=json.loads(r["payload"])) for r in rows], now)
     if not messages:
         log("discord: nothing to post")
-        db.commit()
         return []
     if not (token and channel_id):
         log(f"discord: not configured; preview of {len(messages)} message(s):")
-        for m in messages:
-            log("-" * 40 + "\n" + m)
-        db.commit()
+        for text, _ in messages:
+            log("-" * 40 + "\n" + text)
         return messages
-    for m in messages:
-        send(token, channel_id, m)
-    db.x(f"UPDATE events SET posted=1 WHERE seq IN ({','.join('?' * len(rows))})", *[r["seq"] for r in rows])
-    db.commit()
-    log(f"discord: posted {len(messages)} message(s) for {len(rows)} event(s)")
+    posted = 0
+    for text, seqs in messages:
+        try:
+            send(token, channel_id, text)
+        except Exception as e:
+            log(f"discord: send failed, {len(messages) - posted} message(s) left for the next run: {e!r}")
+            break
+        if seqs:
+            db.x(f"UPDATE events SET posted=1 WHERE seq IN ({','.join('?' * len(seqs))})", *seqs)
+            db.commit()
+        posted += 1
+    log(f"discord: posted {posted}/{len(messages)} message(s)")
     return messages

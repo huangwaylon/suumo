@@ -172,15 +172,19 @@ def test_notification_text():
            "payload": {"area": "狛江市", "town": "東和泉１", "price": 48_000_000, "old_price": 50_000_000,
                        "layout": "2LDK", "floor_m2": 55.0, "built": "1998-03", "path": "/x/nc_1/",
                        "stations": [{"line": "小田急線", "name": "狛江", "walk": 5}]}}]
-    [msg] = compose(ev, T0)
-    assert "5,000万円 → **4,800万円** ⬇️200万円" in msg and "狛江駅 徒歩5分" in msg and "[詳細](<https://suumo.jp/x/nc_1/>)" in msg
+    [(msg, _)] = compose(ev, T0)
+    assert "5,000万円 → **4,800万円** ⬇️200万円" in msg and "狛江駅 徒歩5分" in msg
+    assert "[詳細](<https://suumo.jp/x/nc_1/>)" in msg
 
 
 def test_long_notifications_split_under_the_limit():
     ev = [{"kind": "new", "type": "used_condo", "pref": "tokyo",
-           "payload": {"area": "狛江市", "town": "x" * 150, "price": i, "path": f"/p/nc_{i}/"}} for i in range(40)]
+           "seq": i, "payload": {"area": "狛江市", "town": "x" * 150, "price": i, "path": f"/p/nc_{i}/"}}
+          for i in range(40)]
     msgs = compose(ev, T0)
-    assert all(len(m) <= 2000 for m in msgs) and "ほか25件" in "".join(msgs)
+    assert len(msgs) > 1 and all(len(text) <= 2000 for text, _ in msgs)
+    assert "ほか25件" in "".join(text for text, _ in msgs)
+    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(40))  # every event in exactly one message
 
 
 class EmptyAreaPage:
@@ -199,3 +203,24 @@ def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
         db.commit()
     assert status(db, 1) == status(db, 2) == "removed"
     assert sorted(events(db, "removed")) == [("removed", "1"), ("removed", "2")]
+
+
+def test_listing_that_moves_area_keeps_its_history(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1)])
+    other = {"code": "13218", "name": "福生市", "slug": "sc_fussa", "expected": 0}
+    db.upsert_area("tokyo", "used_condo", other)
+    p = Pipeline(db, None, None, [], T0 + timedelta(days=1), "r1", log=lambda *_: None)
+    p.reconcile("tokyo", "used_condo", other, 1, {"1": rec(1)}, True)
+    row = db.listing("used_condo", "1")
+    assert row["area_code"] == "13218" and row["first_seen"] == T0.date().isoformat() and events(db) == []
+
+
+def test_purge_drops_old_event_and_run_rows(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1)])
+    db.x("INSERT INTO events (run_id, kind, type, id, pref, area_code, payload, posted) "
+         "VALUES ('20200101T000000', 'new', 'used_condo', '1', 'tokyo', '13219', '{}', 1)")
+    p, _ = crawl(1, [rec(1)])
+    p.purge()
+    assert db.x("SELECT COUNT(*) FROM events WHERE run_id='20200101T000000'").fetchone()[0] == 0
