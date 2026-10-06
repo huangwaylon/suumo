@@ -96,6 +96,11 @@
   let areaNames = new Map();
   const stationHomes = new Map();  // station -> homes listing it
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
+  let dataHour = null;             // YYYYMMDDHH of the data shown now
+  // Saved searches (this browser): [{c: conditions as URL parameters, seen: dataHour when last opened}]
+  const searches = [].concat(stored("suumo.searches", [])).filter((s) => typeof s?.c === "string");
+  const searchKey = (query) => paramsFor({ ...query, sort: "new", since: null }).toString();
+  const saveSearches = () => localStorage.setItem("suumo.searches", JSON.stringify(searches));
   // The saved list is shared and kept on GitHub (saved.json, see suumo/saved.py): the heart opens a pre-filled
   // issue, a workflow applies it and rebuilds the site. Until then the request shows here as pending.
   const REPO = "https://github.com/huangwaylon/suumo";
@@ -161,22 +166,37 @@
     pmax: "priceMax", plan: "plan", s: "sizeMin", lm: "landMin", g: "ageMax", quake: "post1981", fh: "freehold",
     nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort" };
 
-  function readHash() {
-    const p = new URLSearchParams(location.hash.slice(1));
-    const base = Filter.emptyQuery();
-    q = Filter.emptyQuery();
+  // URL parameters -> a query (unknown values dropped)
+  function queryFrom(p) {
+    const base = Filter.emptyQuery(), out = Filter.emptyQuery();
     for (const [k, f] of Object.entries(KEYS)) {
       if (!p.has(k)) continue;
       const v = p.get(k), d = base[f];
-      if (Array.isArray(d)) q[f] = v ? v.split(",") : [];
-      else if (typeof d === "boolean") q[f] = v === "1";
-      else if (f === "since") q[f] = /^\d{10}$/.test(v) ? +v : null;
-      else if (d === null) q[f] = CHOICES[f].includes(+v) ? +v : null;
-      else q[f] = v;
+      if (Array.isArray(d)) out[f] = v ? v.split(",") : [];
+      else if (typeof d === "boolean") out[f] = v === "1";
+      else if (f === "since") out[f] = /^\d{10}$/.test(v) ? +v : null;
+      else if (d === null) out[f] = CHOICES[f].includes(+v) ? +v : null;
+      else out[f] = v;
     }
-    if (!Object.hasOwn(t("sorts"), q.sort)) q.sort = "new";
-    q.types = q.types.filter((type) => db.index.types.includes(type));
-    q.areas = q.areas.filter((a) => areaNames.has(a));
+    if (!Object.hasOwn(t("sorts"), out.sort)) out.sort = "new";
+    out.types = out.types.filter((type) => db.index.types.includes(type));
+    out.areas = out.areas.filter((a) => areaNames.has(a));
+    return out;
+  }
+  // a query -> its URL parameters (the conditions only)
+  function paramsFor(query) {
+    const p = new URLSearchParams(), base = Filter.emptyQuery();
+    for (const [k, f] of Object.entries(KEYS)) {
+      const v = query[f];
+      if (JSON.stringify(v) === JSON.stringify(base[f])) continue;
+      p.set(k, Array.isArray(v) ? v.join(",") : typeof v === "boolean" ? "1" : v);
+    }
+    return p;
+  }
+
+  function readHash() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    q = queryFrom(p);
     mode = p.get("fav") === "1" ? "favorites" : "search";
     daily = mode === "search" && p.get("daily") === "1";
     const b = (p.get("b") || "").split(",").map(Number);
@@ -188,12 +208,7 @@
   }
 
   function hashFor(extra = {}) {
-    const p = new URLSearchParams(), base = Filter.emptyQuery();
-    for (const [k, f] of Object.entries(KEYS)) {
-      const v = q[f];
-      if (JSON.stringify(v) === JSON.stringify(base[f])) continue;
-      p.set(k, Array.isArray(v) ? v.join(",") : typeof v === "boolean" ? "1" : v);
-    }
+    const p = paramsFor(q);
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
     if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
@@ -248,6 +263,7 @@
     document.body.classList.toggle("listmode", mode !== "search");
     const offers = mode === "search" ? suggestions() : [];
     renderQuick();
+    renderSearches();
     $("chips").innerHTML = mode !== "search" ? "" : offers.map(([f, v, label]) =>
       `<button class="chip suggest" data-suggest="${f}" data-value="${esc(v)}">${esc(label)}</button>`).join("") + active.map(([label, , s], i) => s === "quick" ? "" :
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
@@ -364,6 +380,25 @@
     update();
   }
 
+  // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
+  function renderSearches() {
+    const box = $("searches"), key = searchKey(q), here = mode === "search" && !area;
+    const label = (query) => activeConditions(query).filter(([, , s]) => s !== "quick").map(([l]) => l).slice(0, 3).join("・");
+    box.hidden = !here || !searches.length;
+    if (!box.hidden) {
+      box.innerHTML = `<span class="searches-title">${esc(t("savedSearches"))}</span>` + searches.map((s, i) => {
+        const query = queryFrom(new URLSearchParams(s.c));
+        const n = s.seen ? Filter.count(db, { ...query, since: s.seen }) : 0;
+        return `<button class="chip" data-saved-search="${i}" aria-pressed="${s.c === key}">${esc(label(query) || t("allListings"))}${
+          n ? `<span class="n fresh">${esc(t("freshN", num(n)))}</span>` : ""}</button>`;
+      }).join("");
+    }
+    const keep = $("keep"), saved = searches.some((s) => s.c === key);
+    keep.hidden = !here || !activeConditions().some(([, , s]) => s !== "quick" && s !== "text");
+    keep.setAttribute("aria-pressed", saved);
+    keep.setAttribute("aria-label", t(saved ? "unkeepSearch" : "keepSearch"));
+  }
+
   // 新着 / 値下げ / since the last visit, one tap each, with what they'd show under the current conditions.
   function renderQuick() {
     const box = $("quick");
@@ -401,28 +436,28 @@
   }
 
   // The conditions in force, as [label, remove(query), filter section] for the chips and the empty state.
-  function activeConditions() {
+  function activeConditions(of = q) {
     // remove(query) takes the condition out of the given query (and returns it)
     const out = [], drop = (f, v) => (qq) => { qq[f] = qq[f].filter((x) => x !== v); return qq; };
     const reset = (...fs) => (qq) => { const e = Filter.emptyQuery(); for (const f of fs) qq[f] = e[f]; return qq; };
-    if (q.text) out.push([t("chipText", q.text), reset("text"), "text"]);
-    for (const type of q.types) out.push([typeName(type), drop("types", type), "types"]);
-    for (const a of q.areas) out.push([areaName(a), drop("areas", a), "areas"]);
-    if (q.priceMin != null || q.priceMax != null) {
-      out.push([t("chipPrice", q.priceMin != null ? money(q.priceMin) : "", q.priceMax != null ? money(q.priceMax) : ""),
+    if (of.text) out.push([t("chipText", of.text), reset("text"), "text"]);
+    for (const type of of.types) out.push([typeName(type), drop("types", type), "types"]);
+    for (const a of of.areas) out.push([areaName(a), drop("areas", a), "areas"]);
+    if (of.priceMin != null || of.priceMax != null) {
+      out.push([t("chipPrice", of.priceMin != null ? money(of.priceMin) : "", of.priceMax != null ? money(of.priceMax) : ""),
         reset("priceMin", "priceMax"), "price"]);
     }
-    if (q.plan != null) out.push([t("chipPlan", planLabel(q.plan)), reset("plan"), "plan"]);
-    if (q.sizeMin != null) out.push([t("sizeMin", q.sizeMin), reset("sizeMin"), "size"]);
-    if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin"), "size"]);
-    if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax"), "age"]);
-    for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
-    if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk"), "stations"]);
+    if (of.plan != null) out.push([t("chipPlan", planLabel(of.plan)), reset("plan"), "plan"]);
+    if (of.sizeMin != null) out.push([t("sizeMin", of.sizeMin), reset("sizeMin"), "size"]);
+    if (of.landMin != null) out.push([t("chipLand", of.landMin), reset("landMin"), "size"]);
+    if (of.ageMax != null) out.push([t("ages")[of.ageMax] ?? t("ageYears", of.ageMax), reset("ageMax"), "age"]);
+    for (const s of of.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
+    if (of.walk != null) out.push([t("walkWithin", of.walk), reset("walk"), "stations"]);
     for (const f of FLAGS) {
-      if (q[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
+      if (of[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
     }
-    if (q.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
-    for (const f of q.features) out.push([feature(f), drop("features", f), "extra"]);
+    if (of.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
+    for (const f of of.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
   }
 
@@ -918,6 +953,13 @@
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
     });
     DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
+    $("keep").addEventListener("click", () => {
+      const key = searchKey(q), i = searches.findIndex((s) => s.c === key);
+      if (i >= 0) searches.splice(i, 1); else searches.push({ c: key, seen: dataHour });
+      saveSearches();
+      toast(t(i >= 0 ? "searchRemoved" : "searchKept"));
+      renderSearches();
+    });
     $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
     $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
     $("detail-back").addEventListener("click", closeDetail);
@@ -938,7 +980,14 @@
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
       else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
-      else if (b.dataset.quick) {
+      else if (b.dataset.savedSearch != null) {  // open a saved search: it's seen as of now
+        const s = searches[+b.dataset.savedSearch];
+        q = { ...queryFrom(new URLSearchParams(s.c)), sort: q.sort };
+        s.seen = dataHour;
+        saveSearches();
+        daily = false;
+        update();
+      } else if (b.dataset.quick) {
         const f = b.dataset.quick;
         q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
         update();
@@ -1002,6 +1051,7 @@
       const visit = stored("suumo.visit", {}), now = +String(index.updated).replace(/\D/g, "").slice(0, 10) || null;
       if (now && visit.cur !== now) { visit.prev = visit.cur ?? null; visit.cur = now; localStorage.setItem("suumo.visit", JSON.stringify(visit)); }
       lastVisit = visit.prev ?? null;
+      dataHour = visit.cur ?? null;
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");

@@ -90,6 +90,12 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 #count { margin: 0; font-size: 15px; }
 /* すべて / 新着（日別） */
+.searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.searches-title { width: 100%; color: var(--muted); font-size: 13px; }
+.chip .n.fresh { color: var(--new); font-weight: 600; }
+.toolbar-end { display: flex; align-items: center; gap: 4px; }
+#keep[aria-pressed="true"] { color: var(--warn); }
+#keep[aria-pressed="true"] .i { fill: currentColor; }
 .tabs { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 10px; background: var(--line); }
 .tabs button { flex: 1; min-height: 38px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
