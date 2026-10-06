@@ -1,110 +1,95 @@
-// Search rules for the site: load the index, filter, fold duplicates, sort, count choices.
-// Loaded by the page and, in tests, by Node (tests/test_site.py drives these rules with real queries).
+// Search rules for the site: load the index, match, sort, count choices.
+// Loaded by the page and, in tests, by Node (tests/test_site.py runs these rules on built indexes).
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.Filter = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  function emptyQuery() {
-    return {
-      text: "", types: [], areas: [], stations: [], walk: null, priceMin: null, priceMax: null, rooms: [],
-      sizeMin: null, landMin: null, ageMax: null, post1981: false, features: [], freehold: false,
-      noCondition: false, newOnly: false, dropsOnly: false, sort: "new",
-    };
-  }
+  const emptyQuery = () => ({
+    text: "", types: [], areas: [], stations: [], walk: null, priceMin: null, priceMax: null, plan: null,
+    sizeMin: null, landMin: null, ageMax: null, post1981: false, features: [], freehold: false,
+    noCondition: false, newOnly: false, dropsOnly: false, sort: "new",
+  });
 
-  const normalize = (s) => (s || "").normalize("NFKC").toLowerCase();
+  // NFKC (full-width -> half-width), lower case, hiragana -> katakana: "ぱーく", "ﾊﾟｰｸ" and "パーク" all match.
+  const normalize = (s) => (s || "").normalize("NFKC").toLowerCase()
+    .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 
   function load(index) {
-    const c = {};
-    index.columns.forEach((name, i) => { c[name] = i; });
-    const items = index.rows.map((r, idx) => {
-      const type = index.types[r[c.type]];
-      const town = r[c.town] == null ? null : index.towns[r[c.town]];
-      const stations = r[c.stations].map(([s, w]) => [index.stations[s], w]);
-      const item = {
-        idx, id: r[c.id], idn: Number(r[c.id]), type, key: type + ":" + r[c.id],
-        area: index.areas[r[c.area]][0], areaName: index.areas[r[c.area]][1],
-        price: r[c.price], priceHi: r[c.price_max] ?? r[c.price],
-        rooms: r[c.rooms], size: r[c.size], land: r[c.land], age: r[c.age], built: r[c.built],
-        builtInt: r[c.built] ? Number(r[c.built].replace("-", "")) : 0,
-        stations, features: new Set(r[c.features].map((f) => index.features[f])), flags: r[c.flags],
-        dup: r[c.dup], newDate: r[c.new_date], firstSeen: r[c.first_seen], unit: r[c.unit],
-        town: town ? town[0].replace(/^東京都/, "") : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
-        name: r[c.name] || "", layout: r[c.layout] || "", image: r[c.image],
+    const c = index.columns, n = c.id.length, items = new Array(n);
+    let id = 0;
+    for (let i = 0; i < n; i++) {
+      id += c.id[i];
+      const type = index.types[c.type[i]], area = index.areas[c.area[i]], town = index.towns[c.town[i]];
+      const st = c.stations[i], stations = [];
+      for (let j = 0; j < st.length; j += 2) stations.push([index.stations[st[j]], st[j + 1]]);
+      const it = {
+        id: String(id), idn: id, type, key: type + ":" + id, area: area[0], areaName: area[1],
+        price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
+        land: c.land[i], age: c.age[i], built: c.built[i], builtInt: c.built[i] ? +c.built[i].replace("-", "") : 0,
+        stations, features: new Set(c.features[i].map((f) => index.features[f])), flags: c.flags[i],
+        others: c.others[i], newDate: c.newDate[i], firstSeen: c.firstSeen[i], unit: c.unit[i],
+        town: town ? town[0].slice(index.prefs[area[2]].length) : null, lat: town ? town[1] : null,
+        lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: c.image[i],
       };
-      item.haystack = normalize([item.name, item.town, item.areaName, item.layout,
-        ...stations.map(([n]) => n + "駅")].join(" "));
-      return item;
-    });
-    const groups = new Map();
-    for (const it of items) {
-      if (it.dup == null) continue;
-      if (!groups.has(it.dup)) groups.set(it.dup, []);
-      groups.get(it.dup).push(it);
+      it.haystack = normalize([it.name, it.town, it.areaName, it.layout, ...stations.map(([s]) => s + "駅")].join(" "));
+      items[i] = it;
     }
-    return { index, items, groups, flags: index.flags, byKey: new Map(items.map((it) => [it.key, it])) };
+    index.columns = null;  // the items hold everything now; free the raw columns
+    return { index, items, flags: index.flags, byKey: new Map(items.map((it) => [it.key, it])) };
   }
 
   function walkTo(it, chosen) {
     let best = null;
-    for (const [n, w] of it.stations) {
-      if (w != null && (!chosen.length || chosen.includes(n)) && (best == null || w < best)) best = w;
+    for (const [s, w] of it.stations) {
+      if (w != null && (!chosen.length || chosen.includes(s)) && (best == null || w < best)) best = w;
     }
     return best;
   }
 
-  // skip: a condition to ignore, for counting the choices of that condition
-  function matches(db, it, q, skip) {
-    const F = db.flags;
-    if (q.types.length && skip !== "types" && !q.types.includes(it.type)) return false;
-    if (q.areas.length && skip !== "areas" && !q.areas.includes(it.area)) return false;
-    if (q.stations.length && skip !== "stations" && !it.stations.some(([n]) => q.stations.includes(n))) return false;
-    if (q.walk != null) {
-      const w = walkTo(it, skip === "stations" ? [] : q.stations);
-      if (w == null || w > q.walk) return false;
+  // One check per condition: (item, value, query) -> passes. Empty values pass.
+  const CHECKS = {
+    types: (it, v) => !v.length || v.includes(it.type),
+    areas: (it, v) => !v.length || v.includes(it.area),
+    stations: (it, v) => !v.length || it.stations.some(([s]) => v.includes(s)),
+    walk: (it, v, q) => v == null || (walkTo(it, q.stations) ?? Infinity) <= v,
+    priceMax: (it, v) => v == null || (it.price != null && it.price <= v),
+    priceMin: (it, v) => v == null || (it.priceHi != null && it.priceHi >= v),
+    landMin: (it, v) => v == null || (it.land != null && it.land >= v),
+    features: (it, v) => v.every((f) => it.features.has(f)),
+    freehold: (it, v, q, F) => !v || !(it.flags & F.leasehold),
+    noCondition: (it, v, q, F) => !v || !(it.flags & F.conditional),
+    newOnly: (it, v, q, F) => !v || !!(it.flags & F.new),
+    dropsOnly: (it, v, q, F) => !v || !!(it.flags & F.dropped),
+    text: (it, v) => !v || normalize(v).split(/\s+/).every((w) => !w || it.haystack.includes(w)),
+  };
+  // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
+  const BUILDING = {
+    plan: (it, v) => v == null || (it.plan != null && it.plan >= v),
+    sizeMin: (it, v) => v == null || (it.size != null && it.size >= v),
+    ageMax: (it, v) => v == null || (it.age != null && it.age <= v),
+    post1981: (it, v, q, F) => !v || !!(it.flags & F.post1981),
+  };
+  const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
+
+  // The conditions an item fails (at most 2 are collected: that's all faceting needs).
+  function failing(db, it, q) {
+    const out = [];
+    const add = (d) => { if (!out.includes(d)) out.push(d); return out.length > 1; };
+    for (const d in CHECKS) if (!CHECKS[d](it, q[d], q, db.flags) && add(GROUP[d] || d)) return out;
+    const exempt = it.type === "land" && q.types.includes("land");
+    for (const d in BUILDING) {
+      // land isn't a building: choosing 土地 is what would let it through
+      if (!exempt && !BUILDING[d](it, q[d], q, db.flags) && add(it.type === "land" ? "types" : d)) return out;
     }
-    if (q.priceMax != null && (it.price == null || it.price > q.priceMax)) return false;
-    if (q.priceMin != null && (it.priceHi == null || it.priceHi < q.priceMin)) return false;
-    // building conditions imply a building, except for land asked for (or being counted as a type choice)
-    const building = it.type !== "land" || !(q.types.includes("land") || skip === "types");
-    if (building && q.rooms.length && skip !== "rooms" && !q.rooms.some((b) => it.rooms & (1 << (b - 1)))) return false;
-    if (building && q.sizeMin != null && (it.size == null || it.size < q.sizeMin)) return false;
-    if (q.landMin != null && (it.land == null || it.land < q.landMin)) return false;
-    if (building && q.ageMax != null && (it.age == null || it.age > q.ageMax)) return false;
-    if (building && q.post1981 && !(it.flags & F.post1981)) return false;
-    if (q.features.length && skip !== "features" && !q.features.every((f) => it.features.has(f))) return false;
-    if (q.freehold && it.flags & F.leasehold) return false;
-    if (q.noCondition && it.flags & F.conditional) return false;
-    if (q.newOnly && !(it.flags & F.new)) return false;
-    if (q.dropsOnly && !(it.flags & F.dropped)) return false;
-    if (q.text) {
-      for (const word of normalize(q.text).split(/\s+/)) {
-        if (word && !it.haystack.includes(word)) return false;
-      }
-    }
-    return true;
+    return out;
   }
 
-  const others = (db, it) => (it.dup == null ? [] : db.groups.get(it.dup).filter((o) => o !== it));
-  const hitFor = (db, key) => (db.byKey.has(key) ? { item: db.byKey.get(key), others: others(db, db.byKey.get(key)) } : null);
-  const cheaper = (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity) || a.idn - b.idn;
-
-  // One hit per property: the cheapest (then lowest id) matching listing represents its duplicate group.
-  function fold(db, matched) {
-    const best = new Map(), hits = [];
-    for (const it of matched) {
-      if (it.dup == null) hits.push({ item: it, others: [] });
-      else if (!best.has(it.dup) || cheaper(it, best.get(it.dup)) < 0) best.set(it.dup, it);
-    }
-    for (const it of best.values()) hits.push({ item: it, others: others(db, it) });
-    return hits;
-  }
+  const matches = (db, it, q) => failing(db, it, q).length === 0;
 
   const newest = (d) => (d ? [0, -d] : [1, 0]);  // newest first, missing last
   const orLast = (v) => (v == null ? Infinity : v);
-
   function sortKey(it, q) {
     switch (q.sort) {
       case "price_asc": return [orLast(it.price), it.idn];
@@ -116,43 +101,50 @@
       default: return [...newest(it.newDate), ...newest(it.firstSeen), -it.idn];
     }
   }
-
   function compare(a, b) {
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
     return 0;
   }
 
   function search(db, q) {
-    const hits = fold(db, db.items.filter((it) => matches(db, it, q)));
-    const keys = new Map(hits.map((h) => [h, sortKey(h.item, q)]));
+    const hits = db.items.filter((it) => matches(db, it, q));
+    const keys = new Map(hits.map((it) => [it, sortKey(it, q)]));
     return hits.sort((a, b) => compare(keys.get(a), keys.get(b)));
   }
 
-  // Number of properties (duplicates counted once) matching q.
-  function count(db, q) {
-    const dups = new Set();
-    let n = 0;
-    for (const it of db.items) {
-      if (!matches(db, it, q)) continue;
-      if (it.dup == null) n++;
-      else if (!dups.has(it.dup)) { dups.add(it.dup); n++; }
-    }
-    return n;
-  }
+  const count = (db, q) => db.items.reduce((n, it) => n + matches(db, it, q), 0);
 
-  // Properties per value of one condition, given the rest of the query: {value: count}.
-  function facet(db, q, dim, valuesOf) {
-    const sets = new Map();
+  // Counts for every choice of every condition, in one pass: an item that fails no condition counts for
+  // all choices it satisfies; one that fails exactly one condition counts for that condition's choices.
+  // choices: {condition: [values]} for thresholds (priceMax, plan, walk...); sets are counted by value.
+  function facets(db, q, choices) {
+    const out = { total: 0, types: {}, areas: {}, stations: {}, features: {} };
+    for (const d in choices) out[d] = {};
+    for (const flag of ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"]) out[flag] = 0;
+    const tally = (o, k) => { o[k] = (o[k] || 0) + 1; };
     for (const it of db.items) {
-      if (!matches(db, it, q, dim)) continue;
-      const id = it.dup == null ? "i" + it.idx : "d" + it.dup;
-      for (const v of valuesOf(it)) {
-        if (!sets.has(v)) sets.set(v, new Set());
-        sets.get(v).add(id);
+      const f = failing(db, it, q);
+      if (f.length > 1) continue;
+      const only = f[0], free = only === undefined, on = (d) => free || only === d;
+      if (free) out.total++;
+      if (on("types")) tally(out.types, it.type);
+      if (on("areas")) tally(out.areas, it.area);
+      if (on("stations")) {
+        for (const [s, w] of it.stations) if (q.walk == null || (w != null && w <= q.walk)) tally(out.stations, s);
       }
+      if (on("features")) for (const t of it.features) if (q.features.every((x) => x === t || it.features.has(x))) tally(out.features, t);
+      for (const d in choices) {
+        if (!on(GROUP[d] || d)) continue;
+        const check = CHECKS[d] || BUILDING[d];
+        for (const v of choices[d]) if (check(it, v, q, db.flags)) tally(out[d], v);
+      }
+      for (const flag in { freehold: 1, noCondition: 1, newOnly: 1, dropsOnly: 1 }) {
+        if (on(flag) && CHECKS[flag](it, true, q, db.flags)) out[flag]++;
+      }
+      if (on("post1981") && BUILDING.post1981(it, true, q, db.flags)) out.post1981++;
     }
-    return Object.fromEntries([...sets].map(([v, s]) => [v, s.size]));
+    return out;
   }
 
-  return { emptyQuery, load, search, count, facet, hitFor };
+  return { emptyQuery, normalize, load, matches, search, count, facets };
 });

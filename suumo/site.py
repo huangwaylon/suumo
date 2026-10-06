@@ -1,11 +1,13 @@
 """Build the static search site (GitHub Pages) from data/ and geo/towns.json.
 
   <out>/index.html, app.js, filter.js, style.css   copied from site/
-  <out>/data/index.json                            every active listing, search fields only (columnar)
+  <out>/data/index.json                            every property, search fields only, stored by column
   <out>/data/l/<type>/<id>.json                    one listing's full record, price history, other agents
 
-The tricky fields (rooms, sizes, age, walk times, flags, duplicate groups) are computed here from catalog.Item,
-so site/filter.js only compares values. The output is not committed: GitHub Actions builds it on every push.
+The same property listed by several agents (same dup_key: same building/address, size and price) appears once,
+as its best-documented listing; the others are linked from its record. The tricky fields (plan rank, sizes, age,
+walk times, flags) are computed here, so site/filter.js only compares values. The output is not committed:
+GitHub Actions builds it on every push.
 """
 import json
 import re
@@ -19,15 +21,15 @@ from zoneinfo import ZoneInfo
 from .catalog import load
 from .geo import load_cache, town_of
 from .parse import TYPES
+from .scope import PREFS
 
 JST = ZoneInfo("Asia/Tokyo")
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16}
-COLUMNS = ["id", "type", "area", "price", "price_max", "rooms", "size", "land", "age", "built", "stations",
-           "features", "flags", "dup", "new_date", "first_seen", "unit", "town", "name", "layout", "image"]
 
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
+_ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agents' slogans and generated "town price" names
 
 
 def _image(url, lid):
@@ -38,6 +40,15 @@ def _image(url, lid):
     path = parse_qs(urlparse(url).query).get("src", [""])[0]
     m = _image_path.match(path)
     return "/".join(m.group(1, 2, 3, 5)) if m and m.group(4) == lid else path
+
+
+def _name(rec):
+    """A building or development name worth showing, or None (many 'names' are ad copy):
+    '『MAC目黒コート』TVモニター…' -> 'MAC目黒コート', '柿の木坂２ 4億8000万円' -> None."""
+    name = (rec.get("name") or "").rstrip("…").strip()
+    if m := re.search(r"『(.+?)』", name):
+        name = m.group(1)
+    return name if name and not _ad_copy.search(name) else None
 
 
 def _date_int(s):
@@ -59,41 +70,63 @@ class Table:
         return self.index[value]
 
 
-def build_index(snap, towns_cache, updated):
-    types, areas, stations, features, towns, dups = Table(TYPES), Table(), Table(), Table(), Table(), Table()
+def representatives(snap):
+    """One listing per property: in each duplicate group the one with the fullest record (page fetched, most
+    tags), then the lowest id. Returns {item: [the other listings]}."""
+    reps = {}
+    for i in snap.items:
+        group = snap.groups.get(i.dup)
+        if not group:
+            reps[i] = []
+        elif i is min(group, key=lambda g: (not g.rec.get("has_detail"), -len(g.features), g.idn)):
+            reps[i] = [g for g in group if g is not i]
+    return reps
+
+
+def build_index(snap, reps, towns_cache, updated):
+    types, prefs, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table(), Table()
     lines = {}
-    rows = []
-    for i in sorted(snap.items, key=lambda i: (i.type, i.idn)):
+    cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
+                            "stations", "features", "flags", "others", "newDate", "firstSeen", "unit", "town", "name",
+                            "layout", "image")}
+    last_id = 0
+    for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         r = i.rec
-        flags = (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
-                 | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
-                 | FLAGS["dropped"] * snap.is_dropped(i))
         for name, line, _ in i.stations:
             if line:
                 lines.setdefault(line, set()).add(stations(name))
         town = town_of(r.get("address"), i.pref)
-        rows.append([
-            r["id"], types(i.type), areas(i.area), i.price_lo, i.price_hi if i.price_hi != i.price_lo else None,
-            sum(1 << (min(n, 4) - 1) for n in i.rooms), i.size, i.land, i.age, i.built,
-            [[stations(name), walk] for name, _, walk in i.stations], [features(f) for f in i.features], flags,
-            dups(i.dup) if i.dup in snap.groups else None,
-            _date_int(snap.new_dates.get(i.key)), _date_int(i.first_seen), i.unit_price,
-            towns(town) if town else None, r.get("name") or r.get("title"), r.get("layout"),
-            _image(r.get("image"), r["id"]),
-        ])
+        row = {
+            "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
+            "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
+            "land": i.land, "age": i.age, "built": i.built,
+            "stations": [x for name, _, walk in i.stations for x in (stations(name), walk)],
+            "features": [features(f) for f in i.features],
+            "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
+                      | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
+                      | FLAGS["dropped"] * snap.is_dropped(i)),
+            "others": len(reps[i]), "newDate": _date_int(snap.new_dates.get(i.key)),
+            "firstSeen": _date_int(i.first_seen),
+            "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
+            "town": towns(town) if town else None, "name": _name(r), "layout": r.get("layout"),
+            "image": _image(r.get("image"), r["id"]),
+        }
+        last_id = i.idn
+        for k, v in row.items():
+            cols[k].append(v)
     return {
-        "updated": updated, "flags": FLAGS, "columns": COLUMNS, "rows": rows, "types": types.values,
-        "areas": [[code, snap.areas.get(code, code)] for code in areas.values],
-        "stations": stations.values,
+        "updated": updated, "flags": FLAGS, "columns": cols, "types": types.values,
+        "areas": [[code, snap.areas.get(code, code), prefs(PREFS.get(pref, pref))] for code, pref in areas.values],
+        "prefs": prefs.values, "stations": stations.values,
         "lines": {line: sorted(ids) for line, ids in sorted(lines.items())},
         "features": features.values,
         "towns": [[t, *(towns_cache.get(t) or [None, None])] for t in towns.values],
     }
 
 
-def listing_record(snap, item):
-    others = [o for o in snap.groups.get(item.dup, []) if o is not item]
+def listing_record(snap, item, others):
     return {**item.rec, "history": snap.history.get(item.key, []), "new_date": snap.new_dates.get(item.key),
+            "name": _name(item.rec),
             "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url")} for o in others]}
 
 
@@ -113,16 +146,18 @@ def _dump(obj):
 
 def build(data_dir, geo_cache, out_dir, today=None, log=print):
     snap = load(data_dir, today or datetime.now(JST).date())
+    reps = representatives(snap)
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
     (out / ".nojekyll").write_text("")
-    index = build_index(snap, load_cache(geo_cache), _updated(Path(data_dir)))
+    index = build_index(snap, reps, load_cache(geo_cache), _updated(Path(data_dir)))
     (out / "data").mkdir()
     (out / "data" / "index.json").write_text(_dump(index), encoding="utf-8")
-    for item in snap.items:
+    for item, others in reps.items():
         path = out / "data" / "l" / item.type / f"{item.rec['id']}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(_dump(listing_record(snap, item)), encoding="utf-8")
-    log(f"site: {len(snap.items):,} listings, index {(out / 'data/index.json').stat().st_size / 1e6:.1f} MB → {out}")
+        path.write_text(_dump(listing_record(snap, item, others)), encoding="utf-8")
+    log(f"site: {len(reps):,} properties ({len(snap.items):,} listings), "
+        f"index {(out / 'data/index.json').stat().st_size / 1e6:.1f} MB → {out}")
     return index

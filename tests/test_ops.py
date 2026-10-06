@@ -182,4 +182,4 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
     ("港区三田５", "東京都港区三田５"), ("東京都八王子市元本郷町", "東京都八王子市元本郷町"), (None, None),
 ])
 def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
-    assert town_of(address) == town
+    assert town_of(address, "tokyo") == town

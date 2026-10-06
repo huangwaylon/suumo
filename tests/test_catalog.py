@@ -1,7 +1,7 @@
-"""Derived listing fields from data/: rooms, sizes, age, stations, flags, duplicate groups, 新着/値下げ."""
+"""Derived listing fields from data/: plan rank, sizes, age, stations, flags, duplicate groups, 新着/値下げ."""
 import pytest
 
-from suumo.catalog import line_name, load, parse_rooms
+from suumo.catalog import line_name, load, plan_rank
 from tests.helpers import TODAY, rec, write
 
 
@@ -10,16 +10,22 @@ def snap(tmp_path, *recs, **kw):
     return load(tmp_path, TODAY)
 
 
-@pytest.mark.parametrize("layout,rooms", [
-    ("3LDK", {3}), ("3LDK+S（納戸）", {3}), ("ワンルーム", {1}), ("2LDK・2LDK+S・4LDK", {2, 4}),
-    ("1LDK+2S（納戸）～3LDK", {1, 2, 3}), ("3LDK：1号棟・2号棟／WIC", {3}), ("4DK", {4}), ("1K", {1}), (None, set()),
+@pytest.mark.parametrize("layout,rank", [
+    ("ワンルーム", 3), ("1K", 3), ("1DK", 4), ("1LDK", 5), ("2DK", 7), ("2LDK", 8), ("3LDK+S（納戸）", 11),
+    ("2LDK・2LDK+S・4LDK", 14), ("1LDK+2S（納戸）～3LDK", 11), ("3LDK：1号棟・2号棟／WIC", 11), ("4DK", 13),
+    (None, None),
 ])
-def test_parse_rooms(layout, rooms):
-    assert parse_rooms(layout) == rooms
+def test_plan_rank(layout, rank):
+    assert plan_rank(layout) == rank
 
 
-def test_line_name_drops_section():
-    assert line_name("小田急線（新宿～相模大野）") == "小田急線"
+@pytest.mark.parametrize("line,name", [
+    ("小田急線（新宿～相模大野）", "小田急線"), ("ＪＲ山手線", "JR山手線"), ("山手線", "JR山手線"),
+    ("大井町線", "東急大井町線"), ("東急大井町線", "東急大井町線"), ("都営地下鉄三田線", "都営三田線"),
+    ("丸ノ内線", "東京メトロ丸ノ内線"), ("新交通ゆりかもめ", "ゆりかもめ"), ("京王線", "京王線"),
+])
+def test_line_names_are_one_per_line(line, name):
+    assert line_name(line) == name
 
 
 def test_derived_fields(tmp_path):
@@ -34,9 +40,9 @@ def test_derived_fields(tmp_path):
     condo, house, land = ({i.type: i for i in s.items}[t] for t in ("used_condo", "new_house", "land"))
     assert condo.age == 45 and not condo.post_1981 and condo.leasehold and condo.unit_price == 800_000
     assert condo.stations == [("狛江", "小田急線", 3), ("喜多見", "小田急線", None)]  # bus access, no bus stops
-    assert house.rooms == {3, 4} and house.size == 95.0 and house.land == 120.0 and house.age == 0
+    assert house.plan == 14 and house.size == 95.0 and house.land == 120.0 and house.age == 0
     assert house.post_1981 and house.unit_price is None                              # a price range
-    assert land.rooms == frozenset() and land.size is None and land.conditional
+    assert land.plan is None and land.size is None and land.conditional and land.pref == "tokyo"
 
 
 def test_new_drops_and_history_come_from_events(tmp_path):

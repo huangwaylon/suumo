@@ -2,65 +2,87 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <title>東京 物件さがし</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+  <title>物件さがし</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233b4cca'/><path d='M8 16l8-7 8 7v8h-5v-5h-6v5H8z' fill='white'/></svg>">
+  <link rel="preload" href="data/index.json" as="fetch" crossorigin>
   <link rel="stylesheet" href="style.css">
+  <script src="filter.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <header>
-    <div class="top">
-      <h1>🏠 東京 物件さがし</h1>
-      <span id="updated"></span>
-    </div>
-    <input id="text" type="search" placeholder="駅・町名・物件名で検索" aria-label="駅・町名・物件名で検索" autocomplete="off">
-    <nav id="chips"></nav>
-    <div class="bar">
-      <strong id="count" aria-live="polite"></strong>
-      <select id="sort" aria-label="並び替え"></select>
-      <div class="seg">
-        <button data-view="list">📋 リスト</button>
-        <button data-view="map">🗺️ 地図</button>
-      </div>
-    </div>
+  <header class="bar">
+    <a class="brand" href="#">物件さがし</a>
+    <label class="search">
+      <svg class="i"><use href="#i-search"/></svg>
+      <input id="q" type="search" placeholder="駅・町名・物件名" aria-label="駅・町名・物件名で検索" autocomplete="off" enterkeyhint="search">
+    </label>
+    <button id="filters-open" class="icon-btn" aria-label="条件を変更">
+      <svg class="i"><use href="#i-sliders"/></svg><span class="badge" id="filters-n" hidden></span>
+    </button>
+    <button id="favs" class="icon-btn" aria-label="お気に入り" aria-pressed="false">
+      <svg class="i"><use href="#i-heart"/></svg><span class="badge" id="favs-n" hidden></span>
+    </button>
   </header>
 
-  <main>
-    <div id="notice" hidden></div>
-    <div id="list"></div>
-    <div id="more"></div>
-    <div id="map" hidden></div>
-  </main>
-
-  <div id="sheet" class="overlay" hidden>
-    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <div class="panel-head">
-        <h2 id="sheet-title"></h2>
-        <button id="sheet-close" class="link">閉じる</button>
+  <div class="layout">
+    <aside id="filters" class="filters" aria-label="条件">
+      <div class="filters-head">
+        <h2>条件</h2>
+        <button id="filters-close" class="icon-btn" aria-label="閉じる"><svg class="i"><use href="#i-x"/></svg></button>
       </div>
-      <div id="sheet-body"></div>
-      <div class="panel-foot"><button id="sheet-done" class="primary"></button></div>
+      <div id="filters-body" class="filters-body"></div>
+      <div class="filters-foot">
+        <button id="clear" class="btn ghost">すべてクリア</button>
+        <button id="apply" class="btn primary">表示</button>
+      </div>
+    </aside>
+
+    <main class="results">
+      <div class="toolbar">
+        <strong id="count" aria-live="polite"></strong>
+        <select id="sort" class="select" aria-label="並び替え"></select>
+      </div>
+      <div id="chips" class="chips"></div>
+      <div id="banner" class="banner" hidden></div>
+      <div id="list" class="grid"></div>
+      <div id="sentinel"></div>
+    </main>
+
+    <section id="map" class="map" aria-label="地図"></section>
+  </div>
+
+  <button id="view" class="fab"><svg class="i"><use href="#i-map"/></svg><span>地図</span></button>
+
+  <div id="detail" class="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
+    <div class="detail-panel">
+      <div class="detail-top">
+        <button id="detail-back" class="btn ghost"><svg class="i"><use href="#i-back"/></svg>戻る</button>
+      </div>
+      <div id="detail-body" class="detail-body"></div>
+      <div class="detail-actions">
+        <button id="detail-fav" class="btn" aria-pressed="false"><svg class="i"><use href="#i-heart"/></svg><span>お気に入り</span></button>
+        <a id="detail-link" class="btn primary" target="_blank" rel="noopener">SUUMOで見る<svg class="i"><use href="#i-external"/></svg></a>
+      </div>
     </div>
   </div>
 
-  <div id="detail" class="overlay" hidden>
-    <div class="panel detail" role="dialog" aria-modal="true" aria-label="物件の詳細">
-      <div class="panel-head">
-        <button id="detail-back" class="link">← 一覧へ</button>
-        <button id="detail-star" class="star"></button>
-      </div>
-      <div id="detail-body"></div>
-    </div>
-  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
 
-  <div id="loading">物件データを読み込み中…</div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin=""></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin=""></script>
-  <script src="filter.js"></script>
-  <script src="app.js"></script>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2-6-2zM9 4v14M15 6v14"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    </defs>
+  </svg>
 </body>
 </html>

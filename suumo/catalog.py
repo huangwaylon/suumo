@@ -20,25 +20,43 @@ NEW_DAYS = 7           # 新着: a new/relisted event within this many days
 DROP_DAYS = 30         # 値下げ: a price drop within this many days
 QUAKE_CODE = "1981-06"  # 新耐震基準: built from June 1981
 
-_rooms = re.compile(r"(\d+)\s*(?:SLDK|LDK|SDK|SK|LK|DK|K|R)")
+_plan = re.compile(r"(\d+)\s*(SLDK|LDK|SDK|SK|LK|DK|K|R)")
+_KIND = {"R": 0, "K": 0, "SK": 0, "DK": 1, "SDK": 1, "LK": 1, "LDK": 2, "SLDK": 2}
 
 
-def parse_rooms(layout):
-    """'3LDK+S（納戸）' -> {3}, 'ワンルーム' -> {1}, '2LDK・4LDK' -> {2, 4}, '1LDK+2S～3LDK' -> {1, 2, 3}."""
+def plan_rank(layout):
+    """The largest plan in a layout as one comparable number, rooms * 3 + (K 0, DK 1, LDK 2):
+    'ワンルーム' -> 3, '2DK' -> 7, '3LDK+S（納戸）' -> 11, '2LDK・4LDK' -> 14. None when no plan is stated."""
     if not layout:
-        return frozenset()
+        return None
     s = unicodedata.normalize("NFKC", layout)
-    found = {int(n) for n in _rooms.findall(s)}
+    ranks = [int(n) * 3 + _KIND[k] for n, k in _plan.findall(s)]
     if "ワンルーム" in s:
-        found.add(1)
-    if found and "~" in s:  # NFKC turns ～ into ~: a range across plots or units
-        found = set(range(min(found), max(found) + 1))
-    return frozenset(found)
+        ranks.append(3)
+    return max(ranks) if ranks else None
+
+
+# The same line is written several ways ("ＪＲ山手線", "山手線", "東急大井町線", "大井町線"): one name per line.
+_OPERATORS = {
+    "JR": "山手線 中央線 総武線 京浜東北線 埼京線 常磐線 京葉線 高崎線 横須賀線 南武線 武蔵野線 "
+          "青梅線 五日市線 八高線 横浜線",
+    "東京メトロ": "銀座線 丸ノ内線 日比谷線 東西線 千代田線 有楽町線 半蔵門線 南北線 副都心線",
+    "都営": "浅草線 三田線 新宿線 大江戸線",
+    "東急": "東横線 目黒線 田園都市線 大井町線 池上線 多摩川線 世田谷線",
+}
+_BARE = {line: op + line for op, lines in _OPERATORS.items() for line in lines.split()}
+_ALIASES = {"都営地下鉄": "都営", "新交通ゆりかもめ": "ゆりかもめ", "東京臨海高速鉄道りんかい線": "りんかい線",
+            "TOKYO BRT": "東京BRT", "BRT": "東京BRT"}
 
 
 def line_name(line):
-    """'小田急線（新宿～相模大野）' -> '小田急線': SUUMO sometimes names the section in brackets."""
-    return re.sub(r"[（(].*?[）)]", "", line or "").strip()
+    """'小田急線（新宿～相模大野）' -> '小田急線', 'ＪＲ山手線' / '山手線' -> 'JR山手線',
+    '都営地下鉄三田線' -> '都営三田線'."""
+    s = unicodedata.normalize("NFKC", re.sub(r"[（(].*?[）)]", "", line or "")).strip()
+    for alias, name in _ALIASES.items():
+        if s.startswith(alias):
+            s = name + s[len(alias):]
+    return _BARE.get(s, s)
 
 
 def is_bus(st):
@@ -67,7 +85,7 @@ class Item:
         self.area = rec.get("area_code")
         self.price_lo = rec.get("price")
         self.price_hi = rec.get("price_max") or self.price_lo
-        self.rooms = parse_rooms(rec.get("layout")) if self.type != "land" else frozenset()
+        self.plan = plan_rank(rec.get("layout")) if self.type != "land" else None
         size = rec.get("floor_m2_max") or rec.get("floor_m2") or rec.get("building_m2_max") or rec.get("building_m2")
         self.size = size if self.type != "land" else None
         self.land = rec.get("land_m2_max") or rec.get("land_m2")

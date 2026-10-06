@@ -13,21 +13,21 @@ import requests
 
 from .archive import write_atomic
 from .http import USER_AGENT
+from .scope import PREFS
 
 API = "https://msearch.gsi.go.jp/address-search/AddressSearch"
 GEO_DELAY = 1.0
 SAVE_EVERY = 100  # towns between cache saves (an interrupted fill keeps its progress)
-PREF_JA = {"tokyo": "東京都", "kanagawa": "神奈川県", "chiba": "千葉県", "saitama": "埼玉県", "ibaraki": "茨城県"}
 
 _block = re.compile(r"[0-9][0-9\-－]*.*$")   # 番地 / 号 in ASCII digits after the 丁目 (full-width digit)
 
 
-def town_of(address, pref="tokyo"):
+def town_of(address, pref):
     """'東京都狛江市東和泉２-20-20' -> '東京都狛江市東和泉２'; prefixes the prefecture when SUUMO omits it."""
     if not address:
         return None
     town = _block.sub("", address).rstrip("-－ ")
-    name = PREF_JA.get(pref, "")
+    name = PREFS.get(pref, "")
     if name and not town.startswith(name):
         town = name + town
     return town or None

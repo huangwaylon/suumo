@@ -44,19 +44,19 @@ RUNNER = """
 const Filter = require(process.argv[1]);
 const fs = require("fs");
 const db = Filter.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
-const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, facet}) => {
+const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices}) => {
   const q = Object.assign(Filter.emptyQuery(), query);
-  if (facet) return Filter.facet(db, q, facet, (it) => facet === "types" ? [it.type] : [it.area]);
+  if (choices) return Filter.facets(db, q, choices);
   const hits = Filter.search(db, q);
-  return {ids: hits.map((h) => h.item.id), others: hits.map((h) => h.others.map((o) => o.id)),
-          count: Filter.count(db, q)};
+  return {ids: hits.map((it) => it.id), others: hits.map((it) => it.others), count: Filter.count(db, q)};
 });
 process.stdout.write(JSON.stringify(out));
 """
 
 
 def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY):
-    """Build the site from recs and run requests ({query, facet?}) through site/filter.js in Node."""
+    """Build the site from recs and run requests through site/filter.js in Node: {query} -> {ids, others, count},
+    {query, choices} -> the choice counts (Filter.facets)."""
     data, out = tmp_path / "data", tmp_path / "site"
     write(data, recs, areas, events)
     build(data, tmp_path / "no-geo.json", out, today=today, log=QUIET)
