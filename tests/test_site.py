@@ -1,5 +1,6 @@
 """The static site: what the build writes, and the search rules in site/filter.js (run in Node)."""
 import json
+import re
 import shutil
 import subprocess
 from datetime import date
@@ -170,3 +171,12 @@ def test_every_string_has_an_english_translation():
     i18n = FILTER_JS.parent / "i18n.js"
     out = subprocess.run([NODE, "-e", script, str(i18n)], capture_output=True, text=True, check=True)
     assert json.loads(out.stdout) == []
+
+
+def test_every_string_the_page_uses_exists():
+    app = (FILTER_JS.parent / "app.js").read_text()
+    i18n = (FILTER_JS.parent / "i18n.js").read_text()
+    ja = i18n[i18n.index("ja: {"):i18n.index("en: {")]
+    used = set(re.findall(r'\bt\("(\w+)', app)) | set(re.findall(r'data-t(?:-label|-placeholder)?="(\w+)"',
+                                                               (FILTER_JS.parent / "index.html").read_text()))
+    assert {k for k in used if not re.search(rf"\b{k}:", ja)} == set()

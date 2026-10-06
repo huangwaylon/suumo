@@ -8,24 +8,34 @@
 
   // ---------- settings: language and theme ----------
 
-  const settings = { lang: "ja", theme: "auto", ...JSON.parse(localStorage.getItem("suumo.settings") || "{}") };
+  const stored = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+  const settings = { lang: "ja", theme: "auto", ...stored("suumo.settings", {}) };
+  if (!I18N[settings.lang]) settings.lang = "ja";
   let S = I18N[settings.lang] || I18N.ja;
   const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
   const t = (key, ...args) => { const v = lookup(S, key) ?? lookup(I18N.ja, key); return typeof v === "function" ? v(...args) : v; };
-  const value = (v) => (v == null ? v : S.values?.[v] ?? v);  // fixed SUUMO values (land rights, deal type...) in English
+  // fixed SUUMO values (land rights, zoning, parking...) in English; "商業、１種住居" part by part
+  const value = (v) => (v == null || !S.values ? v : S.values[v] ?? v.split("、").map((p) => S.values[p] ?? p).join(", "));
+  const place = (name) => S.places?.[name] ?? name;
   const DARK = matchMedia("(prefers-color-scheme: dark)");
 
-  function applySettings() {
-    S = I18N[settings.lang] || I18N.ja;
+  function applyTheme() {
     const dark = settings.theme === "dark" || (settings.theme === "auto" && DARK.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+    localStorage.setItem("suumo.settings", JSON.stringify(settings));
+  }
+
+  function applyLanguage() {
+    S = I18N[settings.lang];
     document.documentElement.lang = S.lang;
-    document.querySelector('meta[name="theme-color"]').content = dark ? "#171a21" : "#ffffff";
+    document.title = t("title");
     for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
     for (const el of document.querySelectorAll("[data-t-label]")) el.setAttribute("aria-label", t(el.dataset.tLabel));
     for (const el of document.querySelectorAll("[data-t-placeholder]")) el.placeholder = t(el.dataset.tPlaceholder);
     $("sort").innerHTML = Object.entries(t("sorts")).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
     $("filters-body").innerHTML = "";  // rebuilt in the new language
+    $("sort").value = q.sort;
     localStorage.setItem("suumo.settings", JSON.stringify(settings));
   }
 
@@ -33,7 +43,8 @@
     const group = (name, options) => `<div class="seg" role="group">${Object.entries(options).map(([k, label]) =>
       `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${settings[name] === k}">${esc(label)}</button>`).join("")}</div>`;
     $("settings-body").innerHTML = `<section class="sec"><h3>${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
-      <section class="sec"><h3>${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>`;
+      <section class="sec"><h3>${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>
+      ${db?.index.updated ? `<p class="meta">${esc(t("updated", day(db.index.updated.slice(0, 10))))}</p>` : ""}`;
   }
 
   // ---------- choices ----------
@@ -70,14 +81,15 @@
   let facets = null, facetsFor = null;
   let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
-  const favs = new Set(JSON.parse(localStorage.getItem("suumo.favorites") || "[]"));
+  const favs = new Set([].concat(stored("suumo.favorites", [])).filter((k) => typeof k === "string"));
 
   // ---------- formatting ----------
 
-  const num = (n) => n.toLocaleString(S.lang === "en" ? "en-US" : "ja-JP");
+  const formats = {};
+  const num = (n) => (formats[S.lang] ||= new Intl.NumberFormat(S.lang === "en" ? "en-US" : "ja-JP")).format(n);
   function money(yen, html = false) {
     if (yen == null) return t("undecided");
-    if (S.lang === "en") return yen >= 1e8 ? `¥${+(yen / 1e8).toFixed(2)}B` : `¥${+(yen / 1e6).toFixed(1)}M`;
+    if (S.lang === "en") return yen >= 1e9 ? `¥${+(yen / 1e9).toFixed(2)}B` : `¥${+(yen / 1e6).toFixed(1)}M`;
     const m = Math.round(yen / 1e4), oku = Math.floor(m / 1e4), rest = m % 1e4;
     const unit = (s) => (html ? `<small>${s}</small>` : s);
     if (oku) return `${oku}${unit("億")}${rest ? num(rest) + unit("万円") : unit("円")}`;
@@ -93,14 +105,15 @@
     if (it.type === "new_condo" || it.type === "new_house") return t("newBuild");
     return it.age == null ? "" : it.age === 0 ? t("ageUnder1") : t("ageYears", it.age);
   }
-  function sizes(it) {
-    if (isCondo(it.type)) return [m2(it.size)];
-    if (it.type === "land") return [`${t("land")} ${m2(it.land)}`];
-    return [it.land && `${t("land")} ${m2(it.land)}`, it.size && `${t("building")} ${m2(it.size)}`].filter(Boolean);
+  function sizes(it) {  // on cards: whole ㎡, land and building on one line
+    const r = (v) => `${Math.round(v)}㎡`;
+    if (isCondo(it.type)) return [it.size && m2(it.size)];
+    return [[it.land && `${t("land")} ${r(it.land)}`, it.size && `${t("building")} ${r(it.size)}`].filter(Boolean).join(" · ")];
   }
   function station(it) {
-    let best = null;
-    for (const [s, w] of it.stations) if (w != null && (!best || w < best[1])) best = [s, w];
+    const closest = (chosen) => it.stations.reduce((best, [s, w]) =>
+      (w != null && (!chosen || q.stations.includes(s)) && (!best || w < best[1]) ? [s, w] : best), null);
+    const best = (q.stations.length && closest(true)) || closest(false);  // the chosen stations first
     if (best) return t("walk", best[0], best[1]);
     return it.stations.length ? t("bus", it.stations[0][0]) : "";
   }
@@ -115,7 +128,8 @@
     return `${IMG}${encodeURIComponent(p)}&w=${w}&h=${h}`;
   }
   const typeName = (type) => t("types")[type];
-  const areaName = (code) => areaNames.get(code) || code;
+  const safeUrl = (u) => (/^https:\/\//.test(u || "") ? u : "#");
+  const areaName = (code) => place(areaNames.get(code) || code);
   const planLabel = (v) => PLANS.find(([p]) => p === v)?.[1] ?? "";
 
   // ---------- URL <-> state ----------
@@ -133,10 +147,12 @@
       const v = p.get(k), d = base[f];
       if (Array.isArray(d)) q[f] = v ? v.split(",") : [];
       else if (typeof d === "boolean") q[f] = v === "1";
-      else if (d === null) q[f] = Number.isFinite(+v) && v !== "" ? +v : null;
+      else if (d === null) q[f] = CHOICES[f].includes(+v) ? +v : null;
       else q[f] = v;
     }
-    if (!t("sorts")[q.sort]) q.sort = "new";
+    if (!Object.hasOwn(t("sorts"), q.sort)) q.sort = "new";
+    q.types = q.types.filter((type) => db.index.types.includes(type));
+    q.areas = q.areas.filter((a) => areaNames.has(a));
     shared = p.get("ids") ? p.get("ids").split(",") : [];
     mode = shared.length ? "shared" : p.get("fav") === "1" ? "favorites" : "search";
     showMap = p.get("view") === "map";
@@ -161,8 +177,8 @@
 
   function compute() {
     if (mode === "search") return Filter.search(db, q);
-    const keys = mode === "favorites" ? favs : new Set(shared);
-    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }).filter((it) => keys.has(it.key));
+    const keys = mode === "favorites" ? [...favs] : shared;
+    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, keys.map((k) => db.byKey.get(k)).filter(Boolean));
   }
 
   function update(top = true) {
@@ -226,7 +242,7 @@
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
         <div class="meta">${esc(station(it))}</div>
-        <div class="meta">${esc([it.town, it.name || typeName(it.type)].filter(Boolean).join(" · "))}</div>
+        <div class="meta">${esc([it.town, it.name || (q.types.length !== 1 && typeName(it.type))].filter(Boolean).join(" · "))}</div>
         <div class="tags">${tags(it)}</div>
       </div></a>
       <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favorites"))}">${icon("heart")}</button></article>`;
@@ -238,15 +254,11 @@
       return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
     const loosen = active.map(([label, remove], i) => {
-      const saved = q;
-      q = JSON.parse(JSON.stringify(q));
-      remove();
-      const n = Filter.count(db, q);
-      q = saved;
-      return n ? `<button class="chip" data-remove="${i}">${esc(t("removeN", label))}<span class="n">${t("count", num(n))}</span></button>` : "";
+      const n = Filter.count(db, remove(structuredClone(q)));
+      return n ? `<button class="chip" data-remove="${i}">${esc(t("remove", label))}<span class="n">${t("count", num(n))}</span></button>` : "";
     }).join("");
     return `<div class="empty"><h3>${esc(t("emptyTitle"))}</h3><p>${esc(t("emptyHint"))}</p>
-      <div class="chips">${loosen}</div>${active.length ? `<button class="btn" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
+      <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
 
   function renderBanner() {
@@ -263,8 +275,9 @@
 
   // The conditions in force, as [label, remove()] for the chips and the empty state.
   function activeConditions() {
-    const out = [], drop = (f, v) => () => { q[f] = q[f].filter((x) => x !== v); };
-    const reset = (...fs) => () => { const e = Filter.emptyQuery(); for (const f of fs) q[f] = e[f]; };
+    // remove(query) takes the condition out of the given query (and returns it)
+    const out = [], drop = (f, v) => (qq) => { qq[f] = qq[f].filter((x) => x !== v); return qq; };
+    const reset = (...fs) => (qq) => { const e = Filter.emptyQuery(); for (const f of fs) qq[f] = e[f]; return qq; };
     if (q.text) out.push([t("chipText", q.text), reset("text")]);
     for (const type of q.types) out.push([typeName(type), drop("types", type)]);
     if (q.priceMin != null || q.priceMax != null) {
@@ -297,7 +310,7 @@
   const flag = (field, n) => chipBtn(`data-flag="${field}"`, t("flags")[field], n, q[field]);
   function select(field, label, values, fmt) {
     return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${values.map((v) =>
-      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}（${num(facets[field][v] || 0)}）</option>`).join("")}</select></label>`;
+      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))} ${esc(t("paren", num(facets[field][v] || 0)))}</option>`).join("")}</select></label>`;
   }
 
   function renderFilters() {
@@ -347,9 +360,9 @@
     const prefs = new Set(db.index.areas.map((a) => a[2])), kinds = t("kinds");
     const groups = new Map();
     for (const [code, name, pref] of [...db.index.areas].sort((a, b) => a[0].localeCompare(b[0]))) {
-      const g = `${prefs.size > 1 ? db.index.prefs[pref] + " " : ""}${kinds[code[2]] || kinds[3]}`;
+      const g = `${prefs.size > 1 ? place(db.index.prefs[pref]) + " " : ""}${kinds[code[2]] || kinds[3]}`;
       if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push([code, many("areas", code, name, facets.areas[code] || 0)]);
+      groups.get(g).push([code, many("areas", code, place(name), facets.areas[code] || 0)]);
     }
     return [...groups].map(([g, chips], i) => {
       const open = i === 0 || chips.some(([code]) => q.areas.includes(code));
@@ -360,6 +373,7 @@
   function onFilterClick(e) {
     const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
     if (!b) return;
+    mode = "search";
     const v = b.dataset.value;
     if (b.dataset.cleartext) q.text = "";
     else if (b.dataset.many) {
@@ -391,6 +405,8 @@
     })));
     return leaflet;
   }
+  // Leaflet loaded (true) or not available (false; retried next time).
+  const mapReady = () => loadLeaflet().then(() => true, () => { leaflet = null; return false; });
 
   const pins = new Map();  // one icon per count, reused across redraws
   function pin(n) {
@@ -403,9 +419,10 @@
   }
 
   async function drawMap() {
-    await loadLeaflet();
+    if (!(await mapReady()) || !mapVisible()) return;
     if (!map) {
-      map = L.map("map", { zoomControl: false }).setView([35.68, 139.7], 11);
+      map = L.map("map", { zoomControl: false });
+      map.on("popupopen popupclose", (e) => $("map").classList.toggle("popup-open", e.type === "popupopen"));
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
@@ -425,10 +442,11 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list))));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("mapEmpty");
-    if (fittedFor !== renderedFor && towns.size) {  // follow the results when the conditions change
+    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("emptyTitle");
+    if (fittedFor !== renderedFor) {  // follow the results when the conditions change
       fittedFor = renderedFor;
-      map.fitBounds(coreBounds([...towns.values()]), { padding: [30, 30], maxZoom: 15 });
+      const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
+      if (points.length) map.fitBounds(coreBounds(points), { padding: [30, 30], maxZoom: 15 });
     }
   }
 
@@ -462,6 +480,7 @@
     document.body.style.overflow = "hidden";
     $("detail-back").focus();
     setFavButton();
+    $("detail-link").removeAttribute("href");
     const body = $("detail-body");
     body.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
@@ -470,15 +489,14 @@
       if (!res.ok) throw new Error(res.status);
       r = await res.json();
     } catch {
-      body.innerHTML = `<div class="empty"><h3>${esc(t("gone"))}</h3></div>`;
+      if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t("gone"))}</h3></div>`;
       return;
     }
     if (openKey !== key) return;
-    $("detail-link").href = r.url;
+    $("detail-link").href = safeUrl(r.url);
     body.innerHTML = detailHtml(r, it);
     if (it?.lat != null) {
-      await loadLeaflet();
-      if (openKey !== key) return;
+      if (!(await mapReady()) || openKey !== key) return;
       detailMap?.remove();
       detailMap = L.map("detail-map", { zoomControl: false, attributionControl: false, dragging: !L.Browser.mobile })
         .setView([it.lat, it.lng], 15);
@@ -491,11 +509,11 @@
     const type = r.type, L_ = (k) => t(`d.${k}`);
     const rows = (pairs) => pairs.filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${esc(L_(k))}</dt><dd>${v}</dd>`).join("");
     const sec = (k, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h2>${esc(L_(k))}</h2><dl>${html}</dl></section>` : ""; };
-    const yen = (v) => (v ? t("yen", num(v)) : null);
+    const yen = (v) => (v ? esc(t("yen", num(v))) : null);
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
-    const unit = it?.unit ? t("perM2", it.unit) + (isCondo(type) ? "" : `（${t("perTsubo", Math.round(it.unit * TSUBO))}）`) : "";
+    const unit = it?.unit ? t("perM2", it.unit) + (isCondo(type) ? "" : t("paren", t("perTsubo", Math.round(it.unit * TSUBO)))) : "";
     const facts = [["layout", r.layout], [isCondo(type) ? "floor" : "building", m2(r.floor_m2 || r.building_m2)],
-      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && `${m2(r.land_m2)}・${tsubo(r.land_m2)}`],
+      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && `${m2(r.land_m2)} ${t("paren", tsubo(r.land_m2))}`],
       ["age", it ? age(it) : ""], ["station", it ? station(it) : ""], ["unit", unit]].filter(([, v]) => v);
     const history = r.history?.length ? r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>")
       : esc(t("unchanged", day(r.new_date || r.first_seen)));
@@ -504,30 +522,30 @@
     const access = (r.stations || []).map((s) => esc([s.line, t("station", s.name), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
       : s.walk != null ? t("walkMin", s.walk) : ""].filter(Boolean).join(" "))).join("<br>");
     return `
-      ${r.image ? `<img class="hero" src="${esc(r.image.replace(/w=\d+&h=\d+/, "w=640&h=480"))}" alt="">` : ""}
+      ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="">` : ""}
       <div class="d-head">
         <h1 id="detail-title">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h1>
-        <div class="meta">${esc([r.address, typeName(type)].filter(Boolean).join(" · "))}</div>
+        <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
         <div class="d-price num">${it ? price(it, true) : money(r.price, true)}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
       ${sec("history", [["price", history]])}
       ${sec("access", [["nearest", access]])}
-      ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? `（${esc(r.mgmt_form)}）` : "")],
+      ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", r.mgmt_form)) : "")],
         ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))], ["repairOnce", yen(r.repair_fund_once)],
         ["otherFees", txt(r.other_fees)], ["parking", txt(parking)]])}
       ${sec("bldg", [["built", r.built && t("month", +r.built.slice(0, 4), +r.built.slice(5, 7)) + (r.built_planned ? t("planned") : "")],
         ["structure", txt(r.structure)], ["floors", txt([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
         ["units", isCondo(type) && r.total_units ? t("unitsN", num(r.total_units)) : null], ["direction", txt(r.direction)],
         ["reform", txt(r.reform?.text || r.reform?.date)], ["builder", txt(r.builder)], ["handover", txt(r.handover)]])}
-      ${sec("legal", [["rights", r.land_rights && esc(value(r.land_rights)) + (r.land_rights_note ? `（${esc(r.land_rights_note)}）` : "")],
-        ["zoning", txt(r.zoning)], ["ratios", r.coverage_pct || r.far_pct ? `${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%` : null],
+      ${sec("legal", [["rights", r.land_rights && esc(value(r.land_rights) + (r.land_rights_note ? t("paren", r.land_rights_note) : ""))],
+        ["zoning", txt(r.zoning)], ["ratios", r.coverage_pct || r.far_pct ? esc(`${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%`) : null],
         ["road", txt(road)], ["category", txt(r.land_category)], ["landStatus", txt(r.land_status)], ["condition", r.build_condition ? t("yes") : null],
         ["utilities", txt(r.utilities)], ["restrictions", txt(r.restrictions)]])}
       ${r.features?.length ? `<section class="d-sec"><h2>${esc(L_("features"))}</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(f.normalize("NFKC"))}</span>`).join("")}</div></section>` : ""}
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
-        `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
+        `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
         ["seen", day(r.new_date || r.first_seen)]])}
       ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div id="detail-map"></div>` : ""}`;
   }
@@ -559,7 +577,9 @@
     if (favs.has(key)) favs.delete(key); else favs.add(key);
     saveFavs();
     document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
+    if (openKey === key) setFavButton();
     toast(t(favs.has(key) ? "favAdded" : "favRemoved"));
+    if (mode === "favorites") render();
   }
 
   function setFavButton() {
@@ -576,6 +596,12 @@
   }
 
   // ---------- events ----------
+
+  function clearAll() {
+    q = { ...Filter.emptyQuery(), sort: q.sort };
+    mode = "search";
+    update(false);
+  }
 
   function openFilters(open) {
     document.body.classList.toggle("show-filters", open);
@@ -609,7 +635,7 @@
     $("filters-open").addEventListener("click", () => openFilters(true));
     $("filters-close").addEventListener("click", () => openFilters(false));
     $("apply").addEventListener("click", () => openFilters(false));
-    $("clear").addEventListener("click", () => { q = { ...Filter.emptyQuery(), sort: q.sort }; update(false); });
+    $("clear").addEventListener("click", clearAll);
     $("filters-body").addEventListener("click", onFilterClick);
     $("filters-body").addEventListener("change", (e) => {
       const f = e.target.dataset.num;
@@ -623,31 +649,29 @@
       const b = e.target.closest("[data-setting]");
       if (!b) return;
       settings[b.dataset.setting] = b.dataset.value;
-      applySettings();
+      if (b.dataset.setting === "theme") applyTheme();
+      else { applyLanguage(); render(); if (openKey) showDetail(openKey); }
       renderSettings();
-      render();
-      if (openKey) showDetail(openKey);
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
     });
-    DARK.addEventListener("change", () => { if (settings.theme === "auto") applySettings(); });
+    DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
     $("favs").addEventListener("click", () => { mode = mode === "favorites" ? "search" : "favorites"; update(); });
     $("view").addEventListener("click", () => { showMap = !showMap; update(); });
     $("detail-back").addEventListener("click", closeDetail);
     $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
-    $("detail-fav").addEventListener("click", () => { toggleFav(openKey); setFavButton(); if (mode === "favorites") render(); });
     document.addEventListener("click", (e) => {
       const fav = e.target.closest("[data-fav]");
-      if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav); if (mode === "favorites") render(); return; }
+      if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav || openKey); return; }
       const link = e.target.closest("a[data-key]");
       if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openDetail(link.dataset.key); return; }
       const b = e.target.closest("button");
       if (!b) return;
-      if (b.dataset.remove != null) { activeConditions()[+b.dataset.remove][1](); update(); }
-      else if (b.dataset.clear) { q = { ...Filter.emptyQuery(), sort: q.sort }; update(); }
+      if (b.dataset.remove != null) { activeConditions()[+b.dataset.remove][1](q); update(); }
+      else if (b.dataset.clear) clearAll();
       else if (b.dataset.share) {
         const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
         if (navigator.share && COARSE.matches) navigator.share({ title: t("shareTitle", favs.size), url }).catch(() => {});
-        else navigator.clipboard?.writeText(url).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
+        else (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
       } else if (b.dataset.import) {
         shared.forEach((k) => favs.add(k));
         saveFavs();
@@ -671,16 +695,18 @@
   function route() {
     const key = readHash();
     if (hashFor() !== renderedFor) render();
-    if (key && db.byKey.has(key)) showDetail(key);
+    if (key) showDetail(key);
     else if (!$("detail").hidden) { pushed = false; hideDetail(); }
   }
 
   async function start() {
-    applySettings();
+    applyTheme();
+    applyLanguage();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);
     try {
       const index = await (await fetch("data/index.json")).json();
       db = Filter.load(index);
+      for (const it of db.items) it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");

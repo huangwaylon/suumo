@@ -39,9 +39,9 @@
     return { index, items, flags: index.flags, byKey: new Map(items.map((it) => [it.key, it])) };
   }
 
-  // The text a search word is looked for in, built the first time a text search runs.
+  // The text a search word is looked for in (it.alias: e.g. the English area name, set by the page), built the first time a text search runs.
   const haystack = (it) => (it.haystack ??= normalize(
-    [it.name, it.town, it.areaName, it.layout, ...it.stations.map(([s]) => s + "駅")].join(" ")));
+    [it.name, it.town, it.areaName, it.alias, it.layout, ...it.stations.map(([s]) => s + "駅")].join(" ")));
 
   function walkTo(it, chosen) {
     let best = null;
@@ -109,8 +109,9 @@
     return 0;
   }
 
-  function search(db, q) {
-    const hits = db.items.filter((it) => matches(db, it, q));
+  // The matching items (of all, or of the given ones), sorted.
+  function search(db, q, items = db.items) {
+    const hits = items.filter((it) => matches(db, it, q));
     const keys = new Map(hits.map((it) => [it, sortKey(it, q)]));
     return hits.sort((a, b) => compare(keys.get(a), keys.get(b)));
   }
