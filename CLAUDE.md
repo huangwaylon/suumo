@@ -25,6 +25,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
+| `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
 | `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`). Layout by CSS breakpoints: <700 phone, <1100 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
@@ -76,7 +77,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   event within 7 days, 値下げ = a drop within 30 days.
 - **Public repo:** nothing secret in git (no `.env`, no tokens); commits use the GitHub noreply address
   (`git config user.email` is set in this repo). `uv.lock` isn't committed (it would pin the local package mirror).
-- **User-facing text on the site is Japanese**; code, logs and docs are English.
+- **User-facing text lives in `site/i18n.js`**, in Japanese (default) and English; never hard-code it in app.js or
+  index.html (static text uses `data-t`, `data-t-label`, `data-t-placeholder`). Theme is `data-theme` on <html>,
+  set before the first paint by the inline script in index.html. Code, logs and docs are English.
 
 ## SUUMO quirks the parsers rely on
 

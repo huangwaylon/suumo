@@ -1,12 +1,13 @@
 """The static site: what the build writes, and the search rules in site/filter.js (run in Node)."""
 import json
 import shutil
+import subprocess
 from datetime import date
 
 import pytest
 
 from suumo.site import _name, build
-from tests.helpers import FIXTURES, NODE, QUIET, rec, site_queries
+from tests.helpers import FILTER_JS, FIXTURES, NODE, QUIET, rec, site_queries
 
 needs_node = pytest.mark.skipif(not NODE, reason="node not installed")
 LAND = {"layout": None, "floor_m2": None, "built": None}
@@ -154,3 +155,18 @@ def test_text_search(tmp_path):
     assert ids(tmp_path, recs, {"text": "パークビュー"}, {"text": "ﾊﾟｰｸﾋﾞｭｰ 2階"}, {"text": "ぱーくびゅー"},
                {"text": "喜多見駅"}) == [
         ["2", "1"], ["1"], ["2", "1"], ["3"]]   # half-width kana, hiragana, every word must match, stations
+
+
+@needs_node
+def test_every_string_has_an_english_translation():
+    script = """
+    global.window = {}; require(process.argv[1]);
+    const keys = (o, p = "") => Object.entries(o).flatMap(([k, v]) =>
+      v && typeof v === "object" && !Array.isArray(v) ? keys(v, p + k + ".") : [p + k]);
+    const ja = new Set(keys(window.I18N.ja)), en = new Set(keys(window.I18N.en));
+    const missing = [...ja].filter((k) => !en.has(k) && !k.startsWith("values."));
+    process.stdout.write(JSON.stringify(missing));
+    """
+    i18n = FILTER_JS.parent / "i18n.js"
+    out = subprocess.run([NODE, "-e", script, str(i18n)], capture_output=True, text=True, check=True)
+    assert json.loads(out.stdout) == []

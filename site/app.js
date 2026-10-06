@@ -1,26 +1,50 @@
 // The search page. Conditions live in the URL (shareable); results show as a list, and as a map on wide screens
-// or on request; a listing opens over the page. The search rules are in filter.js.
+// or on request; a listing opens over the page. The search rules are in filter.js, the strings in i18n.js.
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   const icon = (name) => `<svg class="i"><use href="#i-${name}"/></svg>`;
 
+  // ---------- settings: language and theme ----------
+
+  const settings = { lang: "ja", theme: "auto", ...JSON.parse(localStorage.getItem("suumo.settings") || "{}") };
+  let S = I18N[settings.lang] || I18N.ja;
+  const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
+  const t = (key, ...args) => { const v = lookup(S, key) ?? lookup(I18N.ja, key); return typeof v === "function" ? v(...args) : v; };
+  const value = (v) => (v == null ? v : S.values?.[v] ?? v);  // fixed SUUMO values (land rights, deal type...) in English
+  const DARK = matchMedia("(prefers-color-scheme: dark)");
+
+  function applySettings() {
+    S = I18N[settings.lang] || I18N.ja;
+    const dark = settings.theme === "dark" || (settings.theme === "auto" && DARK.matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.lang = S.lang;
+    document.querySelector('meta[name="theme-color"]').content = dark ? "#171a21" : "#ffffff";
+    for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
+    for (const el of document.querySelectorAll("[data-t-label]")) el.setAttribute("aria-label", t(el.dataset.tLabel));
+    for (const el of document.querySelectorAll("[data-t-placeholder]")) el.placeholder = t(el.dataset.tPlaceholder);
+    $("sort").innerHTML = Object.entries(t("sorts")).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+    $("filters-body").innerHTML = "";  // rebuilt in the new language
+    localStorage.setItem("suumo.settings", JSON.stringify(settings));
+  }
+
+  function renderSettings() {
+    const group = (name, options) => `<div class="seg" role="group">${Object.entries(options).map(([k, label]) =>
+      `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${settings[name] === k}">${esc(label)}</button>`).join("")}</div>`;
+    $("settings-body").innerHTML = `<section class="sec"><h3>${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
+      <section class="sec"><h3>${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>`;
+  }
+
   // ---------- choices ----------
 
-  const TYPES = { used_condo: "中古マンション", new_condo: "新築マンション", used_house: "中古一戸建て",
-    new_house: "新築一戸建て", land: "土地" };
-  const SORTS = { new: "新着順", price_asc: "価格が安い順", price_desc: "価格が高い順", size_desc: "広い順",
-    walk_asc: "駅から近い順", age_asc: "築年数が新しい順", unit_asc: "㎡単価が安い順" };
   const PRICES = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000, 15000, 20000, 30000].map((m) => m * 1e4);
   const PLANS = [[3, "1K"], [5, "1LDK"], [7, "2DK"], [8, "2LDK"], [10, "3DK"], [11, "3LDK"], [14, "4LDK"]];
   const SIZES = [40, 50, 60, 70, 80, 100, 120];
   const LANDS = [50, 80, 100, 120, 150, 200];
-  const AGES = [[0, "新築"], [5, "5年以内"], [10, "10年以内"], [20, "20年以内"], [30, "30年以内"]];
+  const AGES = [0, 5, 10, 20, 30];
   const WALKS = [5, 7, 10, 15, 20];
-  const FLAGS = [["freehold", "所有権のみ"], ["noCondition", "建築条件なし"], ["newOnly", "新着（7日）"],
-    ["dropsOnly", "値下げ（30日）"], ["post1981", "新耐震基準"]];
-  const KINDS = { 1: "区部", 2: "市部" };  // third digit of a JIS municipality code; others are towns/villages
+  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"];
   const PAGE = 30, TSUBO = 3.30578;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
   const TILES = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
@@ -45,36 +69,40 @@
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
   let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
+  let areaNames = new Map();
   const favs = new Set(JSON.parse(localStorage.getItem("suumo.favorites") || "[]"));
 
   // ---------- formatting ----------
 
-  function man(yen, html = false) {
-    if (yen == null) return "価格未定";
+  const num = (n) => n.toLocaleString(S.lang === "en" ? "en-US" : "ja-JP");
+  function money(yen, html = false) {
+    if (yen == null) return t("undecided");
+    if (S.lang === "en") return yen >= 1e8 ? `¥${+(yen / 1e8).toFixed(2)}B` : `¥${+(yen / 1e6).toFixed(1)}M`;
     const m = Math.round(yen / 1e4), oku = Math.floor(m / 1e4), rest = m % 1e4;
     const unit = (s) => (html ? `<small>${s}</small>` : s);
-    if (oku) return `${oku}${unit("億")}${rest ? rest.toLocaleString() + unit("万円") : unit("円")}`;
-    return m.toLocaleString() + unit("万円");
+    if (oku) return `${oku}${unit("億")}${rest ? num(rest) + unit("万円") : unit("円")}`;
+    return num(m) + unit("万円");
   }
-  const price = (it, html) => man(it.price, html) + (it.priceHi && it.priceHi !== it.price ? `〜${man(it.priceHi, html)}` : "");
+  const price = (it, html) => money(it.price, html) +
+    (it.priceHi && it.priceHi !== it.price ? `${S.lang === "en" ? "–" : "〜"}${money(it.priceHi, html)}` : "");
   const m2 = (v) => (v ? `${+v.toFixed(2)}㎡` : "");
-  const tsubo = (v) => (v ? `${(v / TSUBO).toFixed(1)}坪` : "");
-  const isCondo = (t) => t === "used_condo" || t === "new_condo";
-  const day = (d) => { const s = String(d ?? "").replaceAll("-", ""); return s.length === 8 ? `${+s.slice(0, 4)}年${+s.slice(4, 6)}月${+s.slice(6)}日` : ""; };
+  const tsubo = (v) => (v ? t("tsubo", (v / TSUBO).toFixed(1)) : "");
+  const isCondo = (type) => type === "used_condo" || type === "new_condo";
+  const day = (d) => { const s = String(d ?? "").replaceAll("-", ""); return s.length === 8 ? t("date", +s.slice(0, 4), +s.slice(4, 6), +s.slice(6)) : ""; };
   function age(it) {
-    if (it.type === "new_condo" || it.type === "new_house") return "新築";
-    return it.age == null ? "" : it.age === 0 ? "築1年未満" : `築${it.age}年`;
+    if (it.type === "new_condo" || it.type === "new_house") return t("newBuild");
+    return it.age == null ? "" : it.age === 0 ? t("ageUnder1") : t("ageYears", it.age);
   }
-  function size(it) {
-    if (isCondo(it.type)) return m2(it.size);
-    if (it.type === "land") return `土地 ${m2(it.land)}`;
-    return [it.land && `土地 ${m2(it.land)}`, it.size && `建物 ${m2(it.size)}`].filter(Boolean).join(" / ");
+  function sizes(it) {
+    if (isCondo(it.type)) return [m2(it.size)];
+    if (it.type === "land") return [`${t("land")} ${m2(it.land)}`];
+    return [it.land && `${t("land")} ${m2(it.land)}`, it.size && `${t("building")} ${m2(it.size)}`].filter(Boolean);
   }
   function station(it) {
     let best = null;
     for (const [s, w] of it.stations) if (w != null && (!best || w < best[1])) best = [s, w];
-    if (best) return `${best[0]}駅 徒歩${best[1]}分`;
-    return it.stations.length ? `${it.stations[0][0]}駅 バス` : "";
+    if (best) return t("walk", best[0], best[1]);
+    return it.stations.length ? t("bus", it.stations[0][0]) : "";
   }
   function image(it, w, h) {
     let p = it.image;
@@ -86,6 +114,9 @@
     }
     return `${IMG}${encodeURIComponent(p)}&w=${w}&h=${h}`;
   }
+  const typeName = (type) => t("types")[type];
+  const areaName = (code) => areaNames.get(code) || code;
+  const planLabel = (v) => PLANS.find(([p]) => p === v)?.[1] ?? "";
 
   // ---------- URL <-> state ----------
 
@@ -105,7 +136,7 @@
       else if (d === null) q[f] = Number.isFinite(+v) && v !== "" ? +v : null;
       else q[f] = v;
     }
-    if (!SORTS[q.sort]) q.sort = "new";
+    if (!t("sorts")[q.sort]) q.sort = "new";
     shared = p.get("ids") ? p.get("ids").split(",") : [];
     mode = shared.length ? "shared" : p.get("fav") === "1" ? "favorites" : "search";
     showMap = p.get("view") === "map";
@@ -143,9 +174,8 @@
 
   function render() {
     renderedFor = hashFor();
-    const covered = document.body.classList.contains("show-filters") && !WIDE.matches;
-    if (covered) {  // only the sheet is visible: its counts are enough until it closes
-      listStale = true;
+    if (document.body.classList.contains("show-filters") && !WIDE.matches) {
+      listStale = true;  // only the sheet is visible: its counts are enough until it closes
       renderFilters();
       return;
     }
@@ -154,7 +184,7 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = `${hits.length.toLocaleString()}件`;
+    $("count").textContent = t("count", num(hits.length));
     const active = activeConditions();
     $("filters-n").hidden = !active.length;
     $("filters-n").textContent = active.length;
@@ -162,9 +192,9 @@
     $("favs-n").textContent = favs.size;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     $("chips").innerHTML = mode === "search" ? active.map(([label], i) =>
-      `<button class="chip" data-remove="${i}" aria-label="${esc(label)}を外す">${esc(label)}<svg class="i x"><use href="#i-x"/></svg></button>`).join("") : "";
+      `<button class="chip" data-remove="${i}" aria-label="${esc(t("remove", label))}">${esc(label)}${icon("x")}</button>`).join("") : "";
     renderBanner();
-    $("view").innerHTML = showMap ? `${icon("list")}<span>リスト</span>` : `${icon("map")}<span>地図</span>`;
+    $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
     $("list").innerHTML = hits.length ? "" : emptyState(active);
     shown = 0;
     more();
@@ -180,32 +210,32 @@
 
   function tags(it) {
     const F = db.flags, out = [];
-    if (it.flags & F.new) out.push('<span class="tag new">新着</span>');
-    if (it.flags & F.dropped) out.push('<span class="tag drop">値下げ</span>');
-    if (it.flags & F.leasehold) out.push('<span class="tag warn">借地権</span>');
-    if (it.flags & F.conditional) out.push('<span class="tag warn">建築条件付</span>');
-    if (it.others) out.push(`<span class="tag">ほか${it.others}社も掲載</span>`);
+    if (it.flags & F.new) out.push(`<span class="tag new">${t("tag.new")}</span>`);
+    if (it.flags & F.dropped) out.push(`<span class="tag drop">${t("tag.dropped")}</span>`);
+    if (it.flags & F.leasehold) out.push(`<span class="tag warn">${t("tag.leasehold")}</span>`);
+    if (it.flags & F.conditional) out.push(`<span class="tag warn">${t("tag.conditional")}</span>`);
+    if (it.others) out.push(`<span class="tag">${t("others", it.others)}</span>`);
     return out.join("");
   }
 
   function card(it) {
-    const spec = [it.layout, ...size(it).split(" / "), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
+    const spec = [it.layout, ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
       <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
         <div class="meta">${esc(station(it))}</div>
-        <div class="meta">${esc([it.town, it.name || TYPES[it.type]].filter(Boolean).join(" · "))}</div>
+        <div class="meta">${esc([it.town, it.name || typeName(it.type)].filter(Boolean).join(" · "))}</div>
         <div class="tags">${tags(it)}</div>
       </div></a>
-      <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="お気に入り">${icon("heart")}</button></article>`;
+      <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favorites"))}">${icon("heart")}</button></article>`;
   }
 
   function emptyState(active) {
     if (mode !== "search") {
-      return `<div class="empty"><h3>${mode === "favorites" ? "お気に入りはまだありません" : "物件が見つかりません"}</h3>
-        <p>${mode === "favorites" ? "物件のハートを押すと、ここに保存されます。" : "掲載が終わった可能性があります。"}</p></div>`;
+      const [title, hint] = t(mode === "favorites" ? "favEmpty" : "sharedEmpty");
+      return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
     const loosen = active.map(([label, remove], i) => {
       const saved = q;
@@ -213,21 +243,21 @@
       remove();
       const n = Filter.count(db, q);
       q = saved;
-      return n ? `<button class="chip" data-remove="${i}">${esc(label)}を外す<span class="n">${n.toLocaleString()}件</span></button>` : "";
+      return n ? `<button class="chip" data-remove="${i}">${esc(t("removeN", label))}<span class="n">${t("count", num(n))}</span></button>` : "";
     }).join("");
-    return `<div class="empty"><h3>条件に合う物件がありません</h3><p>条件をひとつ外すと見つかるかもしれません。</p>
-      <div class="chips">${loosen}</div>${active.length ? '<button class="btn" data-clear="1">すべてクリア</button>' : ""}</div>`;
+    return `<div class="empty"><h3>${esc(t("emptyTitle"))}</h3><p>${esc(t("emptyHint"))}</p>
+      <div class="chips">${loosen}</div>${active.length ? `<button class="btn" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
 
   function renderBanner() {
     const b = $("banner");
     b.hidden = mode === "search";
     if (mode === "favorites") {
-      b.innerHTML = `<span>お気に入り ${favs.size}件</span><span>${favs.size ? '<button class="btn" data-share="1">リストを共有</button>' : ""}
-        <button class="btn ghost" data-search="1">検索に戻る</button></span>`;
+      b.innerHTML = `<span>${esc(t("favBanner", favs.size))}</span><span>${favs.size ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}
+        <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
     } else if (mode === "shared") {
-      b.innerHTML = `<span>共有されたリスト ${shared.length}件</span><span><button class="btn" data-import="1">お気に入りに追加</button>
-        <button class="btn ghost" data-search="1">検索に戻る</button></span>`;
+      b.innerHTML = `<span>${esc(t("sharedBanner", shared.length))}</span><span><button class="btn" data-import="1">${esc(t("importFavs"))}</button>
+        <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
     }
   }
 
@@ -235,42 +265,39 @@
   function activeConditions() {
     const out = [], drop = (f, v) => () => { q[f] = q[f].filter((x) => x !== v); };
     const reset = (...fs) => () => { const e = Filter.emptyQuery(); for (const f of fs) q[f] = e[f]; };
-    if (q.text) out.push([`「${q.text}」`, reset("text")]);
-    for (const t of q.types) out.push([TYPES[t], drop("types", t)]);
+    if (q.text) out.push([t("chipText", q.text), reset("text")]);
+    for (const type of q.types) out.push([typeName(type), drop("types", type)]);
     if (q.priceMin != null || q.priceMax != null) {
-      out.push([`${q.priceMin != null ? man(q.priceMin) : ""}〜${q.priceMax != null ? man(q.priceMax) : ""}`, reset("priceMin", "priceMax")]);
+      out.push([t("chipPrice", q.priceMin != null ? money(q.priceMin) : "", q.priceMax != null ? money(q.priceMax) : ""),
+        reset("priceMin", "priceMax")]);
     }
-    if (q.plan != null) out.push([`${PLANS.find(([v]) => v === q.plan)?.[1] ?? ""}以上`, reset("plan")]);
-    if (q.sizeMin != null) out.push([`${q.sizeMin}㎡以上`, reset("sizeMin")]);
-    if (q.landMin != null) out.push([`土地${q.landMin}㎡以上`, reset("landMin")]);
-    if (q.ageMax != null) out.push([AGES.find(([v]) => v === q.ageMax)?.[1] ?? `築${q.ageMax}年以内`, reset("ageMax")]);
+    if (q.plan != null) out.push([t("chipPlan", planLabel(q.plan)), reset("plan")]);
+    if (q.sizeMin != null) out.push([t("sizeMin", q.sizeMin), reset("sizeMin")]);
+    if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin")]);
+    if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax")]);
     for (const a of q.areas) out.push([areaName(a), drop("areas", a)]);
-    for (const s of q.stations) out.push([`${s}駅`, drop("stations", s)]);
-    if (q.walk != null) out.push([`徒歩${q.walk}分以内`, reset("walk")]);
-    for (const [f, label] of FLAGS) if (q[f]) out.push([label, reset(f)]);
+    for (const s of q.stations) out.push([t("station", s), drop("stations", s)]);
+    if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk")]);
+    for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f)]);
     for (const f of q.features) out.push([f, drop("features", f)]);
     return out;
   }
-
-  let areaNames = new Map();
-  const areaName = (code) => areaNames.get(code) || code;
 
   // ---------- filters ----------
 
   const filtersVisible = () => WIDE.matches || document.body.classList.contains("show-filters");
   const CHOICES = { priceMin: PRICES, priceMax: PRICES, plan: PLANS.map(([v]) => v), sizeMin: SIZES, landMin: LANDS,
-    ageMax: AGES.map(([v]) => v), walk: WALKS };
+    ageMax: AGES, walk: WALKS };
 
   function chipBtn(attrs, label, n, on) {
-    return `<button class="chip" ${attrs} aria-pressed="${on}"${!n && !on ? " disabled" : ""}>${esc(label)}${n != null ? `<span class="n">${n.toLocaleString()}</span>` : ""}</button>`;
+    return `<button class="chip" ${attrs} aria-pressed="${on}"${!n && !on ? " disabled" : ""}>${esc(label)}${n != null ? `<span class="n">${num(n)}</span>` : ""}</button>`;
   }
-  const many = (field, value, label, n) => chipBtn(`data-many="${field}" data-value="${esc(value)}"`, label, n, q[field].includes(value));
-  const one = (field, value, label, n) => chipBtn(`data-one="${field}" data-value="${value}"`, label, n, q[field] === value);
-  const flag = (field, label, n) => chipBtn(`data-flag="${field}"`, label, n, q[field]);
+  const many = (field, v, label, n) => chipBtn(`data-many="${field}" data-value="${esc(v)}"`, label, n, q[field].includes(v));
+  const one = (field, v, label, n) => chipBtn(`data-one="${field}" data-value="${v}"`, label, n, q[field] === v);
+  const flag = (field, n) => chipBtn(`data-flag="${field}"`, t("flags")[field], n, q[field]);
   function select(field, label, values, fmt) {
-    const counts = facets[field];
-    return `<label class="field"><span>${label}</span><select class="select" data-num="${field}"><option value="">指定なし</option>${values.map((v) =>
-      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}（${(counts[v] || 0).toLocaleString()}）</option>`).join("")}</select></label>`;
+    return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${values.map((v) =>
+      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}（${num(facets[field][v] || 0)}）</option>`).join("")}</select></label>`;
   }
 
   function renderFilters() {
@@ -280,61 +307,62 @@
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
       body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
-      body.querySelector('[data-sec="stations"]').innerHTML = `<h3>駅・徒歩</h3>
-        <input class="text-input" id="station-q" type="search" placeholder="駅名で探す" autocomplete="off">
+      body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
+        <input class="text-input" id="station-q" type="search" placeholder="${esc(t("stationSearch"))}" autocomplete="off">
         <div class="opts" id="station-list"></div><div class="opts" id="walk-list" style="margin-top:12px"></div>`;
     }
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
-    const isLand = q.types.length && q.types.every((t) => t === "land");
-    sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">「${esc(q.text)}」で絞り込み中${icon("x")}</button></div>` : "");
-    sec("types", `<h3>種別</h3><div class="opts">${db.index.types.map((t) => many("types", t, TYPES[t], facets.types[t] || 0)).join("")}</div>`);
-    sec("price", `<h3>価格</h3>${select("priceMin", "下限", PRICES, (v) => `${man(v)}以上`)}${select("priceMax", "上限", PRICES, (v) => `${man(v)}以下`)}`);
-    sec("plan", isLand ? "" : `<h3>間取り<span class="hint">以上</span></h3><div class="opts">${PLANS.map(([v, l]) =>
-      one("plan", v, `${l}〜`, facets.plan[v] || 0)).join("")}</div>`);
-    sec("size", `<h3>広さ</h3>${isLand ? "" : select("sizeMin", "専有・建物", SIZES, (v) => `${v}㎡以上`)}${
-      q.types.length && q.types.every(isCondo) ? "" : select("landMin", "土地", LANDS, (v) => `${v}㎡以上（${Math.round(v / TSUBO)}坪）`)}`);
-    sec("age", isLand ? "" : `<h3>築年数</h3><div class="opts">${AGES.map(([v, l]) => one("ageMax", v, l, facets.ageMax[v] || 0)).join("")}${
-      flag("post1981", "新耐震基準", facets.post1981)}</div>`);
+    const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
+    const isLand = q.types.length && q.types.every((type) => type === "land");
+    sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
+    sec("types", `${h3("types")}<div class="opts">${db.index.types.map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
+    sec("areas", `${h3("areas")}${areaGroups()}`);
+    sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}${
+      select("priceMax", t("max"), PRICES, (v) => t("priceMax", money(v)))}`);
+    sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${PLANS.map(([v, l]) =>
+      one("plan", v, t("planFrom", l), facets.plan[v] || 0)).join("")}</div>`);
+    sec("size", `${h3("size")}${isLand ? "" : select("sizeMin", t("floorArea"), SIZES, (v) => t("sizeMin", v))}${
+      q.types.length && q.types.every(isCondo) ? "" : select("landMin", t("landArea"), LANDS, (v) => t("landMin", v, Math.round(v / TSUBO)))}`);
+    sec("age", isLand ? "" : `${h3("age")}<div class="opts">${AGES.map((v) => one("ageMax", v, t("ages")[v], facets.ageMax[v] || 0)).join("")}${
+      flag("post1981", facets.post1981)}</div>`);
     stationList();
-    $("walk-list").innerHTML = WALKS.map((w) => one("walk", w, `徒歩${w}分以内`, facets.walk[w] || 0)).join("");
-    sec("areas", `<h3>エリア</h3>${areaGroups()}`);
-    const tags = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
-    const shownTags = [...q.features, ...tags.filter((t) => !q.features.includes(t)).slice(0, 30)];
-    sec("extra", `<h3>こだわり</h3><div class="opts">${FLAGS.filter(([f]) => f !== "post1981" && (facets[f] || q[f])).map(([f, l]) =>
-      flag(f, l, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.map((t) =>
-      many("features", t, t.normalize("NFKC"), facets.features[t] || 0)).join("")}</div>`);
-    $("apply").textContent = `${facets.total.toLocaleString()}件を表示`;
+    $("walk-list").innerHTML = WALKS.map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
+    const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
+    const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f)).slice(0, 30)];
+    sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (facets[f] || q[f])).map((f) =>
+      flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.map((f) =>
+      many("features", f, f.normalize("NFKC"), facets.features[f] || 0)).join("")}</div>`);
+    $("apply").textContent = t("show", num(facets.total));
   }
 
   function stationList() {
-    const term = Filter.normalize($("station-q").value.trim());
-    const counts = facets.stations;
-    let names = Object.keys(counts);
-    if (term) names = db.index.stations.filter((s) => Filter.normalize(s).includes(term));
+    const raw = $("station-q").value.trim(), term = Filter.normalize(raw), counts = facets.stations;
+    let names = term ? db.index.stations.filter((s) => Filter.normalize(s).includes(term)) : Object.keys(counts);
     names = names.filter((s) => !q.stations.includes(s)).sort((a, b) => (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
-    $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, `${s}駅`, counts[s] || 0)).join("")
-      || `<span class="meta">${/^[ぁ-ゖァ-ヺー]+$/.test($("station-q").value.trim()) ? "駅名は漢字で入力してください" : "該当する駅がありません"}</span>`;
+    $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, t("station", s), counts[s] || 0)).join("")
+      || `<span class="meta">${esc(t(/^[ぁ-ゖァ-ヺー]+$/.test(raw) ? "stationKanji" : "noStation"))}</span>`;
   }
 
   function areaGroups() {
-    const prefs = new Set(db.index.areas.map((a) => a[2]));
+    const prefs = new Set(db.index.areas.map((a) => a[2])), kinds = t("kinds");
     const groups = new Map();
     for (const [code, name, pref] of [...db.index.areas].sort((a, b) => a[0].localeCompare(b[0]))) {
-      const g = `${prefs.size > 1 ? db.index.prefs[pref] + " " : ""}${KINDS[code[2]] || "町村"}`;
+      const g = `${prefs.size > 1 ? db.index.prefs[pref] + " " : ""}${kinds[code[2]] || kinds[3]}`;
       if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push(many("areas", code, name, facets.areas[code] || 0));
+      groups.get(g).push([code, many("areas", code, name, facets.areas[code] || 0)]);
     }
     return [...groups].map(([g, chips], i) => {
-      const open = i === 0 || q.areas.some((a) => chips.join("").includes(`data-value="${a}"`));
-      return `<details class="group"${open ? " open" : ""}><summary>${esc(g)}</summary><div class="opts">${chips.join("")}</div></details>`;
+      const open = i === 0 || chips.some(([code]) => q.areas.includes(code));
+      return `<details class="group"${open ? " open" : ""}><summary>${esc(g)}</summary><div class="opts">${chips.map(([, c]) => c).join("")}</div></details>`;
     }).join("");
   }
 
   function onFilterClick(e) {
-    const b = e.target.closest("button[data-many], button[data-one], button[data-flag]");
+    const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
     if (!b) return;
     const v = b.dataset.value;
-    if (b.dataset.many) {
+    if (b.dataset.cleartext) q.text = "";
+    else if (b.dataset.many) {
       const f = b.dataset.many;
       q[f] = q[f].includes(v) ? q[f].filter((x) => x !== v) : [...q[f], v];
     } else if (b.dataset.one) {
@@ -345,7 +373,7 @@
       q[b.dataset.flag] = !q[b.dataset.flag];
     }
     const focus = [...b.attributes].filter((a) => a.name.startsWith("data-")).map((a) => `[${a.name}="${CSS.escape(a.value)}"]`).join("");
-    update();
+    update(false);
     $("filters-body").querySelector(`button${focus}`)?.focus();
   }
 
@@ -367,7 +395,7 @@
   const pins = new Map();  // one icon per count, reused across redraws
   function pin(n) {
     if (!pins.has(n)) {
-      const label = n.toLocaleString();
+      const label = num(n);
       pins.set(n, L.divIcon({ className: "", html: `<div class="pin${n >= 100 ? " big" : ""}">${label}</div>`,
         iconSize: [Math.max(30, 16 + label.length * 8), 26] }));
     }
@@ -397,8 +425,7 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list))));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.textContent = hits.length ? `${hits.length.toLocaleString()}件${unplaced ? `（位置不明 ${unplaced.toLocaleString()}件）` : ""}`
-      : "条件に合う物件がありません";
+    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("mapEmpty");
     if (fittedFor !== renderedFor && towns.size) {  // follow the results when the conditions change
       fittedFor = renderedFor;
       map.fitBounds(coreBounds([...towns.values()]), { padding: [30, 30], maxZoom: 15 });
@@ -413,9 +440,9 @@
   }
 
   function popup(town, list) {
-    return `<strong>${esc(town)}</strong> ${list.length}件<ul class="popup-list">${list.slice(0, 40).map((it) =>
+    return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map((it) =>
       `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
-        <span><b class="num">${man(it.price)}</b><br>${esc([it.layout || TYPES[it.type], age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
+        <span><b class="num">${money(it.price)}</b><br>${esc([it.layout || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
 
   // ---------- listing ----------
@@ -443,7 +470,7 @@
       if (!res.ok) throw new Error(res.status);
       r = await res.json();
     } catch {
-      body.innerHTML = '<div class="empty"><h3>この物件は掲載が終わりました</h3></div>';
+      body.innerHTML = `<div class="empty"><h3>${esc(t("gone"))}</h3></div>`;
       return;
     }
     if (openKey !== key) return;
@@ -461,48 +488,48 @@
   }
 
   function detailHtml(r, it) {
-    const type = r.type, rows = (pairs) => pairs.filter(([, v]) => v != null && v !== "")
-      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("");
-    const sec = (h, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h2>${h}</h2><dl>${html}</dl></section>` : ""; };
-    const yen = (v) => (v ? `${v.toLocaleString()}円` : null);
-    const t = (s) => (s == null ? null : esc(s));
-    const nearest = it ? station(it) : "";
-    const unit = it?.unit ? `${(it.unit / 10).toFixed(1)}万円/㎡` + (isCondo(type) ? "" : `（坪${Math.round(it.unit * TSUBO / 10)}万円）`) : "";
-    const facts = [["間取り", r.layout], [isCondo(type) ? "専有面積" : "建物", m2(r.floor_m2 || r.building_m2)],
-      [isCondo(type) ? "バルコニー" : "土地", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && `${m2(r.land_m2)}・${tsubo(r.land_m2)}`],
-      ["築年", it ? age(it) : ""], ["駅", nearest], ["単価", unit]].filter(([, v]) => v);
-    const history = r.history?.length ? r.history.map(([d, o, n]) => esc(`${day(d)} ${man(o)} → ${man(n)}`)).join("<br>")
-      : `変更なし（${day(r.new_date || r.first_seen)}から掲載）`;
-    const parking = r.parking && [r.parking.status, r.parking.fee_min && `月${r.parking.fee_min.toLocaleString()}円${r.parking.fee_max ? "〜" : ""}`].filter(Boolean).join(" ");
-    const road = r.road && ([r.road.dir, r.road.width_m && `幅${r.road.width_m}m`].filter(Boolean).join(" ") || r.road.text);
+    const type = r.type, L_ = (k) => t(`d.${k}`);
+    const rows = (pairs) => pairs.filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${esc(L_(k))}</dt><dd>${v}</dd>`).join("");
+    const sec = (k, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h2>${esc(L_(k))}</h2><dl>${html}</dl></section>` : ""; };
+    const yen = (v) => (v ? t("yen", num(v)) : null);
+    const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
+    const unit = it?.unit ? t("perM2", it.unit) + (isCondo(type) ? "" : `（${t("perTsubo", Math.round(it.unit * TSUBO))}）`) : "";
+    const facts = [["layout", r.layout], [isCondo(type) ? "floor" : "building", m2(r.floor_m2 || r.building_m2)],
+      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && `${m2(r.land_m2)}・${tsubo(r.land_m2)}`],
+      ["age", it ? age(it) : ""], ["station", it ? station(it) : ""], ["unit", unit]].filter(([, v]) => v);
+    const history = r.history?.length ? r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>")
+      : esc(t("unchanged", day(r.new_date || r.first_seen)));
+    const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
+    const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
+    const access = (r.stations || []).map((s) => esc([s.line, t("station", s.name), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
+      : s.walk != null ? t("walkMin", s.walk) : ""].filter(Boolean).join(" "))).join("<br>");
     return `
       ${r.image ? `<img class="hero" src="${esc(r.image.replace(/w=\d+&h=\d+/, "w=640&h=480"))}" alt="">` : ""}
       <div class="d-head">
-        <h1 id="detail-title">${esc(r.name || [r.layout, TYPES[type]].filter(Boolean).join(" "))}</h1>
-        <div class="meta">${esc([r.address, TYPES[type]].filter(Boolean).join(" · "))}</div>
-        <div class="d-price num">${it ? price(it, true) : man(r.price, true)}${r.price_excludes_building ? "<small>建物価格別</small>" : ""}</div>
+        <h1 id="detail-title">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h1>
+        <div class="meta">${esc([r.address, typeName(type)].filter(Boolean).join(" · "))}</div>
+        <div class="d-price num">${it ? price(it, true) : money(r.price, true)}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
-      <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
-      ${sec("価格の推移", [["価格", history]])}
-      ${sec("交通", [["最寄り駅", (r.stations || []).map((s) => esc(`${s.line || ""} ${s.name}${s.bus_stop ? "" : "駅"} ${s.bus
-        ? `バス${s.bus}分${s.walk != null ? `・停歩${s.walk}分` : ""}` : s.walk != null ? `徒歩${s.walk}分` : ""}`)).join("<br>")]])}
-      ${sec("費用", [["管理費", yen(r.mgmt_fee) && `月${yen(r.mgmt_fee)}${r.mgmt_form ? `（${esc(r.mgmt_form)}）` : ""}`],
-        ["修繕積立金", yen(r.repair_fee) && `月${yen(r.repair_fee)}`], ["修繕積立基金", yen(r.repair_fund_once)],
-        ["諸費用", t(r.other_fees)], ["駐車場", t(parking)]])}
-      ${sec("建物", [["築年月", r.built && `${+r.built.slice(0, 4)}年${+r.built.slice(5, 7)}月${r.built_planned ? "（予定）" : ""}`],
-        ["構造", t(r.structure)], ["階", t([r.floor != null && `${r.floor}階`, r.floors_above && `${r.floors_above}階建`].filter(Boolean).join(" / "))],
-        ["総戸数", isCondo(type) && r.total_units ? `${r.total_units.toLocaleString()}戸` : null], ["向き", t(r.direction)],
-        ["リフォーム", t(r.reform?.text || r.reform?.date)], ["施工", t(r.builder)], ["引渡し", t(r.handover)]])}
-      ${sec("土地・法規", [["土地の権利", t(r.land_rights && r.land_rights + (r.land_rights_note ? `（${r.land_rights_note}）` : ""))],
-        ["用途地域", t(r.zoning)], ["建ぺい率・容積率", r.coverage_pct || r.far_pct ? `${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%` : null],
-        ["接道", t(road)], ["地目", t(r.land_category)], ["土地状況", t(r.land_status)], ["建築条件", r.build_condition ? "あり" : null],
-        ["設備", t(r.utilities)], ["制限", t(r.restrictions)]])}
-      ${r.features?.length ? `<section class="d-sec"><h2>特徴</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(f.normalize("NFKC"))}</span>`).join("")}</div></section>` : ""}
-      ${sec("掲載", [["会社", t(r.agent)], ["取引態様", t(r.deal_type)], ["ほかの掲載", (r.others || []).map((o) =>
-        `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.agent || "掲載ページ")}</a>`).join("<br>") || null],
-        ["掲載確認", day(r.new_date || r.first_seen)]])}
-      ${it?.lat != null ? '<section class="d-sec"><h2>地図</h2><p class="meta">位置は町・丁目の中心です</p></section><div id="detail-map"></div>' : ""}`;
+      <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      ${sec("history", [["price", history]])}
+      ${sec("access", [["nearest", access]])}
+      ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? `（${esc(r.mgmt_form)}）` : "")],
+        ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))], ["repairOnce", yen(r.repair_fund_once)],
+        ["otherFees", txt(r.other_fees)], ["parking", txt(parking)]])}
+      ${sec("bldg", [["built", r.built && t("month", +r.built.slice(0, 4), +r.built.slice(5, 7)) + (r.built_planned ? t("planned") : "")],
+        ["structure", txt(r.structure)], ["floors", txt([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
+        ["units", isCondo(type) && r.total_units ? t("unitsN", num(r.total_units)) : null], ["direction", txt(r.direction)],
+        ["reform", txt(r.reform?.text || r.reform?.date)], ["builder", txt(r.builder)], ["handover", txt(r.handover)]])}
+      ${sec("legal", [["rights", r.land_rights && esc(value(r.land_rights)) + (r.land_rights_note ? `（${esc(r.land_rights_note)}）` : "")],
+        ["zoning", txt(r.zoning)], ["ratios", r.coverage_pct || r.far_pct ? `${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%` : null],
+        ["road", txt(road)], ["category", txt(r.land_category)], ["landStatus", txt(r.land_status)], ["condition", r.build_condition ? t("yes") : null],
+        ["utilities", txt(r.utilities)], ["restrictions", txt(r.restrictions)]])}
+      ${r.features?.length ? `<section class="d-sec"><h2>${esc(L_("features"))}</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(f.normalize("NFKC"))}</span>`).join("")}</div></section>` : ""}
+      ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
+        `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
+        ["seen", day(r.new_date || r.first_seen)]])}
+      ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div id="detail-map"></div>` : ""}`;
   }
 
   function hideDetail() {
@@ -522,18 +549,22 @@
 
   // ---------- favorites ----------
 
-  function toggleFav(key) {
-    if (favs.has(key)) favs.delete(key); else favs.add(key);
+  function saveFavs() {
     localStorage.setItem("suumo.favorites", JSON.stringify([...favs]));
-    document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
     $("favs-n").hidden = !favs.size;
     $("favs-n").textContent = favs.size;
-    toast(favs.has(key) ? "お気に入りに追加しました" : "お気に入りから外しました");
+  }
+
+  function toggleFav(key) {
+    if (favs.has(key)) favs.delete(key); else favs.add(key);
+    saveFavs();
+    document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
+    toast(t(favs.has(key) ? "favAdded" : "favRemoved"));
   }
 
   function setFavButton() {
     $("detail-fav").setAttribute("aria-pressed", favs.has(openKey));
-    $("detail-fav").querySelector("span").textContent = favs.has(openKey) ? "保存済み" : "お気に入り";
+    $("detail-fav").querySelector("span").textContent = t(favs.has(openKey) ? "saved" : "favorites");
   }
 
   let toastTimer = null;
@@ -553,6 +584,20 @@
     $("filters-open").focus();
   }
 
+  function openSettings(open) {
+    $("settings").hidden = !open;
+    if (open) { lastFocus = document.activeElement; renderSettings(); $("settings-close").focus(); } else lastFocus?.focus();
+  }
+
+  // Keep Tab inside an open dialog.
+  function trapFocus(e, root) {
+    const f = [...root.querySelectorAll("a[href], button, select, input")].filter((el) => !el.disabled && el.offsetParent);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
   function wire() {
     let timer = null;
     $("q").addEventListener("input", (e) => {
@@ -560,19 +605,32 @@
       timer = setTimeout(() => { q.text = e.target.value.trim(); mode = "search"; update(); }, 200);
     });
     $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && COARSE.matches) e.target.blur(); });  // hide the keyboard
-    $("sort").innerHTML = Object.entries(SORTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(true));
     $("filters-close").addEventListener("click", () => openFilters(false));
     $("apply").addEventListener("click", () => openFilters(false));
-    $("clear").addEventListener("click", () => { q = { ...Filter.emptyQuery(), sort: q.sort }; update(); });
+    $("clear").addEventListener("click", () => { q = { ...Filter.emptyQuery(), sort: q.sort }; update(false); });
     $("filters-body").addEventListener("click", onFilterClick);
     $("filters-body").addEventListener("change", (e) => {
       const f = e.target.dataset.num;
-      if (f) { q[f] = e.target.value === "" ? null : +e.target.value; update(); }
+      if (f) { q[f] = e.target.value === "" ? null : +e.target.value; update(false); }
     });
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
-    $("favs").addEventListener("click", () => { mode = mode === "favorites" ? "search" : "favorites"; update(); window.scrollTo(0, 0); });
+    $("settings-open").addEventListener("click", () => openSettings(true));
+    $("settings-close").addEventListener("click", () => openSettings(false));
+    $("settings").addEventListener("click", (e) => {
+      if (e.target === $("settings")) return openSettings(false);
+      const b = e.target.closest("[data-setting]");
+      if (!b) return;
+      settings[b.dataset.setting] = b.dataset.value;
+      applySettings();
+      renderSettings();
+      render();
+      if (openKey) showDetail(openKey);
+      $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
+    });
+    DARK.addEventListener("change", () => { if (settings.theme === "auto") applySettings(); });
+    $("favs").addEventListener("click", () => { mode = mode === "favorites" ? "search" : "favorites"; update(); });
     $("view").addEventListener("click", () => { showMap = !showMap; update(); });
     $("detail-back").addEventListener("click", closeDetail);
     $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
@@ -585,36 +643,29 @@
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.remove != null) { activeConditions()[+b.dataset.remove][1](); update(); }
-      else if (b.dataset.cleartext) { q.text = ""; update(false); }
       else if (b.dataset.clear) { q = { ...Filter.emptyQuery(), sort: q.sort }; update(); }
       else if (b.dataset.share) {
         const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
-        if (navigator.share && COARSE.matches) navigator.share({ title: `お気に入り ${favs.size}件`, url }).catch(() => {});
-        else navigator.clipboard?.writeText(url).then(() => toast("リンクをコピーしました"), () => prompt("このリンクを共有してください", url));
+        if (navigator.share && COARSE.matches) navigator.share({ title: t("shareTitle", favs.size), url }).catch(() => {});
+        else navigator.clipboard?.writeText(url).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
       } else if (b.dataset.import) {
         shared.forEach((k) => favs.add(k));
-        localStorage.setItem("suumo.favorites", JSON.stringify([...favs]));
-        toast(`${shared.length}件をお気に入りに追加しました`);
+        saveFavs();
+        toast(t("imported", shared.length));
         mode = "favorites"; shared = []; update();
       } else if (b.dataset.search) { mode = "search"; shared = []; update(); }
     });
     window.addEventListener("popstate", route);
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Tab" && !$("detail").hidden) trapFocus(e, $("detail"));
+      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings") : null;
+      if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key !== "Escape") return;
-      if (!$("detail").hidden) closeDetail(); else if (document.body.classList.contains("show-filters")) openFilters(false);
+      if (!$("settings").hidden) openSettings(false);
+      else if (!$("detail").hidden) closeDetail();
+      else if (document.body.classList.contains("show-filters")) openFilters(false);
     });
     WIDE.addEventListener("change", () => render());
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
-  }
-
-  // Keep Tab inside an open dialog.
-  function trapFocus(e, root) {
-    const f = [...root.querySelectorAll("a[href], button, select, input")].filter((el) => !el.disabled && el.offsetParent);
-    if (!f.length) return;
-    const first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   function route() {
@@ -625,14 +676,15 @@
   }
 
   async function start() {
+    applySettings();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);
     try {
       const index = await (await fetch("data/index.json")).json();
       db = Filter.load(index);
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
-      if (index.prefs.length === 1) document.title = `${index.prefs[0]}の物件さがし`;
     } catch {
-      $("list").innerHTML = '<div class="empty"><h3>物件データを読み込めませんでした</h3><p>再読み込みしてください。</p></div>';
+      const [title, hint] = t("loadFailed");
+      $("list").innerHTML = `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
       return;
     }
     wire();

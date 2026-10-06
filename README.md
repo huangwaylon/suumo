@@ -23,6 +23,9 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
   scroll. The map follows the results (pins by town, 丁目 level). No results → the conditions to drop, with counts.
 - **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
   map, a link to SUUMO.
+- **Settings** (gear icon): language 日本語 (default) or English, and theme システム / ライト / ダーク, saved in the
+  browser. In English the interface, units, prices (¥49.9M) and fixed values (land rights, deal type) are
+  translated; town, station and building names and SUUMO's tags stay as SUUMO writes them.
 - **Favorites** are kept in the browser; 「リストを共有」 copies a link that opens the list on another device.
   Conditions live in the URL, so any search or listing can be shared too.
 
