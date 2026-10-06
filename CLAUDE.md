@@ -54,8 +54,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 
 - **Only robots.txt-allowed paths.** Search results: `/{TYPES[type]}/{pref}/{slug}/?pc=100&page=N`; area pages:
   `/{type path}/{pref}/city/`; listing pages: the `path` from the search result. `/jj/bukken/ichiran/...` and any
-  `sort=` parameter are disallowed. One request at a time, `--delay` 1.5 s + up to 50% jitter (a one-off
-  backfill may use 1.0 s; never lower, never parallel). `http.Client` slows itself down on 429/5xx/network
+  `sort=` parameter are disallowed. One request at a time per crawler, `--delay` 1.5 s + up to 50% jitter (a
+  one-off backfill may use 1.0 s; never lower). At most two crawlers at once, by the owner's decision: the
+  hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml). `http.Client` slows itself down on 429/5xx/network
   errors/slow responses (doubling, max 10 s, honours `Retry-After`) and eases back; keep that behaviour.
   Geocoding is also one request at a time (`geo.GEO_DELAY`).
 - **Removal needs evidence.** A listing is removed only after `REMOVE_AFTER_MISSES` (2) consecutive *complete*

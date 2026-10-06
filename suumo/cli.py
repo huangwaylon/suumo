@@ -87,8 +87,9 @@ def cmd_run(c: Ctx):
            datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
     c.db.commit()
     try:  # towns of new listings, for the site's map; never stops the commit below
-        geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
-        update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in c.targets})
+        if not a.no_geocode:
+            geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
+            update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in c.targets})
     except Exception as e:
         print(f"geocoding failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
@@ -195,6 +196,8 @@ def main():
 
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
+    r.add_argument("--no-geocode", action="store_true",
+                   help="leave geo/ alone (a second crawler next to the hourly one; that one geocodes all of data/)")
     r.add_argument("--until-minute", type=int, choices=range(60), metavar="0-59",
                    help="stop listing pages at the next :MM (hourly runs end before the next one starts)")
     r.add_argument("--no-crawl", action="store_true", help="skip search results; only work the queue")

@@ -1,6 +1,9 @@
 # local state and output (see README "Files")
 state.db*
+state-*.db*
 archive/
+archive-*/
+scope-*.toml
 logs/
 _site/
 .env
