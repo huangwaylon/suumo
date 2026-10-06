@@ -1,7 +1,7 @@
 """Polite HTTP client: one request at a time, delay + jitter, retries with backoff, and an automatic slow-down.
 
-The delay is a floor between request starts. When SUUMO pushes back (429, 5xx, network errors, or a run of slow
-responses) the delay doubles, up to MAX_DELAY, and eases back to the base delay over the following successes.
+The delay is a floor between request starts. When SUUMO pushes back (an error status, a network error, or a run of
+slow responses) the delay doubles, up to MAX_DELAY, and eases back to the base delay over the following successes.
 """
 import random
 import time
@@ -14,12 +14,12 @@ MAX_DELAY = 10.0      # seconds; the slow-down never waits longer than this betw
 SLOW_SECONDS = 5.0    # a response slower than this counts as slow...
 SLOW_RUN = 3          # ...and this many in a row slow the crawl down
 EASE = 0.95           # after each fast success the delay moves this factor back toward the base
+RETRIES = 4           # attempts per request
 
 
 class Client:
-    def __init__(self, delay=1.5, max_retries=4, log=print):
+    def __init__(self, delay=1.5, log=print):
         self.base = self.delay = delay
-        self.max_retries = max_retries
         self.log = log
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.8"})
@@ -43,7 +43,7 @@ class Client:
     def get(self, path):
         """GET BASE+path and return decoded HTML. Raises FileNotFoundError on 404 (listing gone)."""
         url = BASE + path
-        for attempt in range(1, self.max_retries + 1):
+        for attempt in range(1, RETRIES + 1):
             wait = self.delay + random.uniform(0, self.delay * 0.5) - (time.monotonic() - self._last)
             if wait > 0:
                 time.sleep(wait)
@@ -66,14 +66,13 @@ class Client:
                 if r.status_code in (404, 410):
                     raise FileNotFoundError(url)
                 err = f"HTTP {r.status_code}"
-                if r.status_code == 429 or r.status_code >= 500:
-                    self._slow_down(err)
-                    retry_after = r.headers.get("Retry-After", "")
-                    if retry_after.isdigit():
-                        backoff = max(backoff, min(600, int(retry_after)))
+                self._slow_down(err)  # 429, 403 (blocked?), 5xx: SUUMO is pushing back
+                retry_after = r.headers.get("Retry-After", "")
+                if retry_after.isdigit():
+                    backoff = max(backoff, min(600, int(retry_after)))
             except requests.RequestException as e:
                 err = repr(e)
                 self._slow_down("network error")
-            self.log(f"  ! {err} on {url} (attempt {attempt}/{self.max_retries}), sleeping {backoff}s")
+            self.log(f"  ! {err} on {url} (attempt {attempt}/{RETRIES}), sleeping {backoff}s")
             time.sleep(backoff)
-        raise RuntimeError(f"failed after {self.max_retries} attempts: {url}")
+        raise RuntimeError(f"failed after {RETRIES} attempts: {url}")

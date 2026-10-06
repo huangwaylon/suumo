@@ -11,21 +11,21 @@ from pathlib import Path
 LIST_DAYS = 14
 
 
+def write_atomic(path, data: bytes):
+    """Write via a temporary file and rename, so readers never see a half-written file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
 class Archive:
     def __init__(self, root):
         self.root = Path(root)
 
-    def _write(self, path, html):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_bytes(gzip.compress(html.encode("utf-8"), compresslevel=6))
-        tmp.replace(path)
-
-    def list_path(self, pref, day, type_key, name):
-        return self.root / pref / "list" / day / type_key / f"{name}.html.gz"
-
     def save_list(self, pref, day, type_key, name, html):
-        self._write(self.list_path(pref, day, type_key, name), html)
+        write_atomic(self.root / pref / "list" / day / type_key / f"{name}.html.gz", gzip.compress(html.encode()))
 
     def list_days(self, pref):
         d = self.root / pref / "list"
@@ -39,7 +39,7 @@ class Archive:
         return self.root / pref / "detail" / type_key / f"{lid}.html.gz"
 
     def save_detail(self, pref, type_key, lid, html):
-        self._write(self.detail_path(pref, type_key, lid), html)
+        write_atomic(self.detail_path(pref, type_key, lid), gzip.compress(html.encode()))
 
     def delete_detail(self, pref, type_key, lid):
         self.detail_path(pref, type_key, lid).unlink(missing_ok=True)
@@ -50,12 +50,9 @@ class Archive:
 
     def prune_lists(self, pref, today):
         cutoff = (today - timedelta(days=LIST_DAYS)).strftime("%Y%m%d")
-        removed = 0
         for day in self.list_days(pref):
             if day < cutoff:
                 shutil.rmtree(self.root / pref / "list" / day)
-                removed += 1
-        return removed
 
     def drop_pref(self, pref):
         shutil.rmtree(self.root / pref, ignore_errors=True)

@@ -174,11 +174,9 @@ def test_export_one_file_per_area_and_cleans_up(env):
          "VALUES ('used_condo', '5', 'tokyo', '13208', '調布市', ?, '2026-10-05', 'x')", json.dumps(rec(5)))
     db.commit()
     data = tmp / "data"
-    (data / "tokyo").mkdir(parents=True)
-    (data / "tokyo/used_condo.jsonl").write_text("old layout\n")
     export(db, targets, data)
     files = sorted(str(p.relative_to(data)) for p in data.rglob("*.jsonl"))
-    assert files == ["tokyo/used_condo/13208.jsonl", "tokyo/used_condo/13219.jsonl"]   # old file gone, no empties
+    assert files == ["tokyo/used_condo/13208.jsonl", "tokyo/used_condo/13219.jsonl"]   # no empty files
     mtime = (data / "tokyo/used_condo/13219.jsonl").stat().st_mtime_ns
     export(db, targets, data)
     assert (data / "tokyo/used_condo/13219.jsonl").stat().st_mtime_ns == mtime          # unchanged: not rewritten

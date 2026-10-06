@@ -185,10 +185,7 @@ def _standard_unit(u, area):
         elif k == "建物面積":
             _m2_into(r, "building_m2", v)
     r["agent"] = text(u.select_one(".shopmore-title"))
-    img = u.select_one("img[rel]")
-    if img:
-        rel = img.get("rel")
-        r["image"] = rel[0] if isinstance(rel, list) else rel
+    r["image"] = _image(u)
     return clean(r)
 
 
@@ -212,11 +209,15 @@ def _new_condo_unit(u, area):
     _m2_into(r, "floor_m2", price)
     layouts = sorted(set(re.findall(r"\d[SLDK]+(?:\+\d?S)?|ワンルーム|1R", price)))
     r["layout"] = "・".join(layouts) or None
-    img = u.select_one("img[rel]")
-    if img:
-        rel = img.get("rel")
-        r["image"] = rel[0] if isinstance(rel, list) else rel
+    r["image"] = _image(u)
     return clean(r)
+
+
+def _image(u):
+    """The listing photo: lazy-loaded, its URL is in rel."""
+    img = u.select_one("img[rel]")
+    rel = img.get("rel") if img else None
+    return rel[0] if isinstance(rel, list) else rel
 
 
 def clean(r):

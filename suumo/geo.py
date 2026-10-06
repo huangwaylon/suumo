@@ -11,10 +11,12 @@ from pathlib import Path
 
 import requests
 
+from .archive import write_atomic
 from .http import USER_AGENT
 
 API = "https://msearch.gsi.go.jp/address-search/AddressSearch"
 GEO_DELAY = 1.0
+SAVE_EVERY = 100  # towns between cache saves (an interrupted fill keeps its progress)
 PREF_JA = {"tokyo": "東京都", "kanagawa": "神奈川県", "chiba": "千葉県", "saitama": "埼玉県", "ibaraki": "茨城県"}
 
 _block = re.compile(r"[0-9][0-9\-－]*.*$")   # 番地 / 号 in ASCII digits after the 丁目 (full-width digit)
@@ -45,11 +47,7 @@ def load_cache(path):
 
 
 def save_cache(path, cache):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(cache, ensure_ascii=False, indent=0, sort_keys=True) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    write_atomic(path, (json.dumps(cache, ensure_ascii=False, indent=0, sort_keys=True) + "\n").encode())
 
 
 def lookup(session, town):
@@ -79,7 +77,7 @@ def towns_in(data_dir):
     return towns
 
 
-def geocode(data_dir, cache_path, budget_seconds=None, log=print, save_every=100):
+def geocode(data_dir, cache_path, budget_seconds=None, log=print):
     """Look up the towns not in the cache yet. Errors are logged and retried on the next call."""
     cache = load_cache(cache_path)
     todo = sorted(towns_in(data_dir) - set(cache))
@@ -102,7 +100,7 @@ def geocode(data_dir, cache_path, budget_seconds=None, log=print, save_every=100
             if failures >= 10:
                 log("  geocoding stopped after 10 errors; the rest is retried next time")
                 break
-        if done and done % save_every == 0:
+        if done and done % SAVE_EVERY == 0:
             save_cache(cache_path, cache)
             log(f"  geocoded {done:,}/{len(todo):,}")
         time.sleep(GEO_DELAY)

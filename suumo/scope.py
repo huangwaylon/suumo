@@ -38,11 +38,11 @@ def load(path):
             raise SystemExit(f"scope.toml entry {i}: unknown types {bad}; choose from {list(TYPES)}")
         areas = frozenset(str(a) for a in s["areas"]) if s.get("areas") else None
         targets += [Target(pref, t, areas) for t in types]
-    seen = {}
+    seen = set()
     for t in targets:
         if (t.pref, t.type) in seen:
             raise SystemExit(f"scope.toml: {t.pref}/{t.type} listed twice; merge the entries")
-        seen[(t.pref, t.type)] = t
+        seen.add((t.pref, t.type))
     return targets
 
 

@@ -9,8 +9,7 @@ One file per type and area keeps files small (a whole prefecture in one file pas
 a day's git diff readable by ward. Files are only rewritten when their content changes.
 
 Output is deterministic: an unchanged listing produces an identical line, so an unchanged day is an empty
-git diff. Fields that change on their own (last_seen, missed, info_date, next_update, detail_fetched) stay
-in the DB.
+git diff. Fields that change on their own (last_seen, missed) stay in the DB.
 """
 import hashlib
 import json
@@ -18,6 +17,7 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
+from .archive import write_atomic
 from .parse import TYPES, clean
 from .scope import in_scope
 
@@ -44,8 +44,6 @@ def merge(row):
     rec = {**det, **lst}
     if det.get("stations"):                     # the listing page lists up to 3 stations, search results 1
         rec["stations"] = det["stations"]
-    if det.get("price_excludes_building"):
-        rec["price_excludes_building"] = True
     rec.update(id=row["id"], type=row["type"], area_code=row["area_code"], area=row["area_name"],
                url="https://suumo.jp" + rec.pop("path"), first_seen=row["first_seen"],
                removed_at=row["removed_at"][:10] if row["removed_at"] else None,
@@ -73,14 +71,10 @@ def dup_key(r):
 
 
 def _write(path, text):
-    """Replace atomically (readers may load them while a run writes them), and only when the content changed."""
+    """Only when the content changed (an unchanged file keeps its mtime); atomically."""
     data = text.encode("utf-8")
-    if path.exists() and path.read_bytes() == data:
-        return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    if not (path.exists() and path.read_bytes() == data):
+        write_atomic(path, data)
 
 
 def _write_jsonl(path, records):
@@ -107,7 +101,6 @@ def export(db, targets, data_dir, run_id=None):
     for pref in sorted({t.pref for t in targets}):
         removed = {}
         for type_key in TYPES:
-            (data_dir / pref / f"{type_key}.jsonl").unlink(missing_ok=True)  # the old one-file-per-type layout
             if not any(t.pref == pref and t.type == type_key for t in targets):
                 shutil.rmtree(data_dir / pref / type_key, ignore_errors=True)
                 continue
@@ -123,11 +116,8 @@ def export(db, targets, data_dir, run_id=None):
             if gone:
                 removed[type_key] = gone
             stats[f"{pref}/{type_key}"] = sum(len(v) for v in by_area.values())
-        (data_dir / pref / "removed.jsonl").unlink(missing_ok=True)
         _sync_dir(data_dir / pref / "removed", removed)
-        areas = {}
-        for a in db.x("SELECT code, name FROM areas WHERE pref=? ORDER BY code", pref):
-            areas[a["code"]] = a["name"]
+        areas = {a["code"]: a["name"] for a in db.x("SELECT code, name FROM areas WHERE pref=? ORDER BY code", pref)}
         _write_json(data_dir / pref / "areas.json", areas)
 
     if run_id:

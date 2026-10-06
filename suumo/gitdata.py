@@ -3,12 +3,11 @@ site (GitHub Actions)."""
 import subprocess
 from pathlib import Path
 
+PATHS = ("data", "geo")
+
 
 def _git(root, *args):
     return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-
-
-PATHS = ("data", "geo")
 
 
 def commit_data(root: Path, run_id: str, push=False, log=print):
