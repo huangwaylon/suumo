@@ -58,8 +58,9 @@ def _age_years(rec, today):
 class Item:
     """One active listing: its record plus the values the site filters and sorts on."""
 
-    def __init__(self, rec, today):
+    def __init__(self, rec, today, pref):
         self.rec = rec
+        self.pref = pref
         self.type = rec["type"]
         self.key = f"{self.type}:{rec['id']}"
         self.idn = int(rec["id"])
@@ -127,7 +128,7 @@ def load(data_dir, today: date):
         land_ids = {r["id"] for r in recs["land"]}
         for type_key, rs in recs.items():
             # land with a build condition is listed under both new_house and land: keep the land listing
-            items += [Item(r, today) for r in rs
+            items += [Item(r, today, pref_dir.name) for r in rs
                       if not (type_key == "new_house" and r["id"] in land_ids and "/tochi/" in r.get("url", ""))]
         areas_file = pref_dir / "areas.json"
         if areas_file.exists():

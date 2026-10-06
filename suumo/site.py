@@ -71,7 +71,7 @@ def build_index(snap, towns_cache, updated):
         for name, line, _ in i.stations:
             if line:
                 lines.setdefault(line, set()).add(stations(name))
-        town = town_of(r.get("address"), "tokyo")
+        town = town_of(r.get("address"), i.pref)
         rows.append([
             r["id"], types(i.type), areas(i.area), i.price_lo, i.price_hi if i.price_hi != i.price_lo else None,
             sum(1 << (min(n, 4) - 1) for n in i.rooms), i.size, i.land, i.age, i.built,
