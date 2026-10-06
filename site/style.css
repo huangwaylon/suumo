@@ -3,6 +3,8 @@
   --accent: #0969da; --accent-bg: #ddf4ff; --new: #1a7f37; --drop: #cf222e; --warn: #9a6700;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { overflow-x: hidden; }
 body { margin: 0; font: 15px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; color: var(--fg); background: var(--bg); }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -25,11 +27,12 @@ h1 { font-size: 17px; margin: 0; }
 
 main { max-width: 900px; margin: 0 auto; padding: 8px; }
 #notice { background: #fff8c5; border: 1px solid #e3c96b; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 13px; }
-#list { display: grid; gap: 8px; }
-@media (min-width: 720px) { #list { grid-template-columns: 1fr 1fr; } }
+#list { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { #list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .card { display: flex; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; cursor: pointer; position: relative; }
 .card img { width: 112px; height: 84px; object-fit: cover; border-radius: 6px; background: var(--bg); flex: none; }
-.card .info { min-width: 0; }
+.card .info { min-width: 0; flex: 1; padding-right: 22px; }
+.spec, .where { overflow-wrap: anywhere; }
 .price { font-weight: 700; font-size: 16px; }
 .spec, .where { font-size: 13px; }
 .where, .name, .kind { color: var(--muted); font-size: 12px; }
