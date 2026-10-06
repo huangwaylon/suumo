@@ -29,7 +29,7 @@ class Archive:
 
     def list_days(self, pref):
         d = self.root / pref / "list"
-        return sorted(p.name for p in d.iterdir()) if d.exists() else []
+        return sorted(p.name for p in d.iterdir() if p.is_dir()) if d.exists() else []  # not .DS_Store
 
     def list_pages(self, pref, day, type_key):
         d = self.root / pref / "list" / day / type_key

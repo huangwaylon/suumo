@@ -183,3 +183,15 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
 ])
 def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
     assert town_of(address, "tokyo") == town
+
+
+def test_archive_ignores_stray_files_in_list_days(tmp_path):
+    from datetime import date
+
+    from suumo.archive import Archive
+    a = Archive(tmp_path)
+    (tmp_path / "tokyo/list/20260101").mkdir(parents=True)
+    (tmp_path / "tokyo/list/.DS_Store").write_text("")
+    assert a.list_days("tokyo") == ["20260101"]
+    a.prune_lists("tokyo", date(2026, 10, 6))
+    assert a.list_days("tokyo") == []
