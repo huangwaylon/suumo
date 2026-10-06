@@ -2,15 +2,21 @@
 import json
 import subprocess
 from datetime import datetime
+from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
 
+from suumo import http, pipeline
 from suumo.archive import Archive
+from suumo.cli import is_locked, print_progress
 from suumo.db import DB, exclusive
+from suumo.geo import town_of
 from suumo.gitdata import commit_data
 from suumo.maintenance import prune, reparse
+from suumo.pipeline import Pipeline
 from suumo.scope import Target
+from tests.helpers import FIXTURES, QUIET
 
 NOW = datetime(2026, 10, 6, 4, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
 
@@ -38,9 +44,9 @@ def test_prune_removes_out_of_scope_prefecture(tmp_path):
     archive.save_detail("chiba", "used_condo", "20205670", "<html/>")
     (tmp_path / "data/chiba").mkdir(parents=True)
     targets = [Target("tokyo", "used_condo", None)]
-    assert prune(db, archive, targets, tmp_path / "data", apply=False, log=lambda *_: None) == 0
+    assert prune(db, archive, targets, tmp_path / "data", apply=False, log=QUIET) == 0
     assert db.listing("used_condo", "20205670") is not None          # dry run kept it
-    assert prune(db, archive, targets, tmp_path / "data", apply=True, log=lambda *_: None) == 1
+    assert prune(db, archive, targets, tmp_path / "data", apply=True, log=QUIET) == 1
     assert db.listing("used_condo", "20205670") is None
     assert not (tmp_path / "archive/chiba").exists() and not (tmp_path / "data/chiba").exists()
     assert db.x("SELECT COUNT(*) FROM queue").fetchone()[0] == 0
@@ -49,12 +55,11 @@ def test_prune_removes_out_of_scope_prefecture(tmp_path):
 def test_reparse_rebuilds_from_archive(tmp_path):
     db = _db_with_listing(tmp_path)
     archive = Archive(tmp_path / "archive")
-    fixtures = __import__("pathlib").Path(__file__).parent / "fixtures"
     archive.save_detail("tokyo", "used_condo", "20205670",
-                        Archive.read(fixtures / "detail_used_condo_20205670.html.gz"))
+                        Archive.read(FIXTURES / "detail_used_condo_20205670.html.gz"))
     archive.save_list("tokyo", "20261005", "used_condo", "sc_komae_p1",
-                      Archive.read(fixtures / "list_used_condo_komae.html.gz"))
-    n_list, n_detail = reparse(db, archive, log=lambda *_: None)
+                      Archive.read(FIXTURES / "list_used_condo_komae.html.gz"))
+    n_list, n_detail = reparse(db, archive, log=QUIET)
     row = db.listing("used_condo", "20205670")
     assert (n_list, n_detail) == (1, 1)
     assert json.loads(row["list_json"])["price"] == 12_000_000
@@ -68,10 +73,12 @@ def test_commit_data_commits_only_data(tmp_path):
     git("config", "user.name", "t")
     (tmp_path / "data").mkdir()
     (tmp_path / "data/x.jsonl").write_text("{}\n")
+    (tmp_path / "geo").mkdir()
+    (tmp_path / "geo/towns.json").write_text("{}\n")
     (tmp_path / "other.txt").write_text("not data")
-    assert commit_data(tmp_path, "r1", log=lambda *_: None)
-    assert git("log", "--name-only", "--format=").stdout.split() == ["data/x.jsonl"]
-    assert not commit_data(tmp_path, "r2", log=lambda *_: None)     # unchanged -> no empty commit
+    assert commit_data(tmp_path, "r1", log=QUIET)
+    assert sorted(git("log", "--name-only", "--format=").stdout.split()) == ["data/x.jsonl", "geo/towns.json"]
+    assert not commit_data(tmp_path, "r2", log=QUIET)     # unchanged -> no empty commit
 
 
 # ---------- polite fetching and long runs ----------
@@ -82,9 +89,8 @@ class FakeResponse:
 
 
 def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
-    from suumo import http
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
-    c = http.Client(delay=1.0, log=lambda *_: None)
+    c = http.Client(delay=1.0, log=QUIET)
     replies = iter([FakeResponse(429, headers={"Retry-After": "30"}), FakeResponse(200)])
     c.session.get = lambda url, timeout: next(replies)
     assert c.get("/x/") == "<html/>"
@@ -100,9 +106,8 @@ def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
 
 
 def test_client_404_is_gone_not_an_error(monkeypatch):
-    from suumo import http
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
-    c = http.Client(delay=1.0, log=lambda *_: None)
+    c = http.Client(delay=1.0, log=QUIET)
     c.session.get = lambda url, timeout: FakeResponse(404)
     with pytest.raises(FileNotFoundError):
         c.get("/x/")
@@ -122,11 +127,9 @@ def _queue_db(tmp_path, n):
 
 
 def test_outage_pauses_without_using_up_attempts(tmp_path, monkeypatch):
-    from suumo import pipeline
-    from suumo.pipeline import Pipeline
     monkeypatch.setattr(pipeline.time, "sleep", lambda s: None)
     db = _queue_db(tmp_path, 8)
-    client = __import__("unittest.mock").mock.MagicMock()
+    client = MagicMock()
     client.get.side_effect = RuntimeError("failed after 4 attempts")
     out = []
     p = Pipeline(db, Archive(tmp_path / "a"), client, [Target("tokyo", "used_condo", None)], NOW, "r",
@@ -138,13 +141,11 @@ def test_outage_pauses_without_using_up_attempts(tmp_path, monkeypatch):
 
 
 def test_long_queue_reports_progress_and_checkpoints(tmp_path, monkeypatch):
-    from suumo import pipeline
-    from suumo.pipeline import Pipeline
     monkeypatch.setattr(pipeline, "PROGRESS_EVERY", 2)
     monkeypatch.setattr(pipeline, "CHECKPOINT_SECONDS", 0)
     monkeypatch.setattr(pipeline, "apply_detail", lambda *a, **k: None)
     db = _queue_db(tmp_path, 5)
-    client = __import__("unittest.mock").mock.MagicMock()
+    client = MagicMock()
     client.get.return_value = "<html/>"
     client.delay = 1.0
     out, checkpoints = [], []
@@ -166,7 +167,6 @@ def test_long_queue_reports_progress_and_checkpoints(tmp_path, monkeypatch):
 
 
 def test_status_shows_a_running_backfill(tmp_path, capsys):
-    from suumo.cli import is_locked, print_progress
     progress = {"phase": "listing pages", "text": "1,200/64,000 (1.9%) · ETA 22h46m", "at": NOW.isoformat()}
     print_progress({"run_id": "r1", "report": json.dumps({"progress": progress})}, running=True)
     out = capsys.readouterr().out
@@ -175,3 +175,11 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
     assert not is_locked(lock)
     with exclusive(lock):
         assert is_locked(lock)
+
+
+@pytest.mark.parametrize("address,town", [
+    ("東京都狛江市東和泉２-20-20", "東京都狛江市東和泉２"), ("東京都北区栄町47", "東京都北区栄町"),
+    ("港区三田５", "東京都港区三田５"), ("東京都八王子市元本郷町", "東京都八王子市元本郷町"), (None, None),
+])
+def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
+    assert town_of(address) == town

@@ -10,6 +10,7 @@ from suumo.db import DB
 from suumo.export import export
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
+from tests.helpers import QUIET
 
 JST = ZoneInfo("Asia/Tokyo")
 AREA = {"code": "13219", "name": "狛江市", "slug": "sc_komae", "expected": 0}
@@ -30,7 +31,7 @@ def env(tmp_path):
 
     def crawl(day, recs, complete=True, hits=None):
         now = T0 + timedelta(days=day)
-        p = Pipeline(db, archive, None, targets, now, now.strftime("%Y%m%dT%H%M%S"), log=lambda *_: None)
+        p = Pipeline(db, archive, None, targets, now, now.strftime("%Y%m%dT%H%M%S"), log=QUIET)
         db.x("INSERT OR IGNORE INTO runs (run_id, started) VALUES (?, ?)", p.run_id, p.ts)
         out = p.reconcile("tokyo", "used_condo", AREA, len(recs) if hits is None else hits,
                           {r["id"]: r for r in recs}, complete)
@@ -203,7 +204,7 @@ def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
     crawl(0, [rec(1), rec(2)])
     for day in (1, 2):
         now = T0 + timedelta(days=day)
-        p = Pipeline(db, archive, EmptyAreaPage(), targets, now, f"r{day}", log=lambda *_: None)
+        p = Pipeline(db, archive, EmptyAreaPage(), targets, now, f"r{day}", log=QUIET)
         p.crawl_lists()
         db.commit()
     assert status(db, 1) == status(db, 2) == "removed"
@@ -215,7 +216,7 @@ def test_listing_that_moves_area_keeps_its_history(env):
     crawl(0, [rec(1)])
     other = {"code": "13218", "name": "福生市", "slug": "sc_fussa", "expected": 0}
     db.upsert_area("tokyo", "used_condo", other)
-    p = Pipeline(db, None, None, [], T0 + timedelta(days=1), "r1", log=lambda *_: None)
+    p = Pipeline(db, None, None, [], T0 + timedelta(days=1), "r1", log=QUIET)
     p.reconcile("tokyo", "used_condo", other, 1, {"1": rec(1)}, True)
     row = db.listing("used_condo", "1")
     assert row["area_code"] == "13218" and row["first_seen"] == T0.date().isoformat() and events(db) == []

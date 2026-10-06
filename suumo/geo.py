@@ -26,7 +26,7 @@ def town_of(address, pref="tokyo"):
     """'東京都狛江市東和泉２-20-20' -> '東京都狛江市東和泉２'; prefixes the prefecture when SUUMO omits it."""
     if not address:
         return None
-    town = _block.sub("", address).strip()
+    town = _block.sub("", address).rstrip("-－ ")
     name = PREF_JA.get(pref, "")
     if name and not town.startswith(name):
         town = name + town
