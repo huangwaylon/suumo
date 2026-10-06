@@ -127,8 +127,8 @@
     const best = closest(chosen);  // a chosen station when there are any: that's why it's listed
     if (best) return t("walk", stationName(best[0]), best[1]);
     const byBus = chosen && it.stations.find(([s]) => q.stations.includes(s));
-    if (byBus) return t("bus", stationName(byBus[0]));
-    return it.stations.length ? t("bus", stationName(it.stations[0][0])) : "";
+    if (byBus) return t("bus", stationName(byBus[0]), byBus[2]);
+    return it.stations.length ? t("bus", stationName(it.stations[0][0]), it.stations[0][2]) : "";
   }
   function image(it, w, h) {
     let p = it.image;
@@ -205,6 +205,7 @@
   }
 
   function render() {
+    if (mode === "search") compare = false;  // compare is for favorites / shared lists only
     renderedFor = hashFor();
     if (document.body.classList.contains("show-filters") && !WIDE.matches) {
       listStale = true;  // only the sheet is visible: its counts are enough until it closes
@@ -328,6 +329,7 @@
     const reset = (...fs) => (qq) => { const e = Filter.emptyQuery(); for (const f of fs) qq[f] = e[f]; return qq; };
     if (q.text) out.push([t("chipText", q.text), reset("text"), "text"]);
     for (const type of q.types) out.push([typeName(type), drop("types", type), "types"]);
+    for (const a of q.areas) out.push([areaName(a), drop("areas", a), "areas"]);
     if (q.priceMin != null || q.priceMax != null) {
       out.push([t("chipPrice", q.priceMin != null ? money(q.priceMin) : "", q.priceMax != null ? money(q.priceMax) : ""),
         reset("priceMin", "priceMax"), "price"]);
@@ -336,7 +338,6 @@
     if (q.sizeMin != null) out.push([t("sizeMin", q.sizeMin), reset("sizeMin"), "size"]);
     if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin"), "size"]);
     if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax"), "age"]);
-    for (const a of q.areas) out.push([areaName(a), drop("areas", a), "areas"]);
     for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
     if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk"), "stations"]);
     for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : "extra"]);
@@ -501,7 +502,7 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("emptyTitle");
+    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t(mode === "favorites" ? "favEmpty" : "sharedEmpty")[0];
     if (fittedFor !== renderedFor) {  // follow the results when the conditions change
       fittedFor = renderedFor;
       const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
@@ -554,6 +555,7 @@
     const yen = (v) => (v ? t("yen", num(v)) : "");
     const ROWS = [
       ["", ([it]) => `<a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy">` : ""}</div></a>`],
+      ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
       ["price", ([it]) => `<b class="num">${price(it, true)}</b>`],
       ["layout", ([it]) => esc(value(it.layout) || typeName(it.type))],
       [cols.every(([it]) => isCondo(it.type)) ? "floor" : cols.some(([it]) => isCondo(it.type)) ? "floorBoth" : "building",
@@ -773,6 +775,9 @@
       }
     });
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
+    $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
+      if (e.target.id === "station-q" && e.key === "Enter") $("station-list").querySelector('button[aria-pressed="false"]')?.click();
+    });
     $("settings-open").addEventListener("click", () => openSettings(true));
     $("settings-close").addEventListener("click", () => openSettings(false));
     $("settings").addEventListener("click", (e) => {

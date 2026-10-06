@@ -194,3 +194,17 @@ def test_stations_by_kana_and_english(tmp_path):
                                         {"query": {"text": "Jiyugaoka"}}], stations=names)
     assert out[:4] == [["二子玉川"], ["自由が丘"], ["自由が丘"], ["玉川学園前", "二子玉川"]]  # starts with it first
     assert out[4]["ids"] == ["1"] and out[5]["ids"] == ["2"]   # the text search finds readings too
+
+
+@needs_node
+def test_bus_access_keeps_its_minutes(tmp_path):
+    recs = [rec(1, stations=[{"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2}])]
+    script = """
+    const Filter = require(process.argv[1]);
+    const db = Filter.load(JSON.parse(require("fs").readFileSync(process.argv[2], "utf8")));
+    process.stdout.write(JSON.stringify(db.items[0].stations));
+    """
+    site_queries(tmp_path, recs, [])
+    out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/index.json")],
+                         capture_output=True, text=True, check=True)
+    assert json.loads(out.stdout) == [["喜多見", None, 8]]   # not walkable; 8 minutes by bus

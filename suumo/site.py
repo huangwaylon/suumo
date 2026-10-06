@@ -98,7 +98,9 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
             "land": i.land, "age": i.age, "built": i.built,
-            "stations": [x for name, _, walk in i.stations for x in (stations(name), walk)],
+            # pairs (station, minutes): on foot, or negative by bus, or null
+            "stations": [x for name, _, walk in i.stations
+                         for x in (stations(name), walk if walk is not None else -i.bus.get(name, 0) or None)],
             "features": [features(f) for f in i.features],
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)

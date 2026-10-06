@@ -43,17 +43,6 @@
   </header>
 
   <div class="layout">
-    <aside id="filters" class="filters" data-t-label="filters">
-      <div class="sheet-head">
-        <h2 data-t="filters"></h2>
-        <button id="filters-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg></button>
-      </div>
-      <div id="filters-body" class="sheet-body"></div>
-      <div class="filters-foot">
-        <button id="clear" class="btn ghost" data-t="clearAll"></button>
-        <button id="apply" class="btn primary"></button>
-      </div>
-    </aside>
 
     <main class="results" id="results" tabindex="-1">
       <div class="toolbar">
@@ -65,6 +54,18 @@
       <div id="list" class="grid"></div>
       <div id="sentinel"></div>
     </main>
+
+    <aside id="filters" class="filters" data-t-label="filters">
+      <div class="sheet-head">
+        <h2 data-t="filters"></h2>
+        <button id="filters-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div id="filters-body" class="sheet-body"></div>
+      <div class="filters-foot">
+        <button id="clear" class="btn ghost" data-t="clearAll"></button>
+        <button id="apply" class="btn primary"></button>
+      </div>
+    </aside>
 
     <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
   </div>

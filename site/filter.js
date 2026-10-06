@@ -27,7 +27,10 @@
       id += c.id[i];
       const type = index.types[c.type[i]], area = index.areas[c.area[i]], town = index.towns[c.town[i]];
       const st = c.stations[i], stations = [];
-      for (let j = 0; j < st.length; j += 2) stations.push([index.stations[st[j]], st[j + 1]]);
+      for (let j = 0; j < st.length; j += 2) {  // [name, walk minutes or null, bus minutes or null]
+        const m = st[j + 1];
+        stations.push([index.stations[st[j]], m >= 0 ? m : null, m < 0 ? -m : null]);
+      }
       const it = {
         id: String(id), idn: id, type, key: type + ":" + id, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],

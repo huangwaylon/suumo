@@ -94,6 +94,7 @@ class Item:
         # (name, line, minutes on foot or None when the access is by bus); bus stops aren't stations
         self.stations = [(s["name"], line_name(s.get("line")), None if s.get("bus") else s.get("walk"))
                          for s in rec.get("stations") or [] if s.get("name") and not is_bus(s)]
+        self.bus = {s["name"]: s["bus"] for s in rec.get("stations") or [] if s.get("bus") and not is_bus(s)}  # minutes
         self.features = sorted(rec.get("features") or ())
         self.leasehold = rec.get("land_rights") in LEASEHOLD
         self.first_seen = rec.get("first_seen") or ""
