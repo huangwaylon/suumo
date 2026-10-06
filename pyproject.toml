@@ -1,7 +1,8 @@
 [project]
 name = "suumo"
-version = "0.2.0"
+version = "0.3.0"
 description = "Track SUUMO for-sale listings and publish them as a searchable site"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.15.0",
@@ -14,6 +15,9 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.14",
 ]
+
+[tool.uv]
+package = false  # an application run with `python -m suumo`, not an installed package
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -1,13 +1,15 @@
-.venv/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-.cache/
-.claude/scheduled_tasks.lock
-.env
+# local state and output (see README "Files")
 state.db*
 archive/
 logs/
 _site/
+.env
 uv.lock
+
+# tooling
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.claude/
 .DS_Store
