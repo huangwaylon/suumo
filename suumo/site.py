@@ -1,6 +1,6 @@
 """Build the static search site (GitHub Pages) from data/ and geo/towns.json.
 
-  <out>/index.html, app.js, filter.js, style.css   copied from site/
+  <out>/index.html, app.js, filter.js, i18n.js, style.css   copied from site/
   <out>/data/index.json                            every property, search fields only, stored by column
   <out>/data/l/<type>/<id>.json                    one listing's full record, price history, other agents
 

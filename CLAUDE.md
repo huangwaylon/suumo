@@ -26,7 +26,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
-| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`). Layout by CSS breakpoints: <700 phone, <1100 tablet, desktop |
+| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`). Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
 
@@ -94,7 +94,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - Listing-page labels end in `ヒント` (a help link) and the summary and full spec tables repeat labels; `spec_table`
   strips the suffix and keeps the first value. Deal type is `取引態様：＜…＞` in the agent block.
 - `land_rights` text can be a paragraph; `_tenure` maps it to a category and keeps the text in `land_rights_note`.
-- Image URLs are SUUMO resize URLs (`resizeImage?src=…&w=&h=`); any size works, the site asks for 240×180 and 800×600.
+- Image URLs are SUUMO resize URLs (`resizeImage?src=…&w=&h=`); any size works, the site asks for 360×270 (cards), 640×480 (listing) and 120×90 (map popups).
 - Addresses mostly stop at the 丁目 (full-width digit); some add 番地 in ASCII digits, which `geo.town_of` drops.
 
 ## Extending
@@ -105,13 +105,14 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - **New prefecture/area/type:** edit `scope.toml` only. `prune --yes` removes data that leaves the scope.
   Everything downstream is keyed by prefecture: `scope.PREFS` (all 47, slug → name used in addresses) feeds
   geocoding and the site; the index lists each area with its prefecture, and the filter groups areas by
-  prefecture once there is more than one. Lines from other regions may need entries in `catalog._OPERATORS`
+  prefecture once there is more than one. English area names are `places` in `site/i18n.js` (kanji is shown
+  when a name is missing). Lines from other regions may need entries in `catalog._OPERATORS`
   if SUUMO writes them with and without the operator name.
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
-  add it to `TYPE_JA` in `site/app.js`.
+  add its name to `types` in both languages in `site/i18n.js`.
 - **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` if the JS needs one;
-  the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`CHIPS`/`SHEETS`, URL key in
-  `LISTS`/`NUMS`/`BOOLS`); a test in `tests/test_site.py`.
+  the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`renderFilters`, URL key in
+  `KEYS`, threshold values in `CHOICES`); its labels in `site/i18n.js`; a test in `tests/test_site.py`.
 - **Line names:** `catalog.line_name` merges spellings (NFKC, section brackets, `_OPERATORS`, `_ALIASES`);
   check `Counter(line for item...)` after adding a region.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, progress,

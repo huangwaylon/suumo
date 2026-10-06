@@ -13,7 +13,7 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 |---|---|
 | Phone | search bar with filter and favorites buttons; full-screen filter sheet; list or full-screen map (floating switch); listing as a full page with a fixed 「お気に入り / SUUMOで見る」 bar |
 | Tablet | tile grid; filters and listing as side sheets |
-| Desktop (≥1100px) | filters rail · results · live map side by side; listing as a drawer |
+| Desktop (≥1280px) | filters rail · results · live map side by side; listing as a drawer |
 
 - **Search**: station, town or building name; several words narrow down; hiragana, katakana and half-width kana match.
 - **Filters** (one panel, every choice shows its count): 種別, 価格, 間取り（以上: 2LDK〜…）, 広さ, 土地, 築年数,
