@@ -86,9 +86,9 @@
   let hits = [], shown = 0;
   let showMap = false;
   let compare = false;          // favorites as a side-by-side table
-  let daily = false;            // search: only new listings, grouped by the day they appeared
   let area = null;              // [south, west, north, east]: the map view, listing what's in the visible area
-  let mapHits = [];             // what the map shows: the results (in the map area view, before the area cut)
+  let mapHits = [];
+  let byDay = false;            // the list has a heading per day (what's new, newest first)             // what the map shows: the results (in the map area view, before the area cut)
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
@@ -198,7 +198,6 @@
     const p = new URLSearchParams(location.hash.slice(1));
     q = queryFrom(p);
     mode = p.get("fav") === "1" ? "favorites" : "search";
-    daily = mode === "search" && p.get("daily") === "1";
     const b = (p.get("b") || "").split(",").map(Number);
     area = p.get("view") === "area" && b.length === 4 && b.every(Number.isFinite) ? b : null;
     showMap = p.get("view") === "map";
@@ -213,7 +212,6 @@
     if (showMap) p.set("view", "map");
     if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
     if (compare && mode !== "search") p.set("cmp", "1");
-    if (daily && mode === "search") p.set("daily", "1");
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
@@ -221,7 +219,6 @@
   // ---------- results ----------
 
   function compute() {
-    if (mode === "search" && daily) return Filter.search(db, { ...q, sort: "new" }).filter((it) => it.newDate);
     if (mode === "search") return Filter.search(db, q);
     return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => db.byKey.get(k)).filter(Boolean));
   }
@@ -249,10 +246,9 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : daily ? "dailyCount" : "count", num(hits.length));
-    $("tabs").hidden = mode !== "search" || !!area;
-    for (const b of $("tabs").children) b.setAttribute("aria-selected", (b.dataset.tab === "daily") === daily);
-    $("sort").hidden = hits.length < 2 || compare || daily;  // by day: newest first
+    $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : "count", num(hits.length));
+    byDay = mode === "search" && q.sort === "new" && !!(q.newOnly || q.since);  // what's new: a heading per day
+    $("sort").hidden = hits.length < 2 || compare;
     $("view").hidden = (!hits.length && !showMap) || compare || !!area;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
@@ -298,10 +294,10 @@
     let html = "";
     for (let i = shown; i < Math.min(shown + PAGE, hits.length); i++) {
       const d = hits[i].newDate;
-      if (daily && (i === 0 || hits[i - 1].newDate !== d)) {  // a heading for each day
+      if (byDay && (i === 0 || hits[i - 1].newDate !== d)) {  // a heading for each day (then the price cuts)
         let n = 0;
         for (let j = i; j < hits.length && hits[j].newDate === d; j++) n++;
-        html += `<h3 class="day">${esc(weekday(d))}<span>${esc(t("count", num(n)))}</span></h3>`;
+        html += `<h3 class="day">${esc(d ? weekday(d) : t("tag.dropped"))}<span>${esc(t("count", num(n)))}</span></h3>`;
       }
       html += card(hits[i]);
     }
@@ -324,8 +320,12 @@
 
   function tags(it) {
     const F = db.flags, out = [];
-    if (it.flags & F.gone) out.push(`<span class="tag drop">${t("tag.gone")}</span>`);
-    if (it.flags & F.new) out.push(`<span class="tag new">${t(it.flags & F.relisted ? "tag.relisted" : "tag.new")} ${esc(ago(it.newAt))}</span>`);
+    if (it.flags & F.gone) out.push(`<span class="tag gone">${t("tag.gone")}</span>`);
+    if (pending[it.key]) out.push(`<span class="tag warn">${t(pending[it.key][0] ? "tag.pending" : "tag.pendingRemove")}</span>`);
+    if (it.flags & F.new) {  // under a day heading the date is said already: only the hours, today
+      const when = byDay && it.newDate && !/[時h]/.test(ago(it.newAt)) ? "" : ago(it.newAt);
+      out.push(`<span class="tag new">${t(it.flags & F.relisted ? "tag.relisted" : "tag.new")} ${esc(when)}</span>`);
+    }
     if (it.flags & F.dropped) {
       const pct = it.prevPrice && it.price ? Math.round((1 - it.price / it.prevPrice) * 100) : 0;
       out.push(`<span class="tag drop">${t("tag.dropped")}${pct ? ` −${pct}%` : ""}</span>`);
@@ -351,7 +351,7 @@
   }
 
   function emptyState(active) {
-    if (mode !== "search" || (daily && !active.length)) {
+    if (mode !== "search" || (byDay && active.every(([, , s]) => s === "quick"))) {
       const [title, hint] = t(mode !== "search" ? "favEmpty" : "dailyEmpty");
       return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
@@ -386,11 +386,13 @@
     const label = (query) => activeConditions(query).filter(([, , s]) => s !== "quick").map(([l]) => l).slice(0, 3).join("・");
     box.hidden = !here || !searches.length;
     if (!box.hidden) {
-      box.innerHTML = `<span class="searches-title">${esc(t("savedSearches"))}</span>` + searches.map((s, i) => {
+      box.setAttribute("aria-label", t("savedSearches"));
+      box.innerHTML = searches.map((s, i) => {
         const query = queryFrom(new URLSearchParams(s.c));
         const n = s.seen ? Filter.count(db, { ...query, since: s.seen }) : 0;
-        return `<button class="chip" data-saved-search="${i}" aria-pressed="${s.c === key}">${esc(label(query) || t("allListings"))}${
-          n ? `<span class="n fresh">${esc(t("freshN", num(n)))}</span>` : ""}</button>`;
+        const name = label(query) || t("allListings");
+        return `<span class="chip saved${s.c === key ? " on" : ""}"><button class="chip-label" data-saved-search="${i}">${esc(name)}</button>${
+          n ? `<span class="n fresh">${esc(t("freshN", num(n)))}</span>` : ""}<button class="chip-x" data-unsave-search="${i}" aria-label="${esc(t("unkeepSearch"))}: ${esc(name)}">${icon("x")}</button></span>`;
       }).join("");
     }
     const keep = $("keep"), saved = searches.some((s) => s.c === key);
@@ -402,7 +404,7 @@
   // 新着 / 値下げ / since the last visit, one tap each, with what they'd show under the current conditions.
   function renderQuick() {
     const box = $("quick");
-    box.hidden = mode !== "search" || daily;
+    box.hidden = mode !== "search" || !!area;  // (its counts are for the whole list, not the map area)
     if (box.hidden) return;
     const chip = (field, label, value) => {
       const on = q[field] === value, n = on ? hits.length : Filter.count(db, { ...q, [field]: value });
@@ -577,6 +579,7 @@
     if (!area) return;
     clearTimeout(areaTimer);
     areaTimer = setTimeout(() => {
+      $("map").classList.add("moved");  // the hint has done its job
       area = boundsOf(map);
       history.replaceState(history.state, "", hashFor());
       renderedFor = hashFor();
@@ -735,6 +738,7 @@
       r = await record(key);
     } catch (e) {  // 404: the listing ended; anything else: the network
       if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
+      $("detail-link").hidden = true;
       return;
     }
     if (openKey !== key) return;
@@ -980,18 +984,25 @@
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
       else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
-      else if (b.dataset.savedSearch != null) {  // open a saved search: it's seen as of now
-        const s = searches[+b.dataset.savedSearch];
-        q = { ...queryFrom(new URLSearchParams(s.c)), sort: q.sort };
+      else if (b.dataset.unsaveSearch != null) {
+        searches.splice(+b.dataset.unsaveSearch, 1);
+        saveSearches();
+        toast(t("searchRemoved"));
+        renderSearches();
+      } else if (b.dataset.savedSearch != null) {  // open a saved search: what's new in it, if anything; then seen
+        const s = searches[+b.dataset.savedSearch], query = queryFrom(new URLSearchParams(s.c));
+        const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
+        q = { ...query, sort: "new", since: fresh ? s.seen : null };
         s.seen = dataHour;
         saveSearches();
-        daily = false;
         update();
       } else if (b.dataset.quick) {
         const f = b.dataset.quick;
         q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
+        if (f === "dropsOnly") q.sort = q[f] ? "drop_desc" : "new";  // price cuts: biggest first
+        else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
         update();
-      } else if (b.dataset.tab && (b.dataset.tab === "daily") !== daily) switchView("daily", () => { daily = !daily; });
+      }
       else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {

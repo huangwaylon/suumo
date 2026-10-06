@@ -84,7 +84,7 @@ def representatives(snap):
     reps = {}
     for i in snap.items:
         group = snap.groups.get(i.dup)
-        if not group:
+        if not group or i.saved or i.gone:  # saved / ended listings aren't grouped: each stands for itself
             reps[i] = []
         elif i is min(group, key=lambda g: (not g.rec.get("has_detail"), -len(g.features), g.idn)):
             reps[i] = [g for g in group if g is not i]

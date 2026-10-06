@@ -47,10 +47,6 @@
 
     <main class="results" id="results" tabindex="-1">
       <div id="searches" class="searches" hidden></div>
-      <div id="tabs" class="tabs" role="tablist">
-        <button role="tab" data-tab="all" data-t="tabAll"></button>
-        <button role="tab" data-tab="daily" data-t="tabDaily"></button>
-      </div>
       <div class="toolbar">
         <h2 id="count" aria-live="polite" tabindex="-1"></h2>
         <span class="toolbar-end">
@@ -89,7 +85,7 @@
       </div>
       <div id="detail-body" class="detail-body"></div>
       <div class="detail-actions">
-        <button id="detail-fav" class="btn" aria-pressed="false"><svg class="i"><use href="#i-heart"/></svg><span></span></button>
+        <button id="detail-fav" class="btn" data-fav="" aria-pressed="false"><svg class="i"><use href="#i-heart"/></svg><span></span></button>
         <a id="detail-link" class="btn primary" target="_blank" rel="noopener"><span data-t="openSuumo"></span><svg class="i"><use href="#i-external"/></svg></a>
       </div>
     </div>

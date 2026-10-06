@@ -88,22 +88,28 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 /* Results ------------------------------------------------------------------------------------------- */
 .results { min-width: 0; scroll-margin-top: var(--bar); padding: 12px 12px calc(88px + var(--safe-b)); }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-#count { margin: 0; font-size: 15px; }
-/* すべて / 新着（日別） */
-.searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
-.searches-title { width: 100%; color: var(--muted); font-size: 13px; }
+#count { margin: 0; font-size: 15px; white-space: nowrap; }
+#sort { max-width: 11em; }
+/* saved searches: one row that swipes */
+.searches { display: flex; gap: 6px; margin: 0 -12px 10px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; }
+.chip.saved { flex: none; max-width: 80%; padding: 0; gap: 0; }
+.chip.saved .chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.chip.saved.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .chip .n.fresh { color: var(--new); font-weight: 600; }
 .toolbar-end { display: flex; align-items: center; gap: 4px; }
 #keep[aria-pressed="true"] { color: var(--warn); }
 #keep[aria-pressed="true"] .i { fill: currentColor; }
-.tabs { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 10px; background: var(--line); }
-.tabs button { flex: 1; min-height: 38px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .day { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; font-size: 16px; }
 .day span { color: var(--muted); font-size: 13px; font-weight: 400; }
 #count:focus { outline: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }  /* every condition in sight */
+.quick { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }  /* 新着 / 値下げ / 前回以降: one row */
+.quick .chip { flex: none; }
+@media (max-width: 699px) {  /* phones: the conditions in one row that swipes, the list in sight */
+  #chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px 10px; padding: 0 12px; }
+  #chips > * { flex: none; }
+}
 .chips:empty { display: none; }
 .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
 .btn:disabled { opacity: .4; cursor: default; }
@@ -146,7 +152,8 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .meta.wrap { white-space: normal; }  /* the station line: the walk time must show */
 .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tag { font-size: 12px; font-weight: 600; line-height: 20px; padding: 0 6px; border-radius: 5px; background: var(--bg); color: var(--muted); }
-.tag.new { color: var(--new); } .tag.drop { color: var(--drop); } .tag.warn { color: var(--warn); }
+.tag.new { color: var(--new); } .tag.drop { color: var(--drop); } .tag.warn { color: var(--warn); } .tag.gone { color: var(--muted); }
+.card:has(.tag.gone) .ph img { filter: grayscale(1); opacity: .6; }  /* ended (kept because saved) */
 
 .skeleton { height: 112px; border-radius: var(--radius); background: linear-gradient(90deg, var(--surface) 0, var(--line) 50%, var(--surface) 100%) 0 0 / 200% 100%;
   animation: shimmer 1.2s infinite linear; }
@@ -177,7 +184,7 @@ body.show-map .results { display: none; }
 .leaflet-container .popup-list a, .leaflet-container .popup-list a:hover { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; padding: 6px 0;
   border-top: 1px solid var(--line); color: var(--text); line-height: 1.4; }
 .popup-list img { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; }
-#map.popup-open .map-note { display: none; }
+#map.popup-open .map-note, body.areamode #map.moved .map-note { display: none; }
 .map-note { position: absolute; z-index: 500; left: 12px; top: 12px; padding: 6px 12px; pointer-events: none;
   border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; box-shadow: var(--shadow); }
 [data-theme="dark"] :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-bar a) {
@@ -311,11 +318,12 @@ details.group .opts { padding-bottom: 12px; }
 /* phones and tablets: the map on top, the list under it */
 @media (max-width: 1279px) {
   body.areamode .layout { display: flex; flex-direction: column; }
-  body.areamode .map { display: block; order: -1; position: sticky; top: var(--bar); z-index: 5; height: 48vh; }
+  body.areamode .map { display: block; order: -1; position: sticky; top: var(--bar); z-index: 5; height: min(48vh, 40vh + 40px); }
   body.areamode .results { display: block; }
 }
 .area-btn { position: absolute; z-index: 600; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%);
-  min-height: 40px; font-size: 14px; box-shadow: 0 4px 14px rgb(0 0 0 / .2); white-space: nowrap; }
+  min-height: 40px; font-size: 14px; box-shadow: 0 4px 14px rgb(0 0 0 / .2); white-space: nowrap;
+  background: var(--surface); color: var(--accent); border-color: var(--accent); }  /* not a second black pill over リスト */
 @media (min-width: 1280px) { .area-btn { bottom: 24px; } }
 body.areamode .area-btn { bottom: 12px; }
 

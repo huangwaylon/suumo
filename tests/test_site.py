@@ -212,10 +212,11 @@ def test_bus_access_keeps_its_minutes(tmp_path):
 
 @needs_node
 def test_saved_listings_stay_themselves_and_ended_ones_only_in_the_saved_list(tmp_path):
-    recs = [rec(1, dup_key="aa"), rec(2, dup_key="aa", has_detail=True), rec(3, removed_at="2026-10-05"), rec(4)]
+    recs = [rec(1, dup_key="aa"), rec(2, dup_key="aa", has_detail=True), rec(7, dup_key="aa"),
+            rec(3, removed_at="2026-10-05"), rec(4)]
     out = site_queries(tmp_path, recs, [{"query": {}}, {"saved": True}],
                        saved={"used_condo:1", "used_condo:3"})
-    assert out[0]["ids"] == ["4", "2", "1"]      # 1 is saved: not folded into 2; 3 ended: not in search
+    assert out[0]["ids"] == ["4", "2", "1"]      # 1 is saved: not folded into 2 (7 is); 3 ended: not in search
     assert out[1] == ["1", "3"]                   # the saved list, the ended one included
     assert (tmp_path / "site/data/l/used_condo/3.json").exists()
 
