@@ -24,16 +24,17 @@
   <script src="app.js" defer></script>
 </head>
 <body>
-  <a class="skip" href="#list" data-t="skip"></a>
+  <a class="skip" href="#results" data-t="skip"></a>
   <a class="skip" href="#map" data-t="skipMap"></a>
+  <h1 class="sr" data-t="brand"></h1>
   <header class="bar">
     <a class="brand" href="#" data-t="brand"></a>
     <label class="search">
       <svg class="i"><use href="#i-search"/></svg>
       <input id="q" type="search" data-t-placeholder="search" data-t-label="searchLabel" autocomplete="off" enterkeyhint="search">
     </label>
-    <button id="filters-open" class="icon-btn" data-t-label="filtersOpen">
-      <svg class="i"><use href="#i-sliders"/></svg><span class="badge" id="filters-n" hidden></span>
+    <button id="filters-open" class="icon-btn" data-t-label="filtersOpen" aria-controls="filters" aria-expanded="false">
+      <svg class="i"><use href="#i-sliders"/></svg><span data-t="filters"></span><span class="badge" id="filters-n" hidden></span>
     </button>
     <button id="favs" class="icon-btn" data-t-label="favorites" aria-pressed="false">
       <svg class="i"><use href="#i-heart"/></svg><span class="badge" id="favs-n" hidden></span>
@@ -54,9 +55,9 @@
       </div>
     </aside>
 
-    <main class="results">
+    <main class="results" id="results" tabindex="-1">
       <div class="toolbar">
-        <strong id="count" aria-live="polite"></strong>
+        <h2 id="count" aria-live="polite" tabindex="-1"></h2>
         <select id="sort" class="select" data-t-label="sort"></select>
       </div>
       <div id="chips" class="chips"></div>
@@ -65,7 +66,7 @@
       <div id="sentinel"></div>
     </main>
 
-    <section id="map" class="map" data-t-label="map"></section>
+    <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
   </div>
 
   <button id="view" class="fab"></button>
@@ -93,7 +94,7 @@
     </div>
   </div>
 
-  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="toast" class="toast" role="status"></div>
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>

@@ -56,6 +56,7 @@
 
   // ---------- choices ----------
 
+  const PRICE_CHIPS = [3000, 4000, 5000, 6000, 8000, 10000, 15000].map((m) => m * 1e4);  // 上限: one tap
   const PRICES = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000, 15000, 20000, 30000].map((m) => m * 1e4);
   const PLANS = [[3, "1K"], [5, "1LDK"], [7, "2DK"], [8, "2LDK"], [10, "3DK"], [11, "3LDK"], [14, "4LDK"]];
   const SIZES = [40, 50, 60, 70, 80, 100, 120];
@@ -190,6 +191,7 @@
 
   function update(top = true) {
     history.replaceState(null, "", hashFor());
+    if (mode === "search") localStorage.setItem("suumo.last", location.hash);  // reopened later: the same search
     render();
     if (top && !WIDE.matches) window.scrollTo({ top: 0 });
     else if (top) document.querySelector(".results").scrollIntoView({ block: "start" });
@@ -209,14 +211,15 @@
     $("sort").value = q.sort;
     $("count").textContent = mode === "search" ? t("count", num(hits.length)) : "";  // the banner counts favorites
     $("view").hidden = !hits.length && !showMap;
-    const active = activeConditions();
-    $("filters-n").hidden = !active.length;
-    $("filters-n").textContent = active.length;
+    const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
+    $("filters-n").hidden = !set;  // the text has its own box
+    $("filters-n").textContent = set;
     $("favs-n").hidden = !favs.size;
     $("favs-n").textContent = favs.size;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
-    $("chips").innerHTML = mode === "search" ? active.map(([label], i) =>
-      `<button class="chip" data-remove="${i}" aria-label="${esc(t("remove", label))}">${esc(label)}${icon("x")}</button>`).join("") : "";
+    $("chips").innerHTML = mode !== "search" ? "" : suggestion() + active.map(([label, , s], i) =>
+      `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
+      (active.length > 1 ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
     $("list").innerHTML = hits.length ? "" : emptyState(active);
@@ -224,6 +227,13 @@
     more();
     if (mapVisible()) drawMap();
     if (filtersVisible()) renderFilters();
+  }
+
+  const scrollFor = {};
+  function restoreScroll() {
+    const y = scrollFor[renderedFor] || 0;
+    while (document.documentElement.scrollHeight < y + innerHeight && shown < hits.length) more();
+    window.scrollTo({ top: y });
   }
 
   function more() {
@@ -250,10 +260,10 @@
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
         <div class="meta">${esc(station(it))}</div>
-        <div class="meta">${esc([it.town, it.name || (q.types.length !== 1 && typeName(it.type))].filter(Boolean).join(" · "))}</div>
+        <div class="meta">${esc([it.town, it.name || ((mode !== "search" || q.types.length !== 1) && typeName(it.type))].filter(Boolean).join(" · "))}</div>
         <div class="tags">${tags(it)}</div>
       </div></a>
-      <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favorites"))}">${icon("heart")}</button></article>`;
+      <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favFor", money(it.price), it.layout, it.town || it.areaName))}">${icon("heart")}</button></article>`;
   }
 
   function emptyState(active) {
@@ -281,26 +291,38 @@
     }
   }
 
-  // The conditions in force, as [label, remove()] for the chips and the empty state.
+  // Typed a station or area name in the search box: offer it as a condition (walk limits, exact area).
+  function suggestion() {
+    const typed = q.text.replace(/\s*(駅|station|sta\.?)$/i, "");
+    if (!typed) return "";
+    const s = db.index.stations.find((n) => !q.stations.includes(n) && Filter.stationMatch(db, n, typed) === 0);
+    if (s) return `<button class="chip suggest" data-suggest="stations" data-value="${esc(s)}">${esc(t("useStation", stationName(s)))}</button>`;
+    const key = Filter.normalize(typed);
+    const area = db.index.areas.find(([code, name]) => !q.areas.includes(code) &&
+      [name, I18N.en.places[name]].some((n) => n && Filter.normalize(n).replace(/ /g, "") === key.replace(/ /g, "")));
+    return area ? `<button class="chip suggest" data-suggest="areas" data-value="${esc(area[0])}">${esc(t("useArea", place(area[1])))}</button>` : "";
+  }
+
+  // The conditions in force, as [label, remove(query), filter section] for the chips and the empty state.
   function activeConditions() {
     // remove(query) takes the condition out of the given query (and returns it)
     const out = [], drop = (f, v) => (qq) => { qq[f] = qq[f].filter((x) => x !== v); return qq; };
     const reset = (...fs) => (qq) => { const e = Filter.emptyQuery(); for (const f of fs) qq[f] = e[f]; return qq; };
-    if (q.text) out.push([t("chipText", q.text), reset("text")]);
-    for (const type of q.types) out.push([typeName(type), drop("types", type)]);
+    if (q.text) out.push([t("chipText", q.text), reset("text"), "text"]);
+    for (const type of q.types) out.push([typeName(type), drop("types", type), "types"]);
     if (q.priceMin != null || q.priceMax != null) {
       out.push([t("chipPrice", q.priceMin != null ? money(q.priceMin) : "", q.priceMax != null ? money(q.priceMax) : ""),
-        reset("priceMin", "priceMax")]);
+        reset("priceMin", "priceMax"), "price"]);
     }
-    if (q.plan != null) out.push([t("chipPlan", planLabel(q.plan)), reset("plan")]);
-    if (q.sizeMin != null) out.push([t("sizeMin", q.sizeMin), reset("sizeMin")]);
-    if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin")]);
-    if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax")]);
-    for (const a of q.areas) out.push([areaName(a), drop("areas", a)]);
-    for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s)]);
-    if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk")]);
-    for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f)]);
-    for (const f of q.features) out.push([feature(f), drop("features", f)]);
+    if (q.plan != null) out.push([t("chipPlan", planLabel(q.plan)), reset("plan"), "plan"]);
+    if (q.sizeMin != null) out.push([t("sizeMin", q.sizeMin), reset("sizeMin"), "size"]);
+    if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin"), "size"]);
+    if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax"), "age"]);
+    for (const a of q.areas) out.push([areaName(a), drop("areas", a), "areas"]);
+    for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
+    if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk"), "stations"]);
+    for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : "extra"]);
+    for (const f of q.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
   }
 
@@ -329,8 +351,9 @@
       body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
+        <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
         <input class="text-input" id="station-q" type="search" placeholder="${esc(t("stationSearch"))}" autocomplete="off">
-        <div class="opts" id="station-list"></div><div class="opts" id="walk-list" style="margin-top:12px"></div>`;
+        <div class="opts" id="station-list"></div>`;
     }
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
@@ -338,8 +361,8 @@
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
-    sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}${
-      select("priceMax", t("max"), PRICES, (v) => t("priceMax", money(v)))}`);
+    sec("price", `${h3("price")}<div class="opts">${PRICE_CHIPS.map((v) => one("priceMax", v, t("priceMax", money(v)),
+      facets.priceMax[v] || 0)).join("")}</div>${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}`);
     sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${PLANS.map(([v, l]) =>
       one("plan", v, t("planFrom", l), facets.plan[v] || 0)).join("")}</div>`);
     sec("size", `${h3("size")}${isLand ? "" : select("sizeMin", t("floorArea"), SIZES, (v) => t("sizeMin", v))}${
@@ -347,12 +370,14 @@
     sec("age", isLand ? "" : `${h3("age")}<div class="opts">${AGES.map((v) => one("ageMax", v, t("ages")[v], facets.ageMax[v] || 0)).join("")}${
       flag("post1981", facets.post1981)}</div>`);
     stationList();
+    $("walk-from").textContent = t(q.stations.length ? "walkFromChosen" : "walkFromNearest");
     $("walk-list").innerHTML = WALKS.map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
     const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f)).slice(0, 30)];
+    const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
     sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (facets[f] || q[f])).map((f) =>
-      flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.map((f) =>
-      many("features", f, feature(f), facets.features[f] || 0)).join("")}</div>`);
+      flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
+      shownTags.length > 12 ? `<details class="group"><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.slice(12).map(tagChip).join("")}</div></details>` : ""}`);
     $("apply").textContent = t("show", num(facets.total));
   }
 
@@ -476,6 +501,7 @@
   // ---------- listing ----------
 
   function openDetail(key) {
+    if (openKey === key && !$("detail").hidden) return;
     lastFocus = document.activeElement;
     history.pushState(null, "", hashFor({ id: key }));
     pushed = true;
@@ -498,8 +524,8 @@
       const res = await fetch(`data/l/${key.replace(":", "/")}.json`);
       if (!res.ok) throw new Error(res.status);
       r = await res.json();
-    } catch {
-      if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t("gone"))}</h3></div>`;
+    } catch (e) {  // 404: the listing ended; anything else: the network
+      if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
       return;
     }
     if (openKey !== key) return;
@@ -600,9 +626,9 @@
   let toastTimer = null;
   function toast(text) {
     $("toast").textContent = text;
-    $("toast").hidden = false;
+    $("toast").classList.add("on");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { $("toast").hidden = true; }, 2200);
+    toastTimer = setTimeout(() => $("toast").classList.remove("on"), 2200);
   }
 
   // ---------- events ----------
@@ -614,14 +640,39 @@
     update(false);
   }
 
-  function openFilters(open) {
-    document.body.classList.toggle("show-filters", open);
-    if (open) { renderFilters(); $("filters-close").focus(); return; }
+  // On phones and tablets the filter panel is a modal sheet: dialog semantics, the page behind inert.
+  function sheetSemantics() {
+    const open = document.body.classList.contains("show-filters"), sheet = $("filters");
+    if (WIDE.matches) { sheet.removeAttribute("role"); sheet.removeAttribute("aria-modal"); } else {
+      sheet.setAttribute("role", "dialog");
+      sheet.setAttribute("aria-modal", "true");
+    }
+    $("filters-open").setAttribute("aria-expanded", open);
+    for (const el of [document.querySelector(".bar"), document.querySelector(".results")]) el.inert = open;
+  }
+
+  // section: scroll the filters to it (a chip's label edits its condition)
+  function openFilters(open, section) {
+    if (open && !WIDE.matches && !document.body.classList.contains("show-filters")) {
+      history.pushState({ sheet: true }, "", location.href);  // browser back closes the sheet
+    }
+    if (!open && history.state?.sheet) { history.back(); return; }  // popstate closes it
+    document.body.classList.toggle("show-filters", open && !WIDE.matches);
+    sheetSemantics();
+    if (open) {
+      renderFilters();
+      const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
+      if (sec) sec.scrollIntoView({ block: "start" });
+      (WIDE.matches ? sec?.querySelector("button, input, select") : $("filters-close"))?.focus();
+      return;
+    }
     if (listStale) render();
     $("filters-open").focus();
   }
 
-  function openSettings(open) {
+  function openSettings(open, popped) {
+    if (open && $("settings").hidden) history.pushState({ settings: true }, "", location.href);  // back closes it
+    if (!open && !popped && history.state?.settings) { history.back(); return; }  // popstate closes it
     $("settings").hidden = !open;
     if (open) { lastFocus = document.activeElement; renderSettings(); $("settings-close").focus(); } else lastFocus?.focus();
   }
@@ -650,7 +701,11 @@
     $("filters-body").addEventListener("click", onFilterClick);
     $("filters-body").addEventListener("change", (e) => {
       const f = e.target.dataset.num;
-      if (f) { q[f] = e.target.value === "" ? null : +e.target.value; update(false); }
+      if (f) {
+        q[f] = e.target.value === "" ? null : +e.target.value;
+        update(false);
+        $("filters-body").querySelector(`select[data-num="${f}"]`)?.focus();  // redrawn: keep the keyboard there
+      }
     });
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
     $("settings-open").addEventListener("click", () => openSettings(true));
@@ -666,20 +721,39 @@
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
     });
     DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
-    $("favs").addEventListener("click", () => { mode = mode === "favorites" ? "search" : "favorites"; update(); });
-    $("view").addEventListener("click", () => { showMap = !showMap; update(); });
+    // List/map and search/favorites are history entries (back returns), each keeping its scroll position.
+    const switchView = (change) => {
+      if (history.state?.view) { history.back(); return; }  // back to the view it came from
+      scrollFor[renderedFor] = window.scrollY;
+      change();
+      history.pushState({ view: true }, "", hashFor());
+      render();
+      restoreScroll();
+    };
+    $("favs").addEventListener("click", () => switchView(() => { mode = mode === "favorites" ? "search" : "favorites"; }));
+    $("view").addEventListener("click", () => switchView(() => { showMap = !showMap; }));
     $("detail-back").addEventListener("click", closeDetail);
     $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
     document.addEventListener("click", (e) => {
+      if (e.target === document.body && document.body.classList.contains("show-filters")) return openFilters(false);  // backdrop
       const fav = e.target.closest("[data-fav]");
       if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav || openKey); return; }
       const link = e.target.closest("a[data-key]");
       if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openDetail(link.dataset.key); return; }
       const b = e.target.closest("button");
       if (!b) return;
-      if (b.dataset.remove != null) { activeConditions()[+b.dataset.remove][1](q); update(); }
+      if (b.dataset.remove != null) {
+        activeConditions()[+b.dataset.remove][1](q);
+        update();
+        ($("chips").querySelector(".chip-x") || $("count")).focus();
+      }
       else if (b.dataset.clear) clearAll();
-      else if (b.dataset.share) {
+      else if (b.dataset.edit) openFilters(true, b.dataset.edit);
+      else if (b.dataset.suggest) {  // the typed name becomes a condition
+        q[b.dataset.suggest] = [...q[b.dataset.suggest], b.dataset.value];
+        q.text = "";
+        update();
+      } else if (b.dataset.share) {
         const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
         if (navigator.share && COARSE.matches) navigator.share({ title: t("shareTitle", favs.size), url }).catch(() => {});
         else (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
@@ -690,9 +764,28 @@
         mode = "favorites"; shared = []; update();
       } else if (b.dataset.search) { mode = "search"; shared = []; update(); }
     });
-    window.addEventListener("popstate", route);
+    document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault();  // the hash holds the search
+      $(a.getAttribute("href").slice(1))?.focus();
+    }));
+    window.addEventListener("popstate", () => {
+      if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
+        document.body.classList.remove("show-filters");
+        sheetSemantics();
+        history.replaceState(null, "", hashFor());
+        if (listStale) render();
+        $("filters-open").focus();
+        return;
+      }
+      if (!$("settings").hidden) { openSettings(false, true); return; }
+      const before = renderedFor;
+      scrollFor[before] = window.scrollY;
+      route();
+      if (renderedFor !== before && $("detail").hidden) restoreScroll();
+    });
     document.addEventListener("keydown", (e) => {
-      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings") : null;
+      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings")
+        : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key !== "Escape") return;
       if (!$("settings").hidden) openSettings(false);
@@ -725,8 +818,9 @@
       return;
     }
     wire();
+    if (!location.hash && localStorage.getItem("suumo.last")) history.replaceState(null, "", localStorage.getItem("suumo.last"));
     route();
-    (window.requestIdleCallback || setTimeout)(() => loadLeaflet());  // so the first map opens without waiting
+    (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
   }
 
   start();

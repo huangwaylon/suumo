@@ -58,6 +58,8 @@
     return best;
   }
 
+  const STATION_WORDS = new Set(["station", "sta", "sta.", "駅"]);  // "Shibuya Station" finds what "Shibuya" does
+
   // One check per condition: (item, value, query) -> passes. Empty values pass.
   const CHECKS = {
     types: (it, v) => !v.length || v.includes(it.type),
@@ -72,7 +74,7 @@
     noCondition: (it, v, q, db) => !v || !(it.flags & db.flags.conditional),
     newOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.new),
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
-    text: (it, v, q, db) => !v || normalize(v).split(/\s+/).every((w) => !w || haystack(it, db).includes(w)),
+    text: (it, v, q, db) => !v || normalize(v).split(/\s+/).every((w) => !w || STATION_WORDS.has(w) || haystack(it, db).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
