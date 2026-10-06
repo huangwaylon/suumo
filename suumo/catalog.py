@@ -74,13 +74,16 @@ def _age_years(rec, today):
 
 
 class Item:
-    """One active listing: its record plus the values the site filters and sorts on."""
+    """One listing: its record plus the values the site filters and sorts on. `gone`: ended on SUUMO but kept
+    because it's saved; `saved`: on the shared saved list."""
 
     def __init__(self, rec, today, pref):
         self.rec = rec
         self.pref = pref
         self.type = rec["type"]
         self.key = f"{self.type}:{rec['id']}"
+        self.gone = bool(rec.get("removed_at"))
+        self.saved = False
         self.idn = int(rec["id"])
         self.area = rec.get("area_code")
         self.price_lo = rec.get("price")
@@ -109,7 +112,7 @@ class Item:
 
 @dataclass
 class Snapshot:
-    items: list                                   # active listings (Item)
+    items: list                                   # listings (Item): active, and ended ones kept because saved
     areas: dict                                   # area code -> name
     history: dict                                 # key -> [(date, old_price, new_price)], oldest first
     new_dates: dict                               # key -> date of its latest new/relisted event
@@ -119,7 +122,7 @@ class Snapshot:
     def __post_init__(self):
         by_dup = defaultdict(list)
         for i in self.items:
-            if i.dup:
+            if i.dup and not (i.saved or i.gone):  # a saved listing stays itself (its key is what was saved)
                 by_dup[i.dup].append(i)
         self.groups = {k: v for k, v in by_dup.items() if len(v) > 1}
 
@@ -139,11 +142,13 @@ def run_date(run_id):
     return f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
 
 
-def load(data_dir, today: date):
+def load(data_dir, today: date, saved=()):
     data_dir = Path(data_dir)
     items, areas = [], {}
     for pref_dir in sorted(p for p in data_dir.iterdir() if p.is_dir() and p.name != "events"):
         recs = {t: [r for p in sorted((pref_dir / t).glob("*.jsonl")) for r in _read_jsonl(p)] for t in TYPES}
+        for path in sorted((pref_dir / "removed").glob("*.jsonl")):  # ended, kept because saved
+            recs[path.stem] += _read_jsonl(path)
         land_ids = {r["id"] for r in recs["land"]}
         for type_key, rs in recs.items():
             # land with a build condition is listed under both new_house and land: keep the land listing
@@ -162,4 +167,6 @@ def load(data_dir, today: date):
             elif e["kind"] == "price_changed":
                 p = e.get("payload") or {}
                 history[key].append((day, p.get("old_price"), p.get("price")))
+    for i in items:
+        i.saved = i.key in saved
     return Snapshot(items, areas, dict(history), new_dates, today)

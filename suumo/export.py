@@ -1,7 +1,7 @@
 """Export state.db to git-tracked files (the site is built from them).
 
   data/<pref>/<type>/<area_code>.jsonl  active listings in scope, one per line, sorted by id, fixed key order
-  data/<pref>/removed/<type>.jsonl      listings removed in the last PURGE_DAYS days
+  data/<pref>/removed/<type>.jsonl      ended listings kept because they're on the saved list (saved.json)
   data/<pref>/areas.json                area code -> name
   data/events/<run_id>.json             this run's events
 

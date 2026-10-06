@@ -195,3 +195,16 @@ def test_archive_ignores_stray_files_in_list_days(tmp_path):
     assert a.list_days("tokyo") == ["20260101"]
     a.prune_lists("tokyo", date(2026, 10, 6))
     assert a.list_days("tokyo") == []
+
+
+def test_saved_list_applies_issue_titles(tmp_path):
+    from suumo import saved
+    path = tmp_path / "saved.json"
+    assert saved.apply(path, "save used_condo:20205670") == "saved used_condo:20205670"
+    assert saved.apply(path, "save used_condo:20205670") == "saved used_condo:20205670 (no change)"
+    assert saved.apply(path, "save land:1") == "saved land:1"
+    assert saved.load(path) == {"used_condo:20205670", "land:1"}
+    assert saved.apply(path, "unsave land:1") == "unsaved land:1"
+    for bad in ("save used_condo:1; rm -rf /", "save rental:1", "please save this", "save used_condo:abc", ""):
+        assert saved.apply(path, bad) is None
+    assert path.read_text() == '[\n"used_condo:20205670"\n]\n'

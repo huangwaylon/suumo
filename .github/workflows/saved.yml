@@ -1,0 +1,46 @@
+# The shared saved list: an issue titled "save <type>:<id>" or "unsave <type>:<id>" (the site's heart opens one)
+# updates saved.json, gets a reply and is closed; then the site is rebuilt. Other issues are left alone.
+name: Saved
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: saved
+  cancel-in-progress: false  # one change at a time, in order
+
+jobs:
+  apply:
+    if: startsWith(github.event.issue.title, 'save ') || startsWith(github.event.issue.title, 'unsave ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    env:
+      TITLE: ${{ github.event.issue.title }}   # passed as data, never pasted into a command
+      ISSUE: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+        with:
+          python-version: "3.12"
+      - name: Apply
+        id: apply
+        run: |
+          if msg=$(uv run python -m suumo saved "$TITLE" 2>&1); then ok=1; else ok=0; fi
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$msg" > /tmp/msg
+      - name: Commit
+        if: steps.apply.outputs.ok == '1'
+        run: |
+          git config user.name "suumo saved list"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add saved.json
+          git diff --cached --quiet || git commit -q -m "saved: $(cat /tmp/msg) (#$ISSUE)"
+          for i in 1 2 3; do git push -q && break; git pull -q --rebase; done
+          gh workflow run pages.yml --ref main
+      - name: Reply and close
+        run: gh issue close "$ISSUE" --comment "$(cat /tmp/msg)"

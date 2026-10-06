@@ -11,12 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from . import saved as saved_mod
 from . import scope as scope_mod
 from .archive import Archive
 from .db import DB, exclusive
 from .export import export
 from .geo import geocode
-from .gitdata import commit_data
+from .gitdata import commit_data, pull
 from .http import Client
 from .maintenance import out_of_scope, prune, reparse
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
@@ -26,6 +27,7 @@ from .stations import update as update_stations
 JST = ZoneInfo("Asia/Tokyo")
 GEO_CACHE = "geo/towns.json"
 STATIONS_CACHE = "geo/stations.json"
+SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
 GEO_BUDGET = 1800  # seconds a daily run spends on geocoding new towns (the first fill takes hours: `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -57,11 +59,13 @@ def cmd_run(c: Ctx):
     a = c.args
     now = datetime.now(JST)
     run_id = now.strftime("%Y%m%dT%H%M%S")
+    if a.push:
+        pull(ROOT)  # the saved list changes on GitHub
     c.db.x("INSERT INTO runs (run_id, started) VALUES (?, ?)", run_id, now.isoformat(timespec="seconds"))
     c.db.commit()
     client = Client(delay=a.delay)
     t0 = time.monotonic()
-    p = Pipeline(c.db, c.archive, client, c.targets, now, run_id)
+    p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
     if not a.no_crawl:
         p.crawl_lists()
     if a.budget > 0:
@@ -88,7 +92,7 @@ def cmd_run(c: Ctx):
 
 def cmd_status(c: Ctx):
     db = c.db
-    print(f"{'pref/type':<22}{'active':>7}{'detail':>8}{'queued':>7}{'removed':>8}  areas")
+    print(f"{'pref/type':<22}{'active':>7}{'detail':>8}{'queued':>7}{'ended':>8}  areas")  # ended: kept, saved
     total_q = 0
     for t in c.targets:
         rows = [r for r in db.x("SELECT area_code, status, detail_json IS NOT NULL d FROM listings "
@@ -148,7 +152,15 @@ def cmd_geocode(args):
 
 
 def cmd_site(args):
-    build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out, stations_cache=ROOT / STATIONS_CACHE)
+    build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out, stations_cache=ROOT / STATIONS_CACHE,
+               saved=saved_mod.load(ROOT / SAVED))
+
+
+def cmd_saved(args):
+    message = saved_mod.apply(ROOT / SAVED, args.title)
+    if message is None:
+        raise SystemExit(f"not a save request: {args.title!r} (expected 'save <type>:<id>' or 'unsave <type>:<id>')")
+    print(message)
 
 
 def cmd_reparse(c: Ctx):
@@ -183,6 +195,8 @@ def main():
     command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
     command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)")
     command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
+    command("saved", cmd_saved, "files", "apply 'save <type>:<id>' / 'unsave <type>:<id>' to saved.json").add_argument(
+        "title")
     args = ap.parse_args()
     if args.access == "files":
         return args.func(args)

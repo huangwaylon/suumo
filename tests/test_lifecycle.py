@@ -29,9 +29,9 @@ def env(tmp_path):
     targets = [Target("tokyo", "used_condo", frozenset({"13219"}))]
     db.upsert_area("tokyo", "used_condo", AREA)
 
-    def crawl(day, recs, complete=True, hits=None):
+    def crawl(day, recs, complete=True, hits=None, saved=()):
         now = T0 + timedelta(days=day)
-        p = Pipeline(db, archive, None, targets, now, now.strftime("%Y%m%dT%H%M%S"), log=QUIET)
+        p = Pipeline(db, archive, None, targets, now, now.strftime("%Y%m%dT%H%M%S"), log=QUIET, saved=saved)
         db.x("INSERT OR IGNORE INTO runs (run_id, started) VALUES (?, ?)", p.run_id, p.ts)
         out = p.reconcile("tokyo", "used_condo", AREA, len(recs) if hits is None else hits,
                           {r["id"]: r for r in recs}, complete)
@@ -47,7 +47,8 @@ def events(db, kind=None):
 
 
 def status(db, lid):
-    return db.listing("used_condo", str(lid))["status"]
+    row = db.listing("used_condo", str(lid))
+    return row["status"] if row else "deleted"
 
 
 def test_first_complete_crawl_is_a_silent_baseline(env):
@@ -76,13 +77,37 @@ def test_new_listing_after_baseline_is_an_event_and_jumps_the_queue(env):
     assert (top["id"], top["reason"]) == ("2", "new")
 
 
-def test_removed_only_after_two_complete_misses(env):
-    db, _, _, crawl, _ = env
+def test_deleted_after_two_complete_misses(env):
+    db, archive, _, crawl, _ = env
     crawl(0, [rec(1), rec(2)])
+    archive.save_detail("tokyo", "used_condo", "2", "<html></html>")
     crawl(1, [rec(1)])
     assert status(db, 2) == "active" and db.listing("used_condo", "2")["missed"] == 1
     crawl(2, [rec(1)])
+    assert status(db, 2) == "deleted" and events(db) == [("removed", "2")]
+    assert not archive.detail_path("tokyo", "used_condo", "2").exists()
+
+
+def test_saved_listing_is_kept_as_ended(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)], saved={"used_condo:2"})
+    crawl(2, [rec(1)], saved={"used_condo:2"})
     assert status(db, 2) == "removed" and events(db) == [("removed", "2")]
+    crawl(3, [rec(1)], saved={"used_condo:2"})                 # still saved: still kept, no second event
+    assert status(db, 2) == "removed" and events(db) == [("removed", "2")]
+
+
+def test_unsaved_ended_listing_is_deleted_by_purge(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)], saved={"used_condo:2"})
+    p, _ = crawl(2, [rec(1)], saved={"used_condo:2"})
+    p.purge()
+    assert status(db, 2) == "removed"
+    p, _ = crawl(3, [rec(1)])                                   # someone unsaved it
+    p.purge()
+    assert status(db, 2) == "deleted"
 
 
 def test_reappearing_resets_the_miss_count(env):
@@ -117,40 +142,37 @@ def test_small_areas_may_swing_without_being_suspect(env):
     crawl(0, [rec(1), rec(2), rec(3)])
     crawl(1, [rec(1)])
     crawl(2, [rec(1)])
-    assert status(db, 2) == status(db, 3) == "removed"
+    assert status(db, 2) == status(db, 3) == "deleted"
 
 
-def test_price_change_event_and_detail_refresh(env):
+def test_price_change_is_an_event_and_the_stored_page_is_not_fetched_again(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1)])
+    db.x("UPDATE listings SET detail_json='{}'")
+    db.x("DELETE FROM queue")
+    crawl(1, [rec(1, price=48_000_000, layout="3LDK")])
+    e = db.x("SELECT payload FROM events WHERE kind='price_changed'").fetchone()
+    assert json.loads(e["payload"])["old_price"] == 50_000_000
+    assert json.loads(db.listing("used_condo", "1")["list_json"])["price"] == 48_000_000   # list fields refreshed
+    assert db.x("SELECT COUNT(*) n FROM queue").fetchone()["n"] == 0
+
+
+def test_unstored_page_is_queued_until_fetched(env):
     db, _, _, crawl, _ = env
     crawl(0, [rec(1)])
     db.x("DELETE FROM queue")
-    crawl(1, [rec(1, price=48_000_000)])
-    e = db.x("SELECT payload FROM events WHERE kind='price_changed'").fetchone()
-    assert json.loads(e["payload"])["old_price"] == 50_000_000
-    assert db.x("SELECT reason FROM queue WHERE id='1'").fetchone()["reason"] == "changed"
+    crawl(1, [rec(1)])
+    assert db.x("SELECT reason FROM queue WHERE id='1'").fetchone()["reason"] == "backfill"
 
 
-def test_relist_after_removal(env):
+def test_back_on_suumo(env):
     db, _, _, crawl, _ = env
-    crawl(0, [rec(1), rec(2)])
-    crawl(1, [rec(1)])
-    crawl(2, [rec(1)])
-    crawl(3, [rec(1), rec(2)])
-    assert status(db, 2) == "active" and events(db)[-1] == ("relisted", "2")
-
-
-def test_purge_after_retention_deletes_row_and_archived_page(env):
-    db, archive, targets, crawl, _ = env
-    crawl(0, [rec(1), rec(2)])
-    archive.save_detail("tokyo", "used_condo", "2", "<html></html>")
-    crawl(1, [rec(1)])
-    p, _ = crawl(2, [rec(1)])
-    p.purge()
-    assert status(db, 2) == "removed"                          # within retention
-    p, _ = crawl(33, [rec(1)])
-    p.purge()
-    assert db.listing("used_condo", "2") is None
-    assert not archive.detail_path("tokyo", "used_condo", "2").exists()
+    crawl(0, [rec(1), rec(2), rec(3)])
+    for day in (1, 2):
+        crawl(day, [rec(1)], saved={"used_condo:2"})
+    crawl(3, [rec(1), rec(2), rec(3)], saved={"used_condo:2"})
+    assert status(db, 2) == status(db, 3) == "active"
+    assert events(db)[-2:] == [("relisted", "2"), ("new", "3")]   # kept one relisted; deleted one is new again
 
 
 def test_export_is_deterministic_and_skips_volatile_fields(env):
@@ -185,8 +207,8 @@ def test_export_one_file_per_area_and_cleans_up(env):
     db.commit()
     export(db, targets, data)
     assert not (data / "tokyo/used_condo/13208.jsonl").exists()                          # area emptied: file removed
-    crawl(1, [])
-    crawl(2, [])
+    crawl(1, [], saved={"used_condo:1"})
+    crawl(2, [], saved={"used_condo:1"})
     export(db, targets, data)
     assert [json.loads(x)["id"] for x in (data / "tokyo/removed/used_condo.jsonl").read_text().splitlines()] == ["1"]
     export(db, [Target("tokyo", "land", None)], data)
@@ -207,7 +229,7 @@ def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
         p = Pipeline(db, archive, EmptyAreaPage(), targets, now, f"r{day}", log=QUIET)
         p.crawl_lists()
         db.commit()
-    assert status(db, 1) == status(db, 2) == "removed"
+    assert status(db, 1) == status(db, 2) == "deleted"
     assert sorted(events(db, "removed")) == [("removed", "1"), ("removed", "2")]
 
 

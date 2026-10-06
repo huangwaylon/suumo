@@ -30,9 +30,11 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
   browser. In English the interface, units, prices (¥49.9M) and fixed values (land rights, deal type) are
   translated, and so are ward and station names and common tags; towns, building names and free text stay as
   SUUMO writes them.
-- **Favorites** are kept in the browser; 「比較する」 shows them side by side (price, size, age, station, monthly
-  costs, floor, land rights); 「リストを共有」 copies a link that opens the list on another device.
-  Conditions live in the URL, so any search or listing can be shared too.
+- **Favorites** are one shared list (`saved.json`): the heart opens a pre-filled GitHub issue
+  (`save used_condo:123`); submitting it (a GitHub account is needed) runs the Saved workflow, which updates the
+  list and rebuilds the site in a few minutes. Saved listings are kept after they leave SUUMO, marked 掲載終了.
+  「比較する」 shows them side by side (price, size, age, station, monthly costs, floor, land rights).
+  Conditions live in the URL, so any search or listing can be shared.
 
 One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
 「ほかN社も掲載」. 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings
@@ -95,7 +97,7 @@ delay) or `uv run python -m suumo status` from another Terminal (shows the curre
 back, the delay rises on its own (up to 10 s) and comes back down; if it's unreachable, the run pauses 10 minutes
 at a time without giving up on those listings.
 
-### 5. Daily schedule
+### 5. Hourly schedule
 
 ```sh
 sed "s#__SUUMO_DIR__#$PWD#g" local.suumo.plist > ~/Library/LaunchAgents/local.suumo.plist
@@ -104,9 +106,10 @@ launchctl kickstart gui/$(id -u)/local.suumo     # run once now to check
 tail -f logs/run.log
 ```
 
-The job runs `python -m suumo run --push` daily at 04:00 (on wake if the Mac was asleep): ~20 minutes of search
-results, listing pages of new and changed listings, geocoding of new towns, then a commit of `data/` and `geo/`
-and a push, which rebuilds the site. `--push` needs a git remote that pushes without a prompt (an SSH key in the
+The job runs `python -m suumo run --budget 45m --push` every hour at :05 (once on wake if the Mac was asleep;
+a run still going makes the next one exit): it pulls (for `saved.json`), crawls all search results (~800
+requests, ~17 minutes), fetches the listing pages of listings not stored yet, geocodes new towns, then commits
+`data/` and `geo/` and pushes, which rebuilds the site. `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
 `launchctl bootout gui/$(id -u)/local.suumo`.
 
@@ -145,13 +148,16 @@ and names are in `data/<pref>/areas.json` after a run.
 1. **Search results**: every page of every area in scope (100 listings per page, one request at a time),
    saved to `archive/`, with the parsed count checked against SUUMO's count. Short areas are retried once,
    then marked `incomplete`.
-2. **Changes**: an area's first complete crawl is a silent baseline. After that, new IDs, price changes and
-   relistings become events. A listing missing from 2 consecutive complete crawls is removed. If an area
-   loses more than 30% of at least 20 listings at once, it is marked `suspect` and nothing is removed.
-3. **Listing pages**: queue order is new > changed > backfill, until the budget runs out. Pages are archived
-   before parsing; a parse failure is logged and the page can be re-parsed later.
-4. **Cleanup**: listings removed over 30 days ago are deleted (row, archived page); search-result snapshots are
-   kept 14 days; event and run rows 90 days.
+2. **Changes**: the results are diffed against `state.db`. An area's first complete crawl is a silent baseline.
+   After that, new IDs and price changes become events. A listing missing from 2 consecutive complete crawls
+   is deleted (row, archived page; a `removed` event), unless it's on the saved list: then it's kept as ended
+   and still shown on the site in お気に入り. If an area loses more than 30% of at least 20 listings at once,
+   it is marked `suspect` and nothing is removed.
+3. **Listing pages**: fetched once, for listings not stored yet (new first, then backfill), until the budget
+   runs out. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
+   parse failure is logged and the page can be re-parsed later.
+4. **Cleanup**: ended listings no longer saved are deleted; search-result snapshots are kept 14 days; event and
+   run rows 90 days.
 5. **Export**: `data/` is rewritten deterministically (an unchanged day is an empty git diff) and the run's
    events go to `data/events/<run_id>.json` (the site's 新着, 値下げ and price history come from them).
 6. **Geocoding**: towns of new listings are looked up (国土地理院 address search, ≤30 min per run).
@@ -162,7 +168,8 @@ and names are in `data/<pref>/areas.json` after a run.
 |---|---|---|
 | `scope.toml` | yes | what to crawl |
 | `data/<pref>/<type>/<area_code>.jsonl` | yes | active listings of one type in one municipality, one JSON object per line, sorted by id |
-| `data/<pref>/removed/<type>.jsonl` | yes | listings removed in the last 30 days |
+| `data/<pref>/removed/<type>.jsonl` | yes | ended listings kept because they're saved |
+| `saved.json` | yes | the shared saved list (`type:id` keys), changed only by the Saved workflow |
 | `data/<pref>/areas.json` | yes | area code → name |
 | `data/events/<run_id>.json` | yes | that run's events |
 | `geo/towns.json` | yes | town (丁目) → [lat, lng], or null when not found |

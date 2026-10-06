@@ -1,10 +1,12 @@
 """Crawl search results, reconcile each area's listings, fetch listing pages from the queue, clean up.
 
-Lifecycle of a listing:
-  new (enqueued for its detail page) -> active
-  active -> missing from REMOVE_AFTER_MISSES consecutive complete crawls of its area -> removed (event)
-  removed -> seen again -> active (relisted event)
-  removed for PURGE_DAYS -> purged (row, queue entry and archived page deleted; git history keeps it)
+Every run (hourly) crawls all search results and diffs them against the DB. Lifecycle of a listing:
+  first seen -> stored; its listing page is fetched once (never again: later crawls refresh the search-result
+    fields, so price changes still show)
+  missing from REMOVE_AFTER_MISSES consecutive complete crawls of its area -> `removed` event, then
+    saved (on the shared list, saved.json): kept as status 'removed' (the site shows it as ended)
+    not saved: deleted (row, queue entry, archived page; git history keeps the data)
+  a kept listing seen again -> active (relisted event); one no longer saved -> deleted by `purge`
 """
 import json
 import time
@@ -17,7 +19,6 @@ from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import in_scope
 
 REMOVE_AFTER_MISSES = 2
-PURGE_DAYS = 30
 EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/events/ in git keeps all)
 SUSPECT_DROP = 0.30      # an area losing more than this share at once is distrusted (no removals)
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
@@ -27,21 +28,19 @@ CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the site show
 OUTAGE_STREAK = 5          # this many failed listing pages in a row = SUUMO (or the network) is down...
 OUTAGE_PAUSE = 600         # ...pause this long; those failures don't count toward MAX_DETAIL_ATTEMPTS
 
-# priorities in the detail queue
-P_NEW, P_CHANGED, P_BACKFILL = 2, 1, 0
-
-# list-page fields whose change means the listing page is worth re-fetching
-CHANGE_FIELDS = ("price", "price_max", "title", "layout", "floor_m2", "land_m2", "building_m2")
+# priorities in the detail queue: listings new since the area's baseline first
+P_NEW, P_BACKFILL = 1, 0
 
 
 class Pipeline:
-    def __init__(self, db, archive: Archive, client, targets, now: datetime, run_id: str, log=print):
+    def __init__(self, db, archive: Archive, client, targets, now: datetime, run_id: str, log=print, saved=()):
         self.db, self.archive, self.client, self.targets = db, archive, client, targets
+        self.saved = set(saved)  # "type:id" keys on the shared saved list: kept after they're gone
         self.now, self.run_id, self.log = now, run_id, log
         self.ts = now.isoformat(timespec="seconds")
         self.today = now.date().isoformat()
         self.day = now.strftime("%Y%m%d")
-        self.report = {"targets": [], "detail": {}, "purged": 0}
+        self.report = {"targets": [], "detail": {}}
 
     # ---------- search results ----------
 
@@ -155,16 +154,14 @@ class Pipeline:
                 continue
 
             old = json.loads(row["list_json"])
-            if row["status"] == "removed":
+            if row["status"] == "removed":  # kept because saved, and back on SUUMO
                 counts["relisted"] += 1
                 self.db.add_event(self.run_id, "relisted", ident, {"price": rec.get("price")})
             if old.get("price") != rec.get("price"):
                 counts["price_changed"] += 1
                 self.db.add_event(self.run_id, "price_changed", ident,
                                   {"price": rec.get("price"), "old_price": old.get("price")})
-            if any(old.get(k) != rec.get(k) for k in CHANGE_FIELDS):
-                self.db.enqueue(type_key, lid, P_CHANGED, "changed", self.ts)
-            elif row["detail_json"] is None:
+            if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch)
                 self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
             self.db.x("""UPDATE listings SET list_json=?, area_code=?, area_name=?, pref=?, status='active',
                          removed_at=NULL, missed=0, last_seen=? WHERE type=? AND id=?""",
@@ -176,11 +173,14 @@ class Pipeline:
                     continue
                 missed = row["missed"] + 1
                 if missed >= REMOVE_AFTER_MISSES:
-                    self.db.x("UPDATE listings SET status='removed', removed_at=?, missed=? WHERE type=? AND id=?",
-                              self.ts, missed, type_key, lid)
-                    self.db.dequeue(type_key, lid)
                     self.db.add_event(self.run_id, "removed", row,
                                       {"price": json.loads(row["list_json"]).get("price")})
+                    self.db.dequeue(type_key, lid)
+                    if f"{type_key}:{lid}" in self.saved:
+                        self.db.x("UPDATE listings SET status='removed', removed_at=?, missed=? WHERE type=? AND id=?",
+                                  self.ts, missed, type_key, lid)
+                    else:
+                        self.delete(pref, type_key, lid)
                     counts["removed"] += 1
                 else:
                     self.db.x("UPDATE listings SET missed=? WHERE type=? AND id=?", missed, type_key, lid)
@@ -225,7 +225,7 @@ class Pipeline:
             if checkpoint and now - last_checkpoint >= CHECKPOINT_SECONDS:
                 checkpoint()
                 last_checkpoint = time.monotonic()
-            if r["status"] != "active":  # removed (or purged) since it was queued
+            if r["status"] != "active":  # ended or deleted since it was queued
                 self.db.dequeue(r["type"], r["id"])
                 continue
             if not in_scope(self.targets, r["pref"], r["type"], r["area_code"]):
@@ -233,7 +233,7 @@ class Pipeline:
             try:
                 html = self.client.get(json.loads(r["list_json"])["path"])
             except FileNotFoundError:
-                # gone from SUUMO; the next search-result crawls will mark it removed
+                # gone from SUUMO; the next search-result crawls will delete it
                 self.db.dequeue(r["type"], r["id"])
                 gone += 1
                 streak = []
@@ -288,23 +288,25 @@ class Pipeline:
 
     # ---------- cleanup ----------
 
+    def delete(self, pref, type_key, lid):
+        self.db.x("DELETE FROM listings WHERE type=? AND id=?", type_key, lid)
+        self.db.dequeue(type_key, lid)
+        self.archive.delete_detail(pref, type_key, lid)
+
     def purge(self):
-        cutoff = (self.now - timedelta(days=PURGE_DAYS)).isoformat(timespec="seconds")
-        rows = self.db.x("SELECT type, id, pref FROM listings WHERE status='removed' AND removed_at < ?",
-                         cutoff).fetchall()
-        for r in rows:
-            self.db.x("DELETE FROM listings WHERE type=? AND id=?", r["type"], r["id"])
-            self.db.dequeue(r["type"], r["id"])
-            self.archive.delete_detail(r["pref"], r["type"], r["id"])
+        """Ended listings no longer saved, old events/runs rows, old search-result snapshots."""
+        unsaved = [r for r in self.db.x("SELECT type, id, pref FROM listings WHERE status='removed'")
+                   if f"{r['type']}:{r['id']}" not in self.saved]
+        for r in unsaved:
+            self.delete(r["pref"], r["type"], r["id"])
+        if unsaved:
+            self.log(f"deleted {len(unsaved)} ended listings no longer saved")
         old_runs = (self.now - timedelta(days=EVENT_DAYS)).strftime("%Y%m%dT%H%M%S")
         self.db.x("DELETE FROM events WHERE run_id < ?", old_runs)
         self.db.x("DELETE FROM runs WHERE run_id < ?", old_runs)
         for pref in {t.pref for t in self.targets}:
             self.archive.prune_lists(pref, self.now.date())
         self.db.commit()
-        self.report["purged"] = len(rows)
-        if rows:
-            self.log(f"purged {len(rows)} listings removed more than {PURGE_DAYS} days ago")
 
 
 def _hm(seconds):

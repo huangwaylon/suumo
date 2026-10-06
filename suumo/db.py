@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS listings (
     type TEXT NOT NULL, id TEXT NOT NULL,
     pref TEXT NOT NULL, area_code TEXT NOT NULL, area_name TEXT,
     list_json TEXT NOT NULL,          -- fields from the search-result page (refreshed every crawl)
-    detail_json TEXT,                 -- fields from the listing's own page (fetched once, refreshed on change)
-    status TEXT NOT NULL DEFAULT 'active',   -- active | removed
+    detail_json TEXT,                 -- fields from the listing's own page (fetched once)
+    status TEXT NOT NULL DEFAULT 'active',   -- active | removed (ended on SUUMO, kept because saved)
     first_seen TEXT NOT NULL,         -- YYYY-MM-DD
     last_seen TEXT NOT NULL,          -- ISO timestamp of the last crawl that saw it
     missed INTEGER NOT NULL DEFAULT 0,       -- consecutive complete crawls of its area that didn't see it

@@ -25,11 +25,14 @@ def rec(i, type_="used_condo", **kw):
 
 
 def write(data, recs, areas=None, events=None, pref="tokyo"):
-    """Write records as data/<pref>/<type>/<area>.jsonl, plus areas.json and data/events/<run_id>.json."""
+    """Write records as data/<pref>/<type>/<area>.jsonl (ended ones, with removed_at, as removed/<type>.jsonl),
+    plus areas.json and data/events/<run_id>.json."""
     d = Path(data) / pref
     files = {}
     for r in recs:
-        files.setdefault(d / r["type"] / f"{r['area_code']}.jsonl", []).append(r)
+        ended = r.get("removed_at")
+        path = d / "removed" / f"{r['type']}.jsonl" if ended else d / r["type"] / f"{r['area_code']}.jsonl"
+        files.setdefault(path, []).append(r)
     for path, rs in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rs), encoding="utf-8")
@@ -44,7 +47,8 @@ RUNNER = """
 const Filter = require(process.argv[1]);
 const fs = require("fs");
 const db = Filter.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
-const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station}) => {
+const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved}) => {
+  if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
     .filter(([, m]) => m < 3).sort((a, b) => a[1] - b[1]).map(([s]) => s);
   const q = Object.assign(Filter.emptyQuery(), query);
@@ -56,7 +60,7 @@ process.stdout.write(JSON.stringify(out));
 """
 
 
-def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY, stations=None):
+def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY, stations=None, saved=()):
     """Build the site from recs and run requests through site/filter.js in Node: {query} -> {ids, others, count},
     {query, choices} -> the choice counts (Filter.facets), {station: typed} -> the matching stations, best first.
     stations: the station-name cache ({name: [kana, english]})."""
@@ -64,7 +68,7 @@ def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY,
     write(data, recs, areas, events)
     names = tmp_path / "stations.json"
     names.write_text(json.dumps(stations or {}, ensure_ascii=False), encoding="utf-8")
-    build(data, tmp_path / "no-geo.json", out, today=today, log=QUIET, stations_cache=names)
+    build(data, tmp_path / "no-geo.json", out, today=today, log=QUIET, stations_cache=names, saved=set(saved))
     req = tmp_path / "requests.json"
     req.write_text(json.dumps(requests, ensure_ascii=False), encoding="utf-8")
     res = subprocess.run([NODE, "-e", RUNNER, str(FILTER_JS), str(out / "data/index.json"), str(req)],

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml` (all of Tokyo): crawls search results
-daily, fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
+hourly, fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
 `data/`, and publishes a static search site on GitHub Pages (https://huangwaylon.github.io/suumo/), rebuilt by
 GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `README.md` is the operator guide
 (setup, commands, record fields, the site). The repo is public.
@@ -27,9 +27,10 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
-| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`, compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
+| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests; compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
-| `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
+| `local.suumo.plist` | launchd template (hourly at :05, `run --budget 45m --push`) |
+| `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
 Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo`/`site` →
 `detail`/`parse`/`db`/`archive`/`scope`/`http`/`catalog`. `parse`, `detail` and `catalog` are pure.
@@ -58,7 +59,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   errors/slow responses (doubling, max 10 s, honours `Retry-After`) and eases back; keep that behaviour.
   Geocoding is also one request at a time (`geo.GEO_DELAY`).
 - **Removal needs evidence.** A listing is removed only after `REMOVE_AFTER_MISSES` (2) consecutive *complete*
-  crawls of its area miss it. Incomplete/error areas never count; `suspect` areas (lost >30% of ≥20) never remove.
+  crawls of its area miss it; then it's deleted, or kept as `removed` (ended) if it's in `saved.json`. Incomplete/error areas never count; `suspect` areas (lost >30% of ≥20) never remove.
   An area that vanishes from the area page is reconciled as complete with 0 hits (same guards apply).
 - **Baselines are silent.** An area's first complete crawl creates no events (so nothing is 新着); its listings
   queue as backfill.

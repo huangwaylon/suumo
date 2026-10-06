@@ -43,9 +43,11 @@
       items[i] = it;
     }
     index.columns = null;  // the items hold everything now; free the raw columns
+    const gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
     // station -> [kana, English] (null for bus stops: kanji only)
     const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
-    return { index, items, flags: index.flags, stationNames, byKey: new Map(items.map((it) => [it.key, it])) };
+    return { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
+      byKey: new Map(items.map((it) => [it.key, it])) };
   }
 
   // The text a search word is looked for in, built the first time a text search runs: names, places and stations

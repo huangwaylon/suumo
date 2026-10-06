@@ -14,6 +14,8 @@
         <string>-m</string>
         <string>suumo</string>
         <string>run</string>
+        <string>--budget</string>
+        <string>45m</string>
         <string>--push</string>
     </array>
     <key>WorkingDirectory</key>
@@ -23,13 +25,11 @@
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
-    <!-- daily at 04:00; if the Mac was asleep then, launchd runs it once on wake -->
+    <!-- hourly at :05 (a run still going then makes the next one exit at once); after sleep, once on wake -->
     <key>StartCalendarInterval</key>
     <dict>
-        <key>Hour</key>
-        <integer>4</integer>
         <key>Minute</key>
-        <integer>0</integer>
+        <integer>5</integer>
     </dict>
     <key>StandardOutPath</key>
     <string>__SUUMO_DIR__/logs/run.log</string>

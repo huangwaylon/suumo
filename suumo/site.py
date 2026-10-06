@@ -28,7 +28,7 @@ from .stations import names as station_names
 JST = ZoneInfo("Asia/Tokyo")
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
-FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16}
+FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64}
 
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
 _ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agents' slogans and generated "town price" names
@@ -104,7 +104,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             "features": [features(f) for f in i.features],
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
-                      | FLAGS["dropped"] * snap.is_dropped(i)),
+                      | FLAGS["dropped"] * snap.is_dropped(i) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone),
             "others": len(reps[i]), "newDate": _date_int(snap.new_dates.get(i.key)),
             "firstSeen": _date_int(i.first_seen),
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
@@ -145,8 +145,9 @@ def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
-def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None):
-    snap = load(data_dir, today or datetime.now(JST).date())
+def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None, saved=()):
+    """saved: the shared saved list ("type:id" keys)."""
+    snap = load(data_dir, today or datetime.now(JST).date(), saved)
     reps = representatives(snap)
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)

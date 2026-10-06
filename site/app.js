@@ -81,18 +81,22 @@
 
   let db = null;
   let q = Filter.emptyQuery();
-  let mode = "search";          // search | favorites | shared (a list opened from a link)
-  let shared = [];
+  let mode = "search";          // search | favorites (the shared saved list)
   let hits = [], shown = 0;
   let showMap = false;
-  let compare = false;          // favorites / shared list as a side-by-side table
+  let compare = false;          // favorites as a side-by-side table
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
   let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
   const stationHomes = new Map();  // station -> homes listing it
-  const favs = new Set([].concat(stored("suumo.favorites", [])).filter((k) => typeof k === "string"));
+  // The saved list is shared and kept on GitHub (saved.json, see suumo/saved.py): the heart opens a pre-filled
+  // issue, a workflow applies it and rebuilds the site. Until then the request shows here as pending.
+  const REPO = "https://github.com/huangwaylon/suumo";
+  const PENDING_HOURS = 24;   // a request that never arrived (issue not sent) is forgotten after this
+  let pending = stored("suumo.pending", {});  // key -> [save: true | false, time requested]
+  const favs = new Set();      // the saved list as it shows here: the site's list with the pending requests applied
 
   // ---------- formatting ----------
 
@@ -167,8 +171,7 @@
     if (!Object.hasOwn(t("sorts"), q.sort)) q.sort = "new";
     q.types = q.types.filter((type) => db.index.types.includes(type));
     q.areas = q.areas.filter((a) => areaNames.has(a));
-    shared = p.get("ids") ? p.get("ids").split(",") : [];
-    mode = shared.length ? "shared" : p.get("fav") === "1" ? "favorites" : "search";
+    mode = p.get("fav") === "1" ? "favorites" : "search";
     showMap = p.get("view") === "map";
     compare = mode !== "search" && p.get("cmp") === "1";
     return p.get("id");
@@ -182,7 +185,6 @@
       p.set(k, Array.isArray(v) ? v.join(",") : typeof v === "boolean" ? "1" : v);
     }
     if (mode === "favorites") p.set("fav", "1");
-    if (mode === "shared") p.set("ids", shared.join(","));
     if (showMap) p.set("view", "map");
     if (compare && mode !== "search") p.set("cmp", "1");
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
@@ -193,8 +195,7 @@
 
   function compute() {
     if (mode === "search") return Filter.search(db, q);
-    const keys = mode === "favorites" ? [...favs] : shared;
-    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, keys.map((k) => db.byKey.get(k)).filter(Boolean));
+    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => db.byKey.get(k)).filter(Boolean));
   }
 
   function update(top = true) {
@@ -206,7 +207,7 @@
   }
 
   function render() {
-    if (mode === "search") compare = false;  // compare is for favorites / shared lists only
+    if (mode === "search") compare = false;  // compare is for the saved list only
     renderedFor = hashFor();
     if (document.body.classList.contains("show-filters") && !WIDE.matches) {
       listStale = true;  // only the sheet is visible: its counts are enough until it closes
@@ -218,7 +219,7 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = t(mode === "favorites" ? "favBanner" : mode === "shared" ? "sharedBanner" : "count", num(hits.length));
+    $("count").textContent = t(mode === "favorites" ? "favBanner" : "count", num(hits.length));
     $("sort").hidden = hits.length < 2 || compare;
     $("view").hidden = (!hits.length && !showMap) || compare;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
@@ -257,6 +258,7 @@
 
   function tags(it) {
     const F = db.flags, out = [];
+    if (it.flags & F.gone) out.push(`<span class="tag drop">${t("tag.gone")}</span>`);
     if (it.flags & F.new) out.push(`<span class="tag new">${t("tag.new")}</span>`);
     if (it.flags & F.dropped) out.push(`<span class="tag drop">${t("tag.dropped")}</span>`);
     if (it.flags & F.leasehold) out.push(`<span class="tag warn">${t("tag.leasehold")}</span>`);
@@ -281,7 +283,7 @@
 
   function emptyState(active) {
     if (mode !== "search") {
-      const [title, hint] = t(mode === "favorites" ? "favEmpty" : "sharedEmpty");
+      const [title, hint] = t("favEmpty");
       return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
     const loosen = active.map(([label, remove], i) => {
@@ -297,10 +299,8 @@
     b.hidden = mode === "search";
     const cmp = hits.length > 1 ? `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>` : "";
     if (mode === "favorites") {
-      b.innerHTML = `${cmp}${hits.length ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}`;
-      b.hidden = !hits.length;
-    } else if (mode === "shared") {
-      b.innerHTML = `${cmp}<button class="btn primary" data-import="1">${esc(t("importFavs"))}</button>`;
+      b.innerHTML = cmp;
+      b.hidden = !cmp;
     }
   }
 
@@ -514,7 +514,7 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t(mode === "favorites" ? "favEmpty" : "sharedEmpty")[0];
+    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t("favEmpty")[0];
     if (fittedFor !== renderedFor) {  // follow the results when the conditions change
       fittedFor = renderedFor;
       const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
@@ -602,6 +602,7 @@
     }
     if (openKey !== key) return;
     $("detail-link").href = safeUrl(r.url);
+    $("detail-link").hidden = !!(it && it.flags & db.flags.gone);  // ended: SUUMO's page is gone too
     body.innerHTML = detailHtml(r, it);
     if (it?.lat != null) {
       if (!(await mapReady()) || openKey !== key) return;
@@ -675,18 +676,30 @@
 
   // ---------- favorites ----------
 
-  function saveFavs() {
-    localStorage.setItem("suumo.favorites", JSON.stringify([...favs]));
+  // favs from the site's saved list and this browser's pending requests (dropped once the list shows them).
+  function refreshFavs() {
+    const now = Date.now();
+    favs.clear();
+    for (const it of db.byKey.values()) if (it.flags & db.flags.saved) favs.add(it.key);
+    for (const [key, [save, at]] of Object.entries(pending)) {
+      if (favs.has(key) === save || now - at > PENDING_HOURS * 3600e3) delete pending[key];
+      else if (save) favs.add(key); else favs.delete(key);
+    }
+    localStorage.setItem("suumo.pending", JSON.stringify(pending));
     $("favs-n").hidden = !favs.size;
     $("favs-n").textContent = favs.size;
   }
 
   function toggleFav(key) {
-    if (favs.has(key)) favs.delete(key); else favs.add(key);
-    saveFavs();
+    const save = !favs.has(key);
+    const title = `${save ? "save" : "unsave"} ${key}`;  // read by suumo/saved.py
+    window.open(`${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(t("issueBody", location.origin + location.pathname + hashFor({ id: key })))}`,
+      "_blank", "noopener");
+    pending[key] = [save, Date.now()];
+    refreshFavs();
     document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
     if (openKey === key) setFavButton();
-    toast(t(favs.has(key) ? "favAdded" : "favRemoved"));
+    toast(t(save ? "favAdded" : "favRemoved"));
     if (mode === "favorites") render();
   }
 
@@ -831,16 +844,7 @@
       }
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
-      else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); } else if (b.dataset.share) {
-        const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
-        if (navigator.share && COARSE.matches) navigator.share({ title: t("shareTitle", favs.size), url }).catch(() => {});
-        else (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
-      } else if (b.dataset.import) {
-        shared.forEach((k) => favs.add(k));
-        saveFavs();
-        toast(t("imported", shared.length));
-        mode = "favorites"; shared = []; update();
-      }
+      else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
       else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
@@ -895,6 +899,7 @@
         it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
         for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
       }
+      refreshFavs();
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");
