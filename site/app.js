@@ -124,8 +124,10 @@
     const closest = (chosen) => it.stations.reduce((best, [s, w]) =>
       (w != null && (!chosen || q.stations.includes(s)) && (!best || w < best[1]) ? [s, w] : best), null);
     const chosen = mode === "search" && q.stations.length;
-    const best = (chosen && closest(true)) || closest(false);  // the chosen stations first
+    const best = closest(chosen);  // a chosen station when there are any: that's why it's listed
     if (best) return t("walk", stationName(best[0]), best[1]);
+    const byBus = chosen && it.stations.find(([s]) => q.stations.includes(s));
+    if (byBus) return t("bus", stationName(byBus[0]));
     return it.stations.length ? t("bus", stationName(it.stations[0][0])) : "";
   }
   function image(it, w, h) {
@@ -216,14 +218,16 @@
     $("sort").value = q.sort;
     $("count").textContent = t(mode === "favorites" ? "favBanner" : mode === "shared" ? "sharedBanner" : "count", num(hits.length));
     $("sort").hidden = hits.length < 2 || compare;
-    $("view").hidden = !hits.length && !showMap;
+    $("view").hidden = (!hits.length && !showMap) || compare;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
     $("filters-n").textContent = set;
     $("favs-n").hidden = !favs.size;
     $("favs-n").textContent = favs.size;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
-    $("chips").innerHTML = mode !== "search" ? "" : suggestion() + active.map(([label, , s], i) =>
+    document.body.classList.toggle("listmode", mode !== "search");
+    const sug = mode === "search" && suggestion();
+    $("chips").innerHTML = mode !== "search" ? "" : (sug ? `<button class="chip suggest" data-suggest="${sug[0]}" data-value="${esc(sug[1])}">${esc(sug[2])}</button>` : "") + active.map(([label, , s], i) =>
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
@@ -266,7 +270,7 @@
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
         <div class="meta wrap">${esc(station(it))}</div>
-        <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name || ((mode !== "search" || q.types.length !== 1) && typeName(it.type))].filter(Boolean).join(" · "))}</div>
+        <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name].filter(Boolean).join(" · "))}</div>
         <div class="tags">${tags(it)}</div>
       </div></a>
       <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favFor", money(it.price), it.layout, it.town || it.areaName))}">${icon("heart")}</button></article>`;
@@ -289,24 +293,32 @@
     const b = $("banner");
     b.hidden = mode === "search";
     const cmp = hits.length > 1 ? `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>` : "";
-    const back = `<button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button>`;
     if (mode === "favorites") {
-      b.innerHTML = `${cmp}${hits.length ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}${back}`;
+      b.innerHTML = `${cmp}${hits.length ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}`;
+      b.hidden = !hits.length;
     } else if (mode === "shared") {
-      b.innerHTML = `${cmp}<button class="btn" data-import="1">${esc(t("importFavs"))}</button>${back}`;
+      b.innerHTML = `${cmp}<button class="btn primary" data-import="1">${esc(t("importFavs"))}</button>`;
     }
   }
 
+  function applySuggestion(field, v) {  // the typed name becomes a condition
+    q[field] = [...q[field], v];
+    q.text = "";
+    mode = "search";
+    update();
+  }
+
   // Typed a station or area name in the search box: offer it as a condition (walk limits, exact area).
+  // -> [field, value, label] or null
   function suggestion() {
     const typed = q.text.replace(/\s*(駅|station|sta\.?)$/i, "");
-    if (!typed) return "";
+    if (!typed) return null;
     const s = db.index.stations.find((n) => !q.stations.includes(n) && Filter.stationMatch(db, n, typed) === 0);
-    if (s) return `<button class="chip suggest" data-suggest="stations" data-value="${esc(s)}">${esc(t("useStation", stationName(s)))}</button>`;
-    const key = Filter.normalize(typed);
+    if (s) return ["stations", s, t("useStation", stationName(s))];
+    const key = Filter.normalize(typed).replace(/ /g, "");
     const area = db.index.areas.find(([code, name]) => !q.areas.includes(code) &&
-      [name, I18N.en.places[name]].some((n) => n && Filter.normalize(n).replace(/ /g, "") === key.replace(/ /g, "")));
-    return area ? `<button class="chip suggest" data-suggest="areas" data-value="${esc(area[0])}">${esc(t("useArea", place(area[1])))}</button>` : "";
+      [name, I18N.en.places[name]].some((n) => n && Filter.normalize(n).replace(/ /g, "") === key));
+    return area ? ["areas", area[0], t("useArea", place(area[1]))] : null;
   }
 
   // The conditions in force, as [label, remove(query), filter section] for the chips and the empty state.
@@ -361,14 +373,15 @@
         <input class="text-input" id="station-q" type="search" placeholder="${esc(t("stationSearch"))}" aria-label="${esc(t("stationSearch"))}" autocomplete="off">
         <div class="opts" id="station-list"></div>`;
     }
+    const narrows = (n) => n < facets.total;  // a choice every result has changes nothing: not shown
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
-    sec("price", `${h3("price")}<div class="opts">${PRICE_CHIPS.map((v) => one("priceMax", v, t("priceMax", money(v)),
-      facets.priceMax[v] || 0)).join("")}</div>${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}`);
+    sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}<p id="price-max">${esc(t("max"))}</p><div class="opts">${
+      PRICE_CHIPS.map((v) => one("priceMax", v, t("priceMax", money(v)), facets.priceMax[v] || 0)).join("")}</div>`);
     sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${PLANS.map(([v, l]) =>
       one("plan", v, t("planFrom", l), facets.plan[v] || 0)).join("")}</div>`);
     sec("size", `${h3("size")}${isLand ? "" : select("sizeMin", t("floorArea"), SIZES, (v) => t("sizeMin", v))}${
@@ -377,9 +390,8 @@
       flag("post1981", facets.post1981)}</div>`);
     stationList();
     $("walk-from").textContent = t(q.stations.length ? "walkFromChosen" : "walkFromNearest");
-    $("walk-list").innerHTML = WALKS.map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
+    $("walk-list").innerHTML = WALKS.filter((w) => q.walk === w || narrows(facets.walk[w] || 0)).map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
     const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
-    const narrows = (n) => n < facets.total;  // a choice every result has changes nothing: not shown
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f) && narrows(facets.features[f])).slice(0, 30)];
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
     const flagsShown = FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f]))));
@@ -544,7 +556,8 @@
       ["", ([it]) => `<a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy">` : ""}</div></a>`],
       ["price", ([it]) => `<b class="num">${price(it, true)}</b>`],
       ["layout", ([it]) => esc(value(it.layout) || typeName(it.type))],
-      ["floor", ([it]) => esc(it.size ? m2(it.size) : "")], ["land", ([it]) => esc(it.land ? m2(it.land) : "")],
+      [cols.every(([it]) => isCondo(it.type)) ? "floor" : cols.some(([it]) => isCondo(it.type)) ? "floorBoth" : "building",
+        ([it]) => esc(it.size ? m2(it.size) : "")], ["land", ([it]) => esc(it.land ? m2(it.land) : "")],
       ["age", ([it]) => esc(age(it))], ["station", ([it]) => esc(station(it))],
       ["monthly", ([, r]) => esc(r.mgmt_fee || r.repair_fee ? t("perMonth", yen((r.mgmt_fee || 0) + (r.repair_fee || 0))) : "")],
       ["floors", ([, r]) => esc([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
@@ -737,7 +750,14 @@
       clearTimeout(timer);
       timer = setTimeout(() => { q.text = e.target.value.trim(); mode = "search"; update(); }, 200);
     });
-    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && COARSE.matches) e.target.blur(); });  // hide the keyboard
+    $("q").addEventListener("keydown", (e) => {  // Enter takes the suggestion (if any) and hides the phone keyboard
+      if (e.key !== "Enter") return;
+      clearTimeout(timer);
+      q.text = e.target.value.trim();
+      const sug = suggestion();
+      if (sug) applySuggestion(sug[0], sug[1]); else update();
+      if (COARSE.matches) e.target.blur(); else e.target.focus();
+    });
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(true));
     $("filters-close").addEventListener("click", () => openFilters(false));
@@ -794,11 +814,7 @@
       }
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
-      else if (b.dataset.suggest) {  // the typed name becomes a condition
-        q[b.dataset.suggest] = [...q[b.dataset.suggest], b.dataset.value];
-        q.text = "";
-        update();
-      } else if (b.dataset.share) {
+      else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); } else if (b.dataset.share) {
         const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
         if (navigator.share && COARSE.matches) navigator.share({ title: t("shareTitle", favs.size), url }).catch(() => {});
         else (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(() => toast(t("copied")), () => prompt(t("sharePrompt"), url));
@@ -807,7 +823,7 @@
         saveFavs();
         toast(t("imported", shared.length));
         mode = "favorites"; shared = []; update();
-      } else if (b.dataset.search) { mode = "search"; shared = []; compare = false; update(); }
+      }
       else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {

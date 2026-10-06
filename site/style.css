@@ -64,7 +64,9 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .chip-x { display: grid; place-items: center; width: 36px; min-height: 36px; border-radius: 999px; }
 .chip-x .i { width: 16px; height: 16px; }
 .chip.ghost { border-style: dashed; color: var(--muted); }
-.chip.suggest { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip.suggest { border: 1px dashed var(--accent); color: var(--accent); font-weight: 600; }  /* an offer, not a condition */
+#station-list .meta { white-space: normal; }
+#price-max { margin: 12px 0 8px; color: var(--muted); font-size: 13px; }
 #walk-from { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
 #walk-list { margin-bottom: 14px; }
 
@@ -91,22 +93,25 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }  /* every condition in sight */
 .chips:empty { display: none; }
-.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 12px 14px; margin-bottom: 12px; border-radius: var(--radius); background: var(--accent-soft); font-size: 14px; }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+.btn:disabled { opacity: .4; cursor: default; }
+/* favorites / shared list on desktop: the filter rail doesn't apply */
+@media (min-width: 1280px) { body.listmode .filters { opacity: .45; pointer-events: none; } }
 .grid { display: grid; gap: 10px; }
 .grid > .empty, .grid > .compare, .grid > .skeleton:only-child { grid-column: 1 / -1; }
 /* favorites side by side: one column per listing, labels stay in view */
-.compare { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.compare { width: max-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .compare table { border-collapse: collapse; font-size: 14px; }
 .compare th, .compare td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; min-width: 150px; }
 .compare th { position: sticky; left: 0; z-index: 1; min-width: 6.5em; background: var(--surface); color: var(--muted); font-weight: 400; font-size: 13px; }
 .compare tr:last-child > * { border-bottom: 0; }
 .compare .ph { width: 150px; }
+@media (max-width: 699px) { .compare th, .compare td { min-width: 118px; padding: 8px; } .compare th { min-width: 5em; } .compare .ph { width: 118px; } }
 
 /* Card: a row on phones, a tile on larger screens */
 .card { position: relative; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow);
   border: 1px solid var(--line); overflow: hidden; }
-.card:hover { border-color: var(--faint); }
+@media (hover: hover) { .card:hover { border-color: var(--faint); } }
 .card > a { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
 .ph { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--surface)
   url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab0bb' stroke-width='1.5'><path d='M4 11l8-7 8 7v9h-5v-6h-6v6H4z'/></svg>") no-repeat center / 28px; }
@@ -121,6 +126,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .price small { font-size: 13px; font-weight: 600; margin-left: 1px; }
 .spec { display: flex; flex-wrap: wrap; column-gap: 10px; font-size: 14px; }
 .spec span { white-space: nowrap; }
+.spec span:first-child { white-space: normal; }  /* a long layout wraps instead of overflowing */
 @media (max-width: 380px) { .card > a { grid-template-columns: 100px 1fr; } }
 .meta { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta.wrap { white-space: normal; }  /* the station line: the walk time must show */
@@ -132,6 +138,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
   animation: shimmer 1.2s infinite linear; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+.empty :is(h3, p) { text-wrap: balance; word-break: auto-phrase; }
 .empty h3 { margin: 0 0 6px; color: var(--text); font-size: 17px; }
 .empty .chips { justify-content: center; margin: 16px 0; }
 
@@ -151,7 +158,7 @@ body.show-map .results { display: none; }
 .leaflet-popup-content { margin: 10px 12px; font: 14px/1.5 -apple-system, "Hiragino Sans", sans-serif; }
 .popup-list b { font-size: 15px; }
 [data-theme="dark"] .leaflet-control-attribution { background: rgb(23 26 33 / .8); color: var(--muted); }
-.leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
+.leaflet-container .leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
 .popup-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 240px; overflow-y: auto; }
 .leaflet-container .popup-list a, .leaflet-container .popup-list a:hover { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; padding: 6px 0;
   border-top: 1px solid var(--line); color: var(--text); line-height: 1.4; }
