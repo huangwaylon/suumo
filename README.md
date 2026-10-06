@@ -7,22 +7,31 @@ JSONL to `data/` (committed to git), and publishes a search site on GitHub Pages
 
 ## The site
 
-Plain HTML/JS, phone first, in Japanese, rebuilt by GitHub Actions on every push to `main`.
+Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub Actions on every push to `main`.
 
-- **Search box**: station, town or building name (several words narrow down).
-- **Condition chips**: 種別, 価格, 間取り, エリア, 駅・徒歩, 広さ・築年数 (広さ, 土地面積, 築年数, 新耐震), こだわり
-  (SUUMO tags, 所有権のみ, 建築条件なし, 新着のみ, 値下げのみ). Each choice shows how many listings it gives.
-- **List or map**: cards with photo, price, layout, size, station, age and flags; the map (地理院タイル) groups
-  listings by town (丁目) with counts. Seven sort orders.
-- **Listing**: large photo, the full record, price per m²/坪, price history, other agents listing the same
-  property, a 「SUUMOで見る」 link, and its town on a small map.
-- **Favorites** (☆) are kept in the browser. The conditions live in the URL, so a search or a listing can be shared
-  as a link.
+| Screen | Layout |
+|---|---|
+| Phone | search bar with filter and favorites buttons; full-screen filter sheet; list or full-screen map (floating switch); listing as a full page with a fixed 「お気に入り / SUUMOで見る」 bar |
+| Tablet | tile grid; filters and listing as side sheets |
+| Desktop (≥1100px) | filters rail · results · live map side by side; listing as a drawer |
 
-The same property listed by several agents (same `dup_key`) counts once. 新着 = new or relisted in the last 7 days
-(the first crawl of an area records its listings silently), 値下げ = a price drop in the last 30 days.
+- **Search**: station, town or building name; several words narrow down; hiragana, katakana and half-width kana match.
+- **Filters** (one panel, every choice shows its count): 種別, 価格, 間取り（以上: 2LDK〜…）, 広さ, 土地, 築年数,
+  新耐震, 駅 (search by name) and 徒歩, エリア (by prefecture and 区部/市部/町村), こだわり (所有権のみ, 建築条件なし,
+  新着, 値下げ, SUUMO's tags). Active conditions show as chips under the count; tap one to remove it.
+- **Results**: cards with photo, price, layout, size, age, nearest station, town; 7 sort orders; more load as you
+  scroll. The map follows the results (pins by town, 丁目 level). No results → the conditions to drop, with counts.
+- **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
+  map, a link to SUUMO.
+- **Favorites** are kept in the browser; 「リストを共有」 copies a link that opens the list on another device.
+  Conditions live in the URL, so any search or listing can be shared too.
 
-The site is public (GitHub Pages) but marked `noindex`. Photos are loaded from SUUMO's image server.
+One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
+「ほかN社も掲載」. 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings
+silently), 値下げ = a price drop in the last 30 days. Names that are agents' ad copy aren't shown.
+
+The site is public (GitHub Pages) but marked `noindex`. Photos load from SUUMO's image server; Leaflet loads from
+unpkg (with integrity hashes) only when a map is shown.
 
 ## Setting up on a new Mac
 

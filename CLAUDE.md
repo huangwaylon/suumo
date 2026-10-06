@@ -24,8 +24,8 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
-| `site/filter.js` | The search rules, the only implementation (load index, `matches`, fold duplicates, sort, counts) |
-| `site/app.js`, `index.html`, `style.css` | The page: URL state, chips and sheets, list, Leaflet map, listing view, favorites (localStorage) |
+| `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
+| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`). Layout by CSS breakpoints: <700 phone, <1100 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
 
@@ -69,7 +69,8 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - **One implementation of the search rules: `site/filter.js`.** Python only derives fields (`catalog.Item`,
   `site.build_index`) so the JS compares plain values; flag bits travel in the index (`site.FLAGS`). The rule tests
   in `tests/test_site.py` build a site from synthetic records and run queries through filter.js in Node.
-- **Rules the site shows:** duplicates (`dup_key`) count once, represented by the cheapest matching listing. Land
+- **Rules the site shows:** duplicates (`dup_key`) are folded at build time (`site.representatives`: the listing
+  with its page fetched and most tags; the others become `others` links). Land
   listed under both `new_house` and `land` is kept once, as land. Stations are identified by name. A building
   condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly. 新着 = a new/relisted
   event within 7 days, 値下げ = a drop within 30 days.
@@ -99,12 +100,17 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   add it to `export.FIELD_ORDER`, add a test against a fixture, then `reparse`. No re-crawl needed while the pages
   are in `archive/`. Document it in the README field table; show it in `site/app.js` (`showDetail`) if useful.
 - **New prefecture/area/type:** edit `scope.toml` only. `prune --yes` removes data that leaves the scope.
-  `geo.PREF_JA` and the site's title assume Tokyo; add the prefecture there.
+  Everything downstream is keyed by prefecture: `scope.PREFS` (all 47, slug → name used in addresses) feeds
+  geocoding and the site; the index lists each area with its prefecture, and the filter groups areas by
+  prefecture once there is more than one. Lines from other regions may need entries in `catalog._OPERATORS`
+  if SUUMO writes them with and without the operator name.
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
   add it to `TYPE_JA` in `site/app.js`.
 - **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` if the JS needs one;
   the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`CHIPS`/`SHEETS`, URL key in
   `LISTS`/`NUMS`/`BOOLS`); a test in `tests/test_site.py`.
+- **Line names:** `catalog.line_name` merges spellings (NFKC, section brackets, `_OPERATORS`, `_ALIASES`);
+  check `Counter(line for item...)` after adding a region.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, progress,
   checkpoints, outage pause), `http.py` (slow-down), `archive.LIST_DAYS`, `catalog.NEW_DAYS`/`DROP_DAYS`,
   `cli.GEO_BUDGET`, and the choice lists at the top of `site/app.js`.
