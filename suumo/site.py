@@ -22,6 +22,8 @@ from .catalog import load
 from .geo import load_cache, town_of
 from .parse import TYPES
 from .scope import PREFS
+from .stations import key as station_key
+from .stations import names as station_names
 
 JST = ZoneInfo("Asia/Tokyo")
 STATIC = Path(__file__).resolve().parent.parent / "site"
@@ -83,18 +85,14 @@ def representatives(snap):
     return reps
 
 
-def build_index(snap, reps, towns_cache, updated):
+def build_index(snap, reps, towns_cache, updated, readings=None):
     types, prefs, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table(), Table()
-    lines = {}
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
                             "stations", "features", "flags", "others", "newDate", "firstSeen", "unit", "town", "name",
                             "layout", "image")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         r = i.rec
-        for name, line, _ in i.stations:
-            if line:
-                lines.setdefault(line, set()).add(stations(name))
         town = town_of(r.get("address"), i.pref)
         row = {
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
@@ -118,7 +116,8 @@ def build_index(snap, reps, towns_cache, updated):
         "updated": updated, "flags": FLAGS, "columns": cols, "types": types.values,
         "areas": [[code, snap.areas.get(code, code), prefs(PREFS.get(pref, pref))] for code, pref in areas.values],
         "prefs": prefs.values, "stations": stations.values,
-        "lines": {line: sorted(ids) for line, ids in sorted(lines.items())},
+        # [kana, English] per station (null when unknown: bus stops), so either finds it
+        "stationNames": [(readings or {}).get(station_key(s)) for s in stations.values],
         "features": features.values,
         "towns": [[t, *(towns_cache.get(t) or [None, None])] for t in towns.values],
     }
@@ -144,14 +143,15 @@ def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
-def build(data_dir, geo_cache, out_dir, today=None, log=print):
+def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None):
     snap = load(data_dir, today or datetime.now(JST).date())
     reps = representatives(snap)
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
     (out / ".nojekyll").write_text("")
-    index = build_index(snap, reps, load_cache(geo_cache), _updated(Path(data_dir)))
+    readings = station_names(stations_cache) if stations_cache else {}
+    index = build_index(snap, reps, load_cache(geo_cache), _updated(Path(data_dir)), readings)
     (out / "data").mkdir()
     (out / "data" / "index.json").write_text(_dump(index), encoding="utf-8")
     for item, others in reps.items():

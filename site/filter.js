@@ -12,9 +12,13 @@
     noCondition: false, newOnly: false, dropsOnly: false, sort: "new",
   });
 
-  // NFKC (full-width -> half-width), lower case, hiragana -> katakana: "ぱーく", "ﾊﾟｰｸ" and "パーク" all match.
+  // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
+  // all match, and so do "jiyugaoka" and "Jiyūgaoka".
   const normalize = (s) => (s || "").normalize("NFKC").toLowerCase()
-    .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
+    .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
+  // A station name as typed: "Futako-Tamagawa", "futakotamagawa" and "ふたこたまがわ" are the same.
+  const stationKey = (s) => normalize(s).replace(/[\s\-・]/g, "");
 
   function load(index) {
     const c = index.columns, n = c.id.length, items = new Array(n);
@@ -36,12 +40,15 @@
       items[i] = it;
     }
     index.columns = null;  // the items hold everything now; free the raw columns
-    return { index, items, flags: index.flags, byKey: new Map(items.map((it) => [it.key, it])) };
+    // station -> [kana, English] (null for bus stops: kanji only)
+    const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
+    return { index, items, flags: index.flags, stationNames, byKey: new Map(items.map((it) => [it.key, it])) };
   }
 
-  // The text a search word is looked for in (it.alias: e.g. the English area name, set by the page), built the first time a text search runs.
-  const haystack = (it) => (it.haystack ??= normalize(
-    [it.name, it.town, it.areaName, it.alias, it.layout, ...it.stations.map(([s]) => s + "駅")].join(" ")));
+  // The text a search word is looked for in, built the first time a text search runs: names, places and stations
+  // in kanji, kana and English (it.alias: the English area name, set by the page).
+  const haystack = (it, db) => (it.haystack ??= normalize([it.name, it.town, it.areaName, it.alias, it.layout,
+    ...it.stations.flatMap(([s]) => [s + "駅", ...(db.stationNames.get(s) || [])])].filter(Boolean).join(" ")));
 
   function walkTo(it, chosen) {
     let best = null;
@@ -61,18 +68,18 @@
     priceMin: (it, v) => v == null || (it.priceHi != null && it.priceHi >= v),
     landMin: (it, v) => v == null || (it.land != null && it.land >= v),
     features: (it, v) => v.every((f) => it.features.has(f)),
-    freehold: (it, v, q, F) => !v || !(it.flags & F.leasehold),
-    noCondition: (it, v, q, F) => !v || !(it.flags & F.conditional),
-    newOnly: (it, v, q, F) => !v || !!(it.flags & F.new),
-    dropsOnly: (it, v, q, F) => !v || !!(it.flags & F.dropped),
-    text: (it, v) => !v || normalize(v).split(/\s+/).every((w) => !w || haystack(it).includes(w)),
+    freehold: (it, v, q, db) => !v || !(it.flags & db.flags.leasehold),
+    noCondition: (it, v, q, db) => !v || !(it.flags & db.flags.conditional),
+    newOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.new),
+    dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
+    text: (it, v, q, db) => !v || normalize(v).split(/\s+/).every((w) => !w || haystack(it, db).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
     plan: (it, v) => v == null || (it.plan != null && it.plan >= v),
     sizeMin: (it, v) => v == null || (it.size != null && it.size >= v),
     ageMax: (it, v) => v == null || (it.age != null && it.age <= v),
-    post1981: (it, v, q, F) => !v || !!(it.flags & F.post1981),
+    post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
 
@@ -80,11 +87,11 @@
   function failing(db, it, q) {
     const out = [];
     const add = (d) => { if (!out.includes(d)) out.push(d); return out.length > 1; };
-    for (const d in CHECKS) if (!CHECKS[d](it, q[d], q, db.flags) && add(GROUP[d] || d)) return out;
+    for (const d in CHECKS) if (!CHECKS[d](it, q[d], q, db) && add(GROUP[d] || d)) return out;
     const exempt = it.type === "land" && q.types.includes("land");
     for (const d in BUILDING) {
       // land isn't a building: choosing 土地 is what would let it through
-      if (!exempt && !BUILDING[d](it, q[d], q, db.flags) && add(it.type === "land" ? "types" : d)) return out;
+      if (!exempt && !BUILDING[d](it, q[d], q, db) && add(it.type === "land" ? "types" : d)) return out;
     }
     return out;
   }
@@ -141,16 +148,28 @@
       for (const d in choices) {
         if (!on(GROUP[d] || d)) continue;
         const check = CHECKS[d] || BUILDING[d], values = choices[d];
-        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db.flags)) n[d][i]++;
+        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) n[d][i]++;
       }
       for (const flag in { freehold: 1, noCondition: 1, newOnly: 1, dropsOnly: 1 }) {
-        if (on(flag) && CHECKS[flag](it, true, q, db.flags)) out[flag]++;
+        if (on(flag) && CHECKS[flag](it, true, q, db)) out[flag]++;
       }
-      if (on("post1981") && BUILDING.post1981(it, true, q, db.flags)) out.post1981++;
+      if (on("post1981") && BUILDING.post1981(it, true, q, db)) out.post1981++;
     }
     for (const d in choices) out[d] = Object.fromEntries(choices[d].map((v, i) => [v, n[d][i]]));
     return out;
   }
 
-  return { emptyQuery, normalize, load, matches, search, count, facets };
+  // How well a station's kanji, kana or English name matches what was typed: 0 same, 1 starts with it,
+  // 2 contains it, 3 no match.
+  function stationMatch(db, s, typed) {
+    const term = stationKey(typed);
+    let best = 3;
+    for (const n of [s, ...(db.stationNames.get(s) || [])]) {
+      const k = n ? stationKey(n) : "";
+      best = Math.min(best, k === term ? 0 : k.startsWith(term) ? 1 : k.includes(term) ? 2 : 3);
+    }
+    return best;
+  }
+
+  return { emptyQuery, normalize, stationKey, load, matches, search, count, facets, stationMatch };
 });

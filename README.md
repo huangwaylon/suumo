@@ -116,7 +116,7 @@ agent/Keychain); a failed push is logged and retried next run. To stop it:
 | `uv run python -m suumo status` | per pref/type: active listings, % with listing-page details, queue, area states, the current run's progress |
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
 | `uv run python -m suumo reparse` | re-run the parsers over `archive/` and re-export (no requests) |
-| `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet |
+| `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet, and station names (kana, English) for prefectures not in `geo/stations.json` |
 | `uv run python -m suumo site [--out _site]` | build the site locally (`cd _site && python3 -m http.server` to view it) |
 
 Only one writing command runs at a time (`state.db.lock`); a second one exits with a message. `geocode`, `site`
@@ -161,6 +161,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `data/<pref>/areas.json` | yes | area code → name |
 | `data/events/<run_id>.json` | yes | that run's events |
 | `geo/towns.json` | yes | town (丁目) → [lat, lng], or null when not found |
+| `geo/stations.json` | yes | station → [kana, English] from Wikidata (CC0); `_prefs` lists the prefectures fetched. Delete to refresh |
 | `site/` | yes | the site's source (index.html, app.js, filter.js, style.css) |
 | `.github/workflows/pages.yml` | yes | tests, builds and deploys the site on every push |
 | `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs |

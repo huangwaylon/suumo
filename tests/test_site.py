@@ -180,3 +180,17 @@ def test_every_string_the_page_uses_exists():
     used = set(re.findall(r'\bt\("(\w+)', app)) | set(re.findall(r'data-t(?:-label|-placeholder)?="(\w+)"',
                                                                (FILTER_JS.parent / "index.html").read_text()))
     assert {k for k in used if not re.search(rf"\b{k}:", ja)} == set()
+
+
+@needs_node
+def test_stations_by_kana_and_english(tmp_path):
+    names = {"二子玉川": ["ふたこたまがわ", "Futako-Tamagawa"], "自由ケ丘": ["じゆうがおか", "Jiyūgaoka"],
+             "玉川学園前": ["たまがわがくえんまえ", "Tamagawagakuen-mae"]}
+    recs = [rec(1, stations=[{"line": "東急田園都市線", "name": "二子玉川", "walk": 5}]),
+            rec(2, stations=[{"line": "東急東横線", "name": "自由が丘", "walk": 7}]),
+            rec(3, stations=[{"line": "小田急線", "name": "玉川学園前", "walk": 3}])]
+    out = site_queries(tmp_path, recs, [{"station": "futakotamagawa"}, {"station": "ジユウ"}, {"station": "jiyugaoka"},
+                                        {"station": "玉川"}, {"query": {"text": "ふたこたまがわ"}},
+                                        {"query": {"text": "Jiyugaoka"}}], stations=names)
+    assert out[:4] == [["二子玉川"], ["自由が丘"], ["自由が丘"], ["玉川学園前", "二子玉川"]]  # starts with it first
+    assert out[4]["ids"] == ["1"] and out[5]["ids"] == ["2"]   # the text search finds readings too

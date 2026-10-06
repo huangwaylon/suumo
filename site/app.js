@@ -22,6 +22,7 @@
     return S.values[v] ?? v.split(/([、／/])/).map((p) => S.values[p.trim()] ?? (p === "、" || p === "／" ? ", " : p)).join("");
   };
   const place = (name) => S.places?.[name] ?? name;
+  const stationName = (s) => (S.lang === "en" && db?.stationNames.get(s)?.[1]) || s;  // English when known
   const feature = (f) => S.features?.[f] ?? f.normalize("NFKC");
   const DARK = matchMedia("(prefers-color-scheme: dark)");
 
@@ -120,8 +121,8 @@
     const closest = (chosen) => it.stations.reduce((best, [s, w]) =>
       (w != null && (!chosen || q.stations.includes(s)) && (!best || w < best[1]) ? [s, w] : best), null);
     const best = (q.stations.length && closest(true)) || closest(false);  // the chosen stations first
-    if (best) return t("walk", best[0], best[1]);
-    return it.stations.length ? t("bus", it.stations[0][0]) : "";
+    if (best) return t("walk", stationName(best[0]), best[1]);
+    return it.stations.length ? t("bus", stationName(it.stations[0][0])) : "";
   }
   function image(it, w, h) {
     let p = it.image;
@@ -296,7 +297,7 @@
     if (q.landMin != null) out.push([t("chipLand", q.landMin), reset("landMin")]);
     if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax")]);
     for (const a of q.areas) out.push([areaName(a), drop("areas", a)]);
-    for (const s of q.stations) out.push([t("station", s), drop("stations", s)]);
+    for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s)]);
     if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk")]);
     for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f)]);
     for (const f of q.features) out.push([feature(f), drop("features", f)]);
@@ -356,13 +357,13 @@
   }
 
   function stationList() {
-    const raw = $("station-q").value.trim(), term = Filter.normalize(raw), counts = facets.stations;
-    let names = term ? db.index.stations.filter((s) => Filter.normalize(s).includes(term)) : Object.keys(counts);
-    const rank = (s) => (!term ? 0 : Filter.normalize(s) === term ? 0 : Filter.normalize(s).startsWith(term) ? 1 : 2);
+    const typed = $("station-q").value.trim(), counts = facets.stations, rank = new Map();
+    if (typed) for (const s of db.index.stations) rank.set(s, Filter.stationMatch(db, s, typed));
+    let names = typed ? db.index.stations.filter((s) => rank.get(s) < 3) : Object.keys(counts);
     names = names.filter((s) => !q.stations.includes(s))
-      .sort((a, b) => rank(a) - rank(b) || (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
-    $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, t("station", s), counts[s] || 0)).join("")
-      || `<span class="meta">${esc(t(/^[ぁ-ゖァ-ヺー]+$/.test(raw) ? "stationKanji" : "noStation"))}</span>`;
+      .sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0) || (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
+    $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, t("station", stationName(s)), counts[s] || 0)).join("")
+      || `<span class="meta">${esc(t("noStation"))}</span>`;
   }
 
   function areaGroups() {
@@ -528,7 +529,7 @@
       : esc(t("unchanged"));
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
-    const access = (r.stations || []).map((s) => esc([s.line, t("station", s.name), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
+    const access = (r.stations || []).map((s) => esc([s.line, t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
       : s.walk != null ? t("walkMin", s.walk) : ""].filter(Boolean).join(" "))).join("<br>");
     return `
       ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="">` : ""}

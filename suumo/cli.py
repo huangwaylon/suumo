@@ -21,9 +21,11 @@ from .http import Client
 from .maintenance import out_of_scope, prune, reparse
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
 from .site import build as build_site
+from .stations import update as update_stations
 
 JST = ZoneInfo("Asia/Tokyo")
 GEO_CACHE = "geo/towns.json"
+STATIONS_CACHE = "geo/stations.json"
 GEO_BUDGET = 1800  # seconds a daily run spends on geocoding new towns (the first fill takes hours: `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -73,6 +75,7 @@ def cmd_run(c: Ctx):
     c.db.commit()
     try:  # towns of new listings, for the site's map; never stops the commit below
         geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
+        update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in c.targets})
     except Exception as e:
         print(f"geocoding failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
@@ -141,10 +144,11 @@ def cmd_prune(c: Ctx):
 
 def cmd_geocode(args):
     geocode(ROOT / args.data, ROOT / GEO_CACHE)
+    update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in scope_mod.load(ROOT / args.scope)})
 
 
 def cmd_site(args):
-    build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out)
+    build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out, stations_cache=ROOT / STATIONS_CACHE)
 
 
 def cmd_reparse(c: Ctx):
@@ -177,7 +181,7 @@ def main():
     command("prune", cmd_prune, "write", "delete data no longer in scope.toml (dry run without --yes)").add_argument(
         "--yes", action="store_true")
     command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
-    command("geocode", cmd_geocode, "files", "look up map coordinates for towns not in geo/towns.json yet")
+    command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)")
     command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
     args = ap.parse_args()
     if args.access == "files":
