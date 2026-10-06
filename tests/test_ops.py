@@ -180,6 +180,7 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
 @pytest.mark.parametrize("address,town", [
     ("東京都狛江市東和泉２-20-20", "東京都狛江市東和泉２"), ("東京都北区栄町47", "東京都北区栄町"),
     ("港区三田５", "東京都港区三田５"), ("東京都八王子市元本郷町", "東京都八王子市元本郷町"), (None, None),
+    ("東京都三鷹市下連雀３-４１－１２", "東京都三鷹市下連雀３"), ("東京都あきる野市上代継６０－１", "東京都あきる野市上代継"),
 ])
 def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
     assert town_of(address, "tokyo") == town
@@ -208,3 +209,10 @@ def test_saved_list_applies_issue_titles(tmp_path):
     for bad in ("save used_condo:1; rm -rf /", "save rental:1", "please save this", "save used_condo:abc", ""):
         assert saved.apply(path, bad) is None
     assert path.read_text() == '[\n"used_condo:20205670"\n]\n'
+
+
+def test_geocoder_titles_match_district_towns_and_ke_spellings():
+    from suumo.geo import _municipality, _same_spelling
+    assert _same_spelling("神奈川県箱根町強羅").startswith(_municipality("神奈川県足柄下郡箱根町強羅"))
+    assert _same_spelling("茨城県龍ケ崎市佐貫町").startswith(_municipality("茨城県龍ヶ崎市佐貫町"))
+    assert not _same_spelling("東京都府中市").startswith(_municipality("広島県府中市"))

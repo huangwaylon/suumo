@@ -24,6 +24,7 @@ class Target:
     pref: str
     type: str
     areas: frozenset | None  # None = every area in the prefecture
+    rotate: bool = False     # crawled in turn with the other rotating prefectures, not every run
 
     def includes(self, area_code):
         return self.areas is None or area_code in self.areas
@@ -42,7 +43,7 @@ def load(path):
         if bad:
             raise SystemExit(f"scope.toml entry {i}: unknown types {bad}; choose from {list(TYPES)}")
         areas = frozenset(str(a) for a in s["areas"]) if s.get("areas") else None
-        targets += [Target(pref, t, areas) for t in types]
+        targets += [Target(pref, t, areas, bool(s.get("rotate"))) for t in types]
     seen = set()
     for t in targets:
         if (t.pref, t.type) in seen:

@@ -28,7 +28,7 @@ JST = ZoneInfo("Asia/Tokyo")
 GEO_CACHE = "geo/towns.json"
 STATIONS_CACHE = "geo/stations.json"
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
-GEO_BUDGET = 1800  # seconds a daily run spends on geocoding new towns (the first fill takes hours: `geocode`)
+GEO_BUDGET = 600  # seconds a run spends geocoding new towns (a new prefecture fills over a few runs; or run `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
 
 

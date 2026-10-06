@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS events (
 );
 DROP INDEX IF EXISTS events_posted;
 
+CREATE TABLE IF NOT EXISTS prefs (           -- when each prefecture's search results were last crawled
+    pref TEXT PRIMARY KEY, crawled_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS runs (
     run_id TEXT PRIMARY KEY, started TEXT, finished TEXT, report TEXT
 );
