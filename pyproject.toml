@@ -19,10 +19,6 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 
-[[tool.uv.index]]
-url = "https://pypi.apple.com/simple"
-default = true
-
 [tool.ruff]
 line-length = 120
 
