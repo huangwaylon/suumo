@@ -22,8 +22,17 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
   新着, 値下げ, SUUMO's tags). Active conditions show as chips under the count: the label opens the filters at that
   condition, × removes it. The last search comes back when the site is reopened; browser back closes the filter
   sheet, settings, the map view and the listing.
-- **Results**: cards with photo, price, layout, size, age, nearest station, town; 7 sort orders; more load as you
-  scroll. The map follows the results (pins by town, 丁目 level). No results → the conditions to drop, with counts.
+- **Results**: cards with photo, price, layout, size, age, nearest station, town; 8 sort orders (incl.
+  値下げ率が大きい順); more load as you scroll. The map follows the results (pins by town, 丁目 level). No results →
+  the conditions to drop, with counts.
+- **What's new**: 新着 tags say when (3時間前, 10/6), 再掲載 marks relisted homes, 値下げ tags show the cut (−8%).
+  Above the results, one-tap 新着 / 値下げ / 前回の訪問以降 chips with counts under the current conditions (a visit
+  is a new data version, remembered in the browser). The 「新着（日別）」 tab lists new listings grouped by day. A
+  property another agent already listed doesn't count as new.
+- **Saved searches** (this browser): the star saves the current conditions; each shows how many listings are new
+  or cheaper since it was last opened.
+- **Map area view**: 「この範囲の物件を見る」 on the map lists only what's visible (under the current conditions)
+  and follows panning and zooming; desktop shows conditions | map | list, phones the map above the list.
 - **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
   map, a link to SUUMO.
 - **Settings** (gear icon): language 日本語 (default) or English, and theme システム / ライト / ダーク, saved in the
