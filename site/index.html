@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex, nofollow">
   <title>東京 物件さがし</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,12 +16,12 @@
       <h1>🏠 東京 物件さがし</h1>
       <span id="updated"></span>
     </div>
-    <input id="text" type="search" placeholder="駅・町名・物件名で検索" autocomplete="off">
+    <input id="text" type="search" placeholder="駅・町名・物件名で検索" aria-label="駅・町名・物件名で検索" autocomplete="off">
     <nav id="chips"></nav>
     <div class="bar">
-      <strong id="count"></strong>
+      <strong id="count" aria-live="polite"></strong>
       <select id="sort" aria-label="並び替え"></select>
-      <div class="seg" role="tablist">
+      <div class="seg">
         <button data-view="list">📋 リスト</button>
         <button data-view="map">🗺️ 地図</button>
       </div>
@@ -36,7 +36,7 @@
   </main>
 
   <div id="sheet" class="overlay" hidden>
-    <div class="panel">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
       <div class="panel-head">
         <h2 id="sheet-title"></h2>
         <button id="sheet-close" class="link">閉じる</button>
@@ -47,7 +47,7 @@
   </div>
 
   <div id="detail" class="overlay" hidden>
-    <div class="panel detail">
+    <div class="panel detail" role="dialog" aria-modal="true" aria-label="物件の詳細">
       <div class="panel-head">
         <button id="detail-back" class="link">← 一覧へ</button>
         <button id="detail-star" class="star"></button>
@@ -58,8 +58,8 @@
 
   <div id="loading">物件データを読み込み中…</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin=""></script>
   <script src="filter.js"></script>
   <script src="app.js"></script>
 </body>

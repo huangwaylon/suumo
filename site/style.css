@@ -67,7 +67,7 @@ main { max-width: 900px; margin: 0 auto; padding: 8px; }
 .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 8px; }
 .opts label, .toggles label { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 14px; }
 .opts label .n { color: var(--muted); font-size: 12px; margin-left: auto; }
-.opts label.zero { color: #aaa; }
+.opts label.zero { opacity: .55; }
 .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
 .field select { flex: 1; max-width: 60%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
 .picked { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }

@@ -29,6 +29,11 @@
   let line = null;
   let map = null, cluster = null;
   let favs = new Set(JSON.parse(localStorage.getItem("suumo.favorites") || "[]"));
+  let areaNames = new Map();
+  let detailMap = null;     // the small map in the listing view
+  let pushed = false;       // the listing view added a history entry (so closing it goes back)
+  let lastFocus = null;     // element to refocus when an overlay closes
+  let lastConditions = null; // the URL without the open listing: results re-render only when it changes
 
   // ---------- formatting ----------
 
@@ -80,7 +85,10 @@
     q.text = p.get("q") || "";
     for (const [k, f] of Object.entries(LISTS)) q[f] = p.get(k) ? p.get(k).split(",") : [];
     q.rooms = p.get("r") ? p.get("r").split(",").map(Number) : [];
-    for (const [k, f] of Object.entries(NUMS)) q[f] = p.has(k) ? Number(p.get(k)) : null;
+    for (const [k, f] of Object.entries(NUMS)) {
+      const n = Number(p.get(k));
+      q[f] = p.has(k) && Number.isFinite(n) ? n : null;
+    }
     for (const [k, f] of Object.entries(BOOLS)) q[f] = p.get(k) === "1";
     q.sort = SORTS[p.get("sort")] ? p.get("sort") : "new";
     view = p.get("view") === "map" ? "map" : "list";
@@ -104,6 +112,7 @@
 
   function saveHash() {
     history.replaceState(null, "", hashFor());
+    lastConditions = hashFor();
   }
 
   // ---------- results ----------
@@ -127,7 +136,10 @@
     $("count").textContent = `${hits.length.toLocaleString()}件`;
     $("text").value = q.text;
     $("sort").value = q.sort;
-    document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+    document.querySelectorAll(".seg button").forEach((b) => {
+      b.classList.toggle("on", b.dataset.view === view);
+      b.setAttribute("aria-pressed", b.dataset.view === view);
+    });
     renderChips();
     const notice = $("notice");
     notice.hidden = !favOnly;
@@ -140,18 +152,18 @@
   }
 
   function tags(h) {
-    const it = h.item, out = [];
-    if (it.flags & 16) out.push('<span class="tag new">新着</span>');
-    if (it.flags & 32) out.push('<span class="tag drop">値下げ</span>');
-    if (it.flags & 1) out.push('<span class="tag warn">借地権</span>');
-    if (it.flags & 2) out.push('<span class="tag warn">建築条件付</span>');
+    const it = h.item, F = db.flags, out = [];
+    if (it.flags & F.new) out.push('<span class="tag new">新着</span>');
+    if (it.flags & F.dropped) out.push('<span class="tag drop">値下げ</span>');
+    if (it.flags & F.leasehold) out.push('<span class="tag warn">借地権</span>');
+    if (it.flags & F.conditional) out.push('<span class="tag warn">建築条件付</span>');
     if (h.others.length) out.push(`<span class="tag">ほか${h.others.length}社も掲載</span>`);
     return out.join("");
   }
 
   function card(h) {
     const it = h.item;
-    return `<article class="card" data-key="${esc(it.key)}">
+    return `<article class="card" data-key="${esc(it.key)}" tabindex="0" aria-label="${esc(price(it))} ${esc(it.layout)}">
       <img loading="lazy" src="${esc(image(it, 240, 180))}" alt="">
       <div class="info">
         <div class="price">${esc(price(it))}</div>
@@ -161,7 +173,7 @@
         <div class="kind">${esc(TYPE_JA[it.type])}</div>
         <div class="tags">${tags(h)}</div>
       </div>
-      <button class="star" data-star="${esc(it.key)}" aria-label="お気に入り">${favs.has(it.key) ? "★" : "☆"}</button>
+      <button class="star" data-star="${esc(it.key)}" aria-label="お気に入り" aria-pressed="${favs.has(it.key)}">${favs.has(it.key) ? "★" : "☆"}</button>
     </article>`;
   }
 
@@ -251,10 +263,7 @@
       q.newOnly && "新着", q.dropsOnly && "値下げ"].filter(Boolean).join("・")],
   ];
 
-  function areaName(code) {
-    const a = db.index.areas.find((x) => x[0] === code);
-    return a ? a[1] : code;
-  }
+  const areaName = (code) => areaNames.get(code) || code;
 
   function isEmpty() {
     return JSON.stringify(Object.assign({}, q, { sort: "new" })) === JSON.stringify(Filter.emptyQuery());
@@ -346,7 +355,7 @@
       const n = Filter.facet(db, q, "features", (it) => it.features);
       const top = Object.keys(n).sort((a, b) => n[b] - n[a]).filter((f) => !q.features.includes(f)).slice(0, 40);
       return `<div class="toggles">${toggles.map(([k, label]) => `<label><input type="checkbox" name="toggle"
-        value="${k}"${q[k] ? " checked" : ""}> ${label}（${count({ [k]: !q[k] }).toLocaleString()}件）</label>`).join("")}</div>
+        value="${k}"${q[k] ? " checked" : ""}> ${label}${q[k] ? "" : `（${count({ [k]: true }).toLocaleString()}件）`}</label>`).join("")}</div>
         <div class="group"><h3>特徴（すべて満たす物件）</h3>${checkboxes("features",
           [...q.features, ...top].map((f) => [f, f, n[f] || 0]), q.features)}</div>
         <p class="kind">特徴は物件ページを取得済みの物件だけが対象です。</p>`;
@@ -371,12 +380,14 @@
   }
 
   function openSheet(id) {
+    lastFocus = document.activeElement;
     sheet = id;
     if (id === "stations" && !line && q.stations.length) {
       line = Object.keys(db.index.lines).find((l) => db.index.lines[l].some((i) => q.stations.includes(db.index.stations[i])));
     }
     $("sheet").hidden = false;
     renderSheet();
+    $("sheet-close").focus();
   }
 
   function renderSheet() {
@@ -389,6 +400,7 @@
   function closeSheet() {
     $("sheet").hidden = true;
     sheet = null;
+    if (lastFocus) lastFocus.focus();
   }
 
   function onSheetChange(e) {
@@ -408,31 +420,36 @@
     } else q[name] = el.value === "" ? null : Number(el.value);
     update();
     renderSheet();
+    // the sheet was redrawn: put the focus back on the control that changed
+    const again = $("sheet-body").querySelector(el.type === "checkbox"
+      ? `[name="${name}"][value="${CSS.escape(el.value)}"]` : `[name="${name}"]`);
+    if (again) again.focus();
   }
 
   // ---------- listing ----------
 
-  async function openDetail(key) {
-    const h = hits.find((x) => x.item.key === key) || hitFor(key);
+  function openDetail(key) {
+    lastFocus = document.activeElement;
     history.pushState(null, "", hashFor({ l: key }));
-    showDetail(key, h);
-  }
-
-  function hitFor(key) {
-    const it = db.items.find((x) => x.key === key);
-    return it ? { item: it, others: it.dup == null ? [] : db.groups.get(it.dup).filter((o) => o !== it) } : null;
+    pushed = true;
+    showDetail(key, hits.find((x) => x.item.key === key) || Filter.hitFor(db, key));
   }
 
   async function showDetail(key, h) {
+    if (detailMap) { detailMap.remove(); detailMap = null; }
     $("detail").hidden = false;
+    $("detail-back").focus();
     $("detail-star").textContent = favs.has(key) ? "★ お気に入り" : "☆ お気に入り";
+    $("detail-star").setAttribute("aria-pressed", favs.has(key));
     $("detail-star").dataset.star = key;
     const body = $("detail-body");
     body.innerHTML = '<p class="kind">読み込み中…</p>';
     const [type, id] = key.split(":");
     let r;
     try {
-      r = await (await fetch(`data/l/${type}/${id}.json`)).json();
+      const res = await fetch(`data/l/${type}/${id}.json`);
+      if (!res.ok) throw new Error(res.status);
+      r = await res.json();
     } catch {
       body.innerHTML = '<p class="empty">この物件は掲載が終わりました。</p>';
       return;
@@ -485,15 +502,22 @@
       <table>${rows.join("")}</table>
       ${it && it.lat != null ? '<div id="detail-map"></div><p class="kind">地図の位置は町・丁目の中心です。</p>' : ""}`;
     if (it && it.lat != null) {
-      const m = L.map("detail-map", { zoomControl: false, attributionControl: false }).setView([it.lat, it.lng], 15);
-      L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png").addTo(m);
-      L.circle([it.lat, it.lng], { radius: 150 }).addTo(m);
+      detailMap = L.map("detail-map", { zoomControl: false, attributionControl: false }).setView([it.lat, it.lng], 15);
+      L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png").addTo(detailMap);
+      L.circle([it.lat, it.lng], { radius: 150 }).addTo(detailMap);
     }
   }
 
+  function hideDetail() {
+    if (detailMap) { detailMap.remove(); detailMap = null; }
+    $("detail").hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+
   function closeDetail() {
-    if (new URLSearchParams(location.hash.slice(1)).has("l")) history.back();
-    else $("detail").hidden = true;
+    if (pushed) { pushed = false; history.back(); return; }   // popstate hides it
+    history.replaceState(null, "", hashFor());              // opened from a shared link: stay on the site
+    hideDetail();
   }
 
   function toggleFav(key) {
@@ -540,11 +564,16 @@
       if (star) {
         toggleFav(star.dataset.star);
         star.textContent = favs.has(star.dataset.star) ? "★" : "☆";
+        star.setAttribute("aria-pressed", favs.has(star.dataset.star));
         renderChips();
         return;
       }
       const c = e.target.closest(".card");
       if (c) openDetail(c.dataset.key);
+    });
+    $("list").addEventListener("keydown", (e) => {
+      const c = e.target.closest(".card");
+      if (c && e.target === c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDetail(c.dataset.key); }
     });
     $("more").addEventListener("click", (e) => {
       if (e.target.id === "more-btn") { shown += PAGE; renderList(); }
@@ -555,6 +584,7 @@
       const key = e.currentTarget.dataset.star;
       toggleFav(key);
       e.currentTarget.textContent = favs.has(key) ? "★ お気に入り" : "☆ お気に入り";
+      e.currentTarget.setAttribute("aria-pressed", favs.has(key));
       render();
     });
     window.addEventListener("popstate", route);
@@ -566,15 +596,17 @@
 
   function route() {
     const key = readHash();
-    render();
-    if (key) showDetail(key, hitFor(key));
-    else $("detail").hidden = true;
+    const conditions = hashFor();
+    if (conditions !== lastConditions) { lastConditions = conditions; render(); }
+    if (key) showDetail(key, Filter.hitFor(db, key));
+    else if (!$("detail").hidden) { pushed = false; hideDetail(); }
   }
 
   async function start() {
     try {
       const index = await (await fetch("data/index.json")).json();
       db = Filter.load(index);
+      areaNames = new Map(index.areas);
       $("updated").textContent = index.updated ? `更新 ${index.updated.slice(5).replace("-", "/")}` : "";
     } catch (e) {
       $("loading").textContent = "物件データを読み込めませんでした。再読み込みしてください。";

@@ -1,145 +1,143 @@
-"""The static site build, and parity between site/filter.js (run in Node) and the catalog's rules."""
+"""The static site: what the build writes, and the search rules in site/filter.js (run in Node)."""
 import json
-import random
 import shutil
-import subprocess
-from dataclasses import replace
 from datetime import date
-from pathlib import Path
 
 import pytest
 
-from suumo.catalog import Query, load
 from suumo.site import build
-from tests.test_catalog import rec, write
+from tests.helpers import FIXTURES, NODE, QUIET, rec, site_queries
 
-FIXTURE = Path(__file__).parent / "fixtures" / "data"
-FILTER_JS = Path(__file__).parent.parent / "site" / "filter.js"
-TODAY = date(2026, 10, 20)
-NODE = shutil.which("node")
-
-RUNNER = """
-const Filter = require(process.argv[1]);
-const fs = require("fs");
-const db = Filter.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
-const queries = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
-const out = queries.map((q) => {
-  const hits = Filter.search(db, Object.assign(Filter.emptyQuery(), q));
-  return {keys: hits.map((h) => h.item.key), others: hits.map((h) => h.others.length),
-          count: Filter.count(db, Object.assign(Filter.emptyQuery(), q))};
-});
-process.stdout.write(JSON.stringify(out));
-"""
+needs_node = pytest.mark.skipif(not NODE, reason="node not installed")
+LAND = {"layout": None, "floor_m2": None, "built": None}
 
 
-def js_query(q: Query):
-    return {"types": list(q.types), "areas": list(q.areas), "stations": list(q.stations), "walk": q.walk_max,
-            "priceMin": q.price_min, "priceMax": q.price_max, "rooms": list(q.rooms), "sizeMin": q.size_min,
-            "landMin": q.land_min, "ageMax": q.age_max, "post1981": q.post_1981, "features": list(q.features),
-            "freehold": q.freehold_only, "noCondition": q.no_condition, "newOnly": q.new_only,
-            "dropsOnly": q.drops_only, "sort": q.sort}
-
-
-def run_js(index_path, queries, tmp_path):
-    qfile = tmp_path / "queries.json"
-    qfile.write_text(json.dumps([js_query(q) for q in queries], ensure_ascii=False))
-    out = subprocess.run([NODE, "-e", RUNNER, str(FILTER_JS), str(index_path), str(qfile)],
-                         capture_output=True, text=True, check=True)
-    return json.loads(out.stdout)
+def ids(tmp_path, recs, *queries, **kw):
+    return [r["ids"] for r in site_queries(tmp_path, recs, [{"query": q} for q in queries], **kw)]
 
 
 def test_build_writes_index_listings_and_assets(tmp_path):
     data = tmp_path / "data"
-    shutil.copytree(FIXTURE, data)
+    shutil.copytree(FIXTURES / "data", data)
     geo = tmp_path / "towns.json"
     geo.write_text(json.dumps({"東京都狛江市岩戸北３": [35.63, 139.58]}, ensure_ascii=False))
     out = tmp_path / "site"
-    index = build(data, geo, out, today=date(2026, 10, 6), log=lambda *_: None)
+    index = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
     assert {"index.html", "app.js", "filter.js", "style.css", ".nojekyll"} <= {p.name for p in out.iterdir()}
-    snap = load(data, date(2026, 10, 6))
-    assert len(index["rows"]) == len(snap.items)
-    town = dict((t, (lat, lng)) for t, lat, lng in index["towns"])
-    assert town["東京都狛江市岩戸北３"] == (35.63, 139.58)
+    assert len(index["rows"]) == 46
+    assert {t: (lat, lng) for t, lat, lng in index["towns"]}["東京都狛江市岩戸北３"] == (35.63, 139.58)
     row = dict(zip(index["columns"], next(r for r in index["rows"] if r[0] == "20205670"), strict=True))
-    assert row["image"] == "030/N010000/670/20205670_0004.jpg".replace("20205670_", "") and row["price"] == 12_000_000
+    assert row["image"] == "030/N010000/670/0004.jpg" and row["price"] == 12_000_000
     detail = json.loads((out / "data/l/used_condo/20205670.json").read_text())
     assert detail["url"].startswith("https://suumo.jp/") and detail["land_rights"] == "定期借地権"
     dropped = json.loads((out / "data/l/used_condo/20635014.json").read_text())
-    assert dropped["history"] and dropped["history"][0][1] > dropped["history"][0][2]
+    assert dropped["history"][0][1] > dropped["history"][0][2]
 
 
-@pytest.mark.skipif(not NODE, reason="node not installed")
-def test_site_filter_matches_the_catalog(tmp_path):
-    rnd = random.Random(11)
-    types = ["used_condo", "new_house", "used_house", "land", "new_condo"]
-    stations = [("小田急線", "狛江"), ("小田急線", "喜多見"), ("京王線", "柴崎"), ("ＪＲ南武線", "登戸"),
-                ("小田急線", "登戸")]
-    tags = ["ペット相談", "角住戸", "南向き"]
-    recs, events = [], []
-    for n in range(400):
-        t = rnd.choice(types)
-        sts = [{"line": ln, "name": nm, **({"bus": 5} if rnd.random() < 0.1 else {}), "walk": rnd.randint(1, 25)}
-               for ln, nm in rnd.sample(stations, rnd.randint(0, 3))]
-        recs.append(rec(n + 1, t, area_code=rnd.choice(["13219", "13208"]),
-                        price=rnd.choice([None, rnd.randint(20, 120) * 1_000_000]),
-                        price_max=rnd.choice([None, None, 130_000_000]),
-                        layout=None if t == "land" else rnd.choice(["1LDK", "2LDK", "3LDK+S", "4LDK", "5DK", None]),
-                        floor_m2=rnd.choice([None, 45.0, 70.5, 95.0]), land_m2=rnd.choice([None, 80.0, 150.0]),
-                        built=rnd.choice([None, "1975-03", "1981-06", "2001-01", "2020-12"]), stations=sts,
-                        features=rnd.sample(tags, rnd.randint(0, 2)), has_detail=rnd.random() < 0.7,
-                        land_rights=rnd.choice([None, "所有権", "定期借地権"]), build_condition=rnd.random() < 0.1,
-                        dup_key=rnd.choice([None, None, "a", "b", "c"]),
-                        first_seen=rnd.choice(["2026-10-01", "2026-10-05"])))
-        if rnd.random() < 0.2:
-            events.append({"kind": "new", "type": t, "id": str(n + 1), "payload": {}})
-        if rnd.random() < 0.2:
-            p = recs[-1].get("price") or 50_000_000
-            events.append({"kind": "price_changed", "type": t, "id": str(n + 1),
-                           "payload": {"price": p, "old_price": p + rnd.choice([-1, 1]) * 1_000_000}})
-    by_type = {}
-    for r in recs:
-        by_type.setdefault(r["type"], []).append(r)
-    data = tmp_path / "data"
-    write(data, areas={"13219": "狛江市", "13208": "調布市"}, events={"20261015T040000": events}, **by_type)
-    snap = load(data, TODAY)
-    out = tmp_path / "site"
-    build(data, tmp_path / "none.json", out, today=TODAY, log=lambda *_: None)
-    queries = [Query()] + [Query(sort=s) for s in ("price_asc", "price_desc", "size_desc", "walk_asc", "age_asc",
-                                                   "unit_asc")]
-    for _ in range(300):
-        q = Query().set(
-            types=rnd.sample(types, rnd.randint(0, 2)), areas=rnd.sample(["13219", "13208"], rnd.randint(0, 1)),
-            stations=rnd.sample(["狛江", "喜多見", "柴崎", "登戸"], rnd.randint(0, 2)),
-            walk_max=rnd.choice([None, 5, 10, 15]), price_max=rnd.choice([None, 50_000_000, 80_000_000]),
-            price_min=rnd.choice([None, 40_000_000]), rooms=rnd.sample([1, 2, 3, 4], rnd.randint(0, 2)),
-            size_min=rnd.choice([None, 60]), land_min=rnd.choice([None, 100]), age_max=rnd.choice([None, 20, 45]),
-            post_1981=rnd.random() < 0.2, features=rnd.sample(tags, rnd.randint(0, 1)),
-            freehold_only=rnd.random() < 0.2, no_condition=rnd.random() < 0.2, new_only=rnd.random() < 0.15,
-            drops_only=rnd.random() < 0.15,
-            sort=rnd.choice(["new", "price_asc", "price_desc", "size_desc", "walk_asc", "age_asc", "unit_asc"]))
-        queries.append(q)
-    js = run_js(out / "data" / "index.json", queries, tmp_path)
-    for q, got in zip(queries, js, strict=True):
-        hits = snap.search(q)
-        assert got["keys"] == [h.key for h in hits], q
-        assert got["others"] == [len(h.others) for h in hits], q
-        assert got["count"] == snap.count(q), q
+@needs_node
+def test_price_uses_the_range(tmp_path):
+    recs = [rec(1, price=30_000_000), rec(2, price=45_000_000, price_max=60_000_000), rec(3, price=None),
+            rec(4, price=80_000_000)]
+    assert ids(tmp_path, recs, {"priceMax": 50_000_000, "sort": "price_asc"}, {"priceMin": 55_000_000}, {}) == [
+        ["1", "2"],             # 2 has a plot from 4,500万
+        ["4", "2"],             # 2 has a plot up to 6,000万
+        ["4", "3", "2", "1"],   # no price filter: 価格未定 included
+    ]
 
 
-@pytest.mark.skipif(not NODE, reason="node not installed")
-def test_text_search_on_the_site(tmp_path):
-    data = tmp_path / "data"
-    shutil.copytree(FIXTURE, data)
-    out = tmp_path / "site"
-    build(data, tmp_path / "none.json", out, today=date(2026, 10, 6), log=lambda *_: None)
-    runner = RUNNER
-    qfile = tmp_path / "q.json"
-    qfile.write_text(json.dumps([{"text": "パークビュー"}, {"text": "狛江駅"}, {"text": "ﾊﾟｰｸﾋﾞｭｰ 2階"}],
-                                ensure_ascii=False))
-    res = json.loads(subprocess.run([NODE, "-e", runner, str(FILTER_JS), str(out / "data/index.json"), str(qfile)],
-                                    capture_output=True, text=True, check=True).stdout)
-    snap = load(data, date(2026, 10, 6))
-    park = {i.key for i in snap.items if "パークビュー" in (i.rec.get("name") or "")}
-    assert res[0]["keys"] and set(res[0]["keys"]) <= park
-    assert res[1]["count"] >= snap.count(replace(Query(), stations=("狛江",))) > 0   # station names are searchable
-    assert res[2]["keys"] and set(res[2]["keys"]) < set(res[0]["keys"])          # half-width kana, all words
+@needs_node
+def test_building_conditions_and_land(tmp_path):
+    recs = [rec(1, layout="1LDK", floor_m2=55.0), rec(2, layout="4LDK", floor_m2=80.0, built="1985-01"),
+            rec(3, "new_house", layout="6LDK", floor_m2=None, building_m2=95.0, land_m2=110.0, built=None),
+            rec(4, "land", land_m2=150.0, **LAND)]
+    assert ids(tmp_path, recs, {"rooms": [4]}, {"rooms": [1, 4], "types": ["land"]}, {"sizeMin": 70},
+               {"sizeMin": 70, "types": ["land", "new_house"]}, {"landMin": 120}, {"ageMax": 25}) == [
+        ["3", "2"],
+        ["4"],                  # building conditions don't exclude land chosen explicitly
+        ["3", "2"],
+        ["4", "3"],
+        ["4"],
+        ["3", "1"],             # 2005 -> 21 years; new counts as 0
+    ]
+
+
+@needs_node
+def test_stations_and_walk(tmp_path):
+    recs = [rec(1, stations=[{"line": "小田急線", "name": "狛江", "walk": 12},
+                             {"line": "京王線", "name": "柴崎", "walk": 6}]),
+            rec(2, stations=[{"line": "小田急線（新宿～相模大野）", "name": "狛江", "walk": 3}]),
+            rec(3, stations=[{"line": "小田急バス", "name": "狛江第5小学校", "walk": 1, "bus_stop": True}]),
+            rec(4, stations=[{"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2}]),
+            rec(5, stations=[{"line": "ＪＲ南武線", "name": "狛江", "walk": 9}])]
+    assert ids(tmp_path, recs, {"stations": ["狛江"]}, {"walk": 7}, {"stations": ["狛江"], "walk": 7},
+               {"walk": 10, "sort": "walk_asc"}) == [
+        ["5", "2", "1"],        # the same station on two lines is one choice
+        ["2", "1"],             # bus access doesn't count as walking
+        ["2"],                  # 1 is 12 min from 狛江
+        ["2", "1", "5"],
+    ]
+
+
+@needs_node
+def test_tags_rights_condition_quake_new_and_drops(tmp_path):
+    events = {"20261015T040000": [{"kind": "new", "type": "used_condo", "id": "2", "payload": {}},
+                                  {"kind": "price_changed", "type": "used_condo", "id": "2",
+                                   "payload": {"price": 45_000_000, "old_price": 50_000_000}},
+                                  {"kind": "price_changed", "type": "used_condo", "id": "3",
+                                   "payload": {"price": 52_000_000, "old_price": 50_000_000}}]}
+    recs = [rec(1, features=["ペット相談", "角住戸"], land_rights="所有権", built="1981-05"),
+            rec(2, features=["ペット相談"], land_rights="定期借地権", built="1981-06"), rec(3),
+            rec(4, "land", land_m2=100.0, build_condition=True, **LAND), rec(5, "land", land_m2=100.0, **LAND)]
+    assert ids(tmp_path, recs, {"features": ["ペット相談"]}, {"features": ["ペット相談", "角住戸"]},
+               {"freehold": True, "types": ["used_condo"]}, {"newOnly": True}, {"dropsOnly": True},
+               {"post1981": True, "types": ["used_condo"]}, {"noCondition": True, "types": ["land"]},
+               {"types": ["used_condo"]}, events=events) == [
+        ["2", "1"], ["1"],
+        ["3", "1"],             # unknown rights are kept
+        ["2"],                  # 新着 comes from events, not first_seen
+        ["2"],                  # 3 went up
+        ["2", "3"], ["5"],     # (sorted 新着順: 2 is new)
+        ["2", "3", "1"],        # 新着順: new first, then first seen, then newest id
+    ]
+
+
+@needs_node
+def test_duplicates_fold_to_the_cheapest_matching_listing(tmp_path):
+    recs = [rec(1, dup_key="aa", price=50_000_000), rec(2, dup_key="aa", price=49_800_000), rec(3, dup_key="bb")]
+    every, pricey = site_queries(tmp_path, recs, [{"query": {}}, {"query": {"priceMin": 49_900_000}}])
+    assert every == {"ids": ["3", "2"], "others": [[], ["1"]], "count": 2}
+    assert pricey["ids"] == ["3", "1"]
+
+
+@needs_node
+@pytest.mark.parametrize("sort,expected", [
+    ("new", ["3", "2", "1"]), ("price_asc", ["2", "1", "3"]), ("price_desc", ["3", "1", "2"]),
+    ("size_desc", ["1", "3", "2"]), ("walk_asc", ["3", "1", "2"]), ("age_asc", ["2", "3", "1"]),
+    ("unit_asc", ["1", "2", "3"]),
+])
+def test_sorts(tmp_path, sort, expected):
+    walk = lambda w: [{"line": "小田急線", "name": "狛江", "walk": w}]  # noqa: E731
+    recs = [rec(1, price=50_000_000, floor_m2=90.0, built="1990-01", stations=walk(8)),
+            rec(2, price=30_000_000, floor_m2=50.0, built="2020-01", first_seen="2026-10-02", stations=walk(15)),
+            rec(3, price=90_000_000, floor_m2=60.0, built="2010-01", first_seen="2026-10-02", stations=walk(2))]
+    assert ids(tmp_path, recs, {"sort": sort}) == [expected]
+
+
+@needs_node
+def test_choice_counts(tmp_path):
+    recs = [rec(1), rec(2, area_code="13208"), rec(3, "used_house", building_m2=90.0),
+            rec(4, "land", land_m2=90.0, **LAND)]
+    types, areas = site_queries(tmp_path, recs, [
+        {"query": {"types": ["used_condo"], "rooms": [3]}, "facet": "types"},
+        {"query": {"types": ["used_condo"], "areas": ["13219"]}, "facet": "areas"}],
+        areas={"13219": "狛江市", "13208": "調布市"})
+    assert types == {"used_condo": 2, "used_house": 1, "land": 1}   # choosing 土地 would add it
+    assert areas == {"13219": 1, "13208": 1}
+
+
+@needs_node
+def test_text_search(tmp_path):
+    recs = [rec(1, name="パークビュー狛江 ２階"), rec(2, name="パークビュー狛江"), rec(3, name="リバーサイド喜多見",
+            stations=[{"line": "小田急線", "name": "喜多見", "walk": 4}])]
+    assert ids(tmp_path, recs, {"text": "パークビュー"}, {"text": "ﾊﾟｰｸﾋﾞｭｰ 2階"}, {"text": "喜多見駅"}) == [
+        ["2", "1"], ["1"], ["3"]]      # half-width kana normalized; every word must match; stations searchable
