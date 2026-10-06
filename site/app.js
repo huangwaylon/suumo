@@ -47,10 +47,10 @@
   }
 
   function renderSettings() {
-    const group = (name, options) => `<div class="seg" role="group">${Object.entries(options).map(([k, label]) =>
+    const group = (name, options) => `<div class="seg" role="group" aria-labelledby="set-${name}">${Object.entries(options).map(([k, label]) =>
       `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${settings[name] === k}">${esc(label)}</button>`).join("")}</div>`;
-    $("settings-body").innerHTML = `<section class="sec"><h3>${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
-      <section class="sec"><h3>${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>
+    $("settings-body").innerHTML = `<section class="sec"><h3 id="set-lang">${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
+      <section class="sec"><h3 id="set-theme">${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>
       ${db?.index.updated ? `<p class="meta">${esc(t("updated", day(db.index.updated.slice(0, 10))))}</p>` : ""}`;
   }
 
@@ -286,7 +286,7 @@
       b.innerHTML = `<span>${esc(t("favBanner", favs.size))}</span><span>${favs.size ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}
         <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
     } else if (mode === "shared") {
-      b.innerHTML = `<span>${esc(t("sharedBanner", shared.length))}</span><span><button class="btn" data-import="1">${esc(t("importFavs"))}</button>
+      b.innerHTML = `<span>${esc(t("sharedBanner", hits.length))}</span><span><button class="btn" data-import="1">${esc(t("importFavs"))}</button>
         <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
     }
   }
@@ -352,7 +352,7 @@
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
         <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
-        <input class="text-input" id="station-q" type="search" placeholder="${esc(t("stationSearch"))}" autocomplete="off">
+        <input class="text-input" id="station-q" type="search" placeholder="${esc(t("stationSearch"))}" aria-label="${esc(t("stationSearch"))}" autocomplete="off">
         <div class="opts" id="station-list"></div>`;
     }
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
@@ -458,7 +458,9 @@
   async function drawMap() {
     if (!(await mapReady()) || !mapVisible()) return;
     if (!map) {
-      map = L.map("map", { zoomControl: false });
+      const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion });
+      map.on("popupopen", (e) => e.popup.getElement()?.querySelector(".popup-list a")?.focus({ preventScroll: true }));
       map.on("popupopen popupclose", (e) => $("map").classList.toggle("popup-open", e.type === "popupopen"));
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
@@ -476,7 +478,7 @@
     }
     cluster.clearLayers();
     cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
-      L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
+      L.marker([lat, lng], { icon: pin(list.length), count: list.length, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
     note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("emptyTitle");
@@ -818,9 +820,11 @@
       $("list").innerHTML = `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
       return;
     }
+    const early = $("q").value.trim();  // typed while the listings were loading
     wire();
     if (!location.hash && localStorage.getItem("suumo.last")) history.replaceState(null, "", localStorage.getItem("suumo.last"));
     route();
+    if (early && !q.text) { q.text = early; update(); }
     (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
   }
 
