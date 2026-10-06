@@ -115,7 +115,8 @@ class Snapshot:
     items: list                                   # listings (Item): active, and ended ones kept because saved
     areas: dict                                   # area code -> name
     history: dict                                 # key -> [(date, old_price, new_price)], oldest first
-    new_dates: dict                               # key -> date of its latest new/relisted event
+    new_at: dict                                  # key -> (YYYYMMDDHH, "new" | "relisted") of its latest such event
+    drops: dict                                   # key -> (YYYYMMDDHH, old_price, new_price) of its latest drop
     today: date
     groups: dict = field(default_factory=dict)    # dup_key -> [Item] (only groups of 2 or more)
 
@@ -126,12 +127,28 @@ class Snapshot:
                 by_dup[i.dup].append(i)
         self.groups = {k: v for k, v in by_dup.items() if len(v) > 1}
 
+    def new(self, item):
+        """(YYYYMMDDHH, kind) when the listing is new, else None. A property another agent already listed (an
+        older listing in its duplicate group) is a re-post, not new."""
+        at = self.new_at.get(item.key)
+        if not at:
+            return None
+        for other in self.groups.get(item.dup, ()):
+            if other is not item and self.new_at.get(other.key, (0,))[0] < at[0]:
+                return None
+        return at
+
     def is_new(self, item):
-        return self.new_dates.get(item.key, "") >= (self.today - timedelta(days=NEW_DAYS)).isoformat()
+        at = self.new(item)
+        return bool(at) and at[0] >= hour(self.today - timedelta(days=NEW_DAYS))
+
+    def drop(self, item):
+        """(YYYYMMDDHH, old_price, new_price) of the latest price drop within DROP_DAYS, else None."""
+        d = self.drops.get(item.key)
+        return d if d and d[0] >= hour(self.today - timedelta(days=DROP_DAYS)) else None
 
     def is_dropped(self, item):
-        cutoff = (self.today - timedelta(days=DROP_DAYS)).isoformat()
-        return any(d >= cutoff and old and new and new < old for d, old, new in self.history.get(item.key, ()))
+        return self.drop(item) is not None
 
 
 def _read_jsonl(path):
@@ -140,6 +157,16 @@ def _read_jsonl(path):
 
 def run_date(run_id):
     return f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
+
+
+def run_hour(run_id):
+    """'20261006T194539' -> 2026100619 (runs are hourly: the hour says when a change was seen)."""
+    return int(run_id[:8] + run_id[9:11])
+
+
+def hour(day):
+    """A date as YYYYMMDD00, comparable with run_hour."""
+    return int(day.strftime("%Y%m%d")) * 100
 
 
 def load(data_dir, today: date, saved=()):
@@ -157,16 +184,19 @@ def load(data_dir, today: date, saved=()):
         areas_file = pref_dir / "areas.json"
         if areas_file.exists():
             areas.update(json.loads(areas_file.read_text(encoding="utf-8")))
-    history, new_dates = defaultdict(list), {}
+    history, new_at, drops = defaultdict(list), {}, {}
     for path in sorted(data_dir.glob("events/*.json")):
-        day = run_date(path.stem)
+        day, at = run_date(path.stem), run_hour(path.stem)
         for e in json.loads(path.read_text(encoding="utf-8")):
             key = f"{e['type']}:{e['id']}"
             if e["kind"] in ("new", "relisted"):
-                new_dates[key] = day
+                new_at[key] = (at, e["kind"])
             elif e["kind"] == "price_changed":
                 p = e.get("payload") or {}
-                history[key].append((day, p.get("old_price"), p.get("price")))
+                old, new = p.get("old_price"), p.get("price")
+                history[key].append((day, old, new))
+                if old and new and new < old:
+                    drops[key] = (at, old, new)
     for i in items:
         i.saved = i.key in saved
-    return Snapshot(items, areas, dict(history), new_dates, today)
+    return Snapshot(items, areas, dict(history), new_at, drops, today)

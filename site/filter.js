@@ -9,7 +9,7 @@
   const emptyQuery = () => ({
     text: "", types: [], areas: [], stations: [], walk: null, priceMin: null, priceMax: null, plan: null,
     sizeMin: null, landMin: null, ageMax: null, post1981: false, features: [], freehold: false,
-    noCondition: false, newOnly: false, dropsOnly: false, sort: "new",
+    noCondition: false, newOnly: false, dropsOnly: false, since: null, sort: "new",
   });
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
@@ -36,7 +36,8 @@
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
         land: c.land[i], age: c.age[i], built: c.built[i], builtInt: c.built[i] ? +c.built[i].replace("-", "") : 0,
         stations, features: new Set(c.features[i].map((f) => index.features[f])), flags: c.flags[i],
-        others: c.others[i], newDate: c.newDate[i], firstSeen: c.firstSeen[i], unit: c.unit[i],
+        others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
+        dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(index.prefs[area[2]].length) : null, lat: town ? town[1] : null,
         lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: c.image[i],
       };
@@ -79,6 +80,8 @@
     noCondition: (it, v, q, db) => !v || !(it.flags & db.flags.conditional),
     newOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.new),
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
+    // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
+    since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
     text: (it, v, q, db) => !v || normalize(v).split(/\s+/).every((w) => !w || STATION_WORDS.has(w) || haystack(it, db).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
@@ -115,6 +118,7 @@
       case "walk_asc": return [orLast(walkTo(it, q.stations)), it.idn];
       case "age_asc": return [orLast(it.age), ...newest(it.builtInt), it.idn];
       case "unit_asc": return [orLast(it.unit), it.idn];
+      case "drop_desc": return [it.prevPrice && it.price ? it.price / it.prevPrice : Infinity, it.idn];  // biggest cut first
       default: return [...newest(it.newDate), ...newest(it.firstSeen), -it.idn];
     }
   }

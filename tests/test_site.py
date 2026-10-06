@@ -218,3 +218,21 @@ def test_saved_listings_stay_themselves_and_ended_ones_only_in_the_saved_list(tm
     assert out[0]["ids"] == ["4", "2", "1"]      # 1 is saved: not folded into 2; 3 ended: not in search
     assert out[1] == ["1", "3"]                   # the saved list, the ended one included
     assert (tmp_path / "site/data/l/used_condo/3.json").exists()
+
+
+@needs_node
+def test_since_drops_and_reposts(tmp_path):
+    events = {"20261014T090000": [{"kind": "new", "type": "used_condo", "id": "2", "payload": {}}],
+              "20261015T100000": [{"kind": "new", "type": "used_condo", "id": "3", "payload": {}},
+                                  {"kind": "new", "type": "used_condo", "id": "5", "payload": {}},
+                                  {"kind": "price_changed", "type": "used_condo", "id": "1",
+                                   "payload": {"price": 40_000_000, "old_price": 50_000_000}},
+                                  {"kind": "price_changed", "type": "used_condo", "id": "4",
+                                   "payload": {"price": 45_000_000, "old_price": 50_000_000}}]}
+    recs = [rec(1, price=40_000_000), rec(2), rec(3), rec(4, price=45_000_000),
+            rec(5, dup_key="x", has_detail=True), rec(6, dup_key="x")]   # 5: another agent's copy of 6
+    queries = [{"since": 2026101409}, {"sort": "drop_desc", "dropsOnly": True}, {"newOnly": True}]
+    out = site_queries(tmp_path, recs, [{"query": q} for q in queries], events=events)
+    assert out[0]["ids"] == ["3", "4", "1"]   # new or cheaper after 10/14 09:00 (2 was seen then)
+    assert out[1]["ids"] == ["1", "4"]        # -20% before -10%
+    assert out[2]["ids"] == ["3", "2"]        # 5 re-posts a property already listed: not new

@@ -28,7 +28,8 @@ from .stations import names as station_names
 JST = ZoneInfo("Asia/Tokyo")
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
-FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64}
+FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
+         "relisted": 128}
 
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
 _ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agents' slogans and generated "town price" names
@@ -51,6 +52,11 @@ def _name(rec):
     if m := re.search(r"『(.+?)』", name):
         name = m.group(1)
     return name if name and not _ad_copy.search(name) else None
+
+
+def _new_date(at):
+    """(2026100619, kind) -> '2026-10-06'."""
+    return f"{str(at[0])[:4]}-{str(at[0])[4:6]}-{str(at[0])[6:8]}" if at else None
 
 
 def _date_int(s):
@@ -88,8 +94,8 @@ def representatives(snap):
 def build_index(snap, reps, towns_cache, updated, readings=None):
     types, prefs, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table(), Table()
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
-                            "stations", "features", "flags", "others", "newDate", "firstSeen", "unit", "town", "name",
-                            "layout", "image")}
+                            "stations", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
+                            "name", "layout", "image")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         r = i.rec
@@ -104,8 +110,12 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             "features": [features(f) for f in i.features],
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
-                      | FLAGS["dropped"] * snap.is_dropped(i) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone),
-            "others": len(reps[i]), "newDate": _date_int(snap.new_dates.get(i.key)),
+                      | FLAGS["dropped"] * snap.is_dropped(i) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
+                      | FLAGS["relisted"] * bool((snap.new(i) or (0, ""))[1] == "relisted")),
+            # when it was new (YYYYMMDDHH), and its latest drop [YYYYMMDDHH, old price]: for 新着, 値下げ and
+            # "since your last visit"
+            "others": len(reps[i]), "newAt": (snap.new(i) or (None,))[0],
+            "drop": list(snap.drop(i)[:2]) if snap.drop(i) else None,
             "firstSeen": _date_int(i.first_seen),
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
             "town": towns(town) if town else None, "name": _name(r), "layout": r.get("layout"),
@@ -126,7 +136,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
 
 
 def listing_record(snap, item, others):
-    return {**item.rec, "history": snap.history.get(item.key, []), "new_date": snap.new_dates.get(item.key),
+    return {**item.rec, "history": snap.history.get(item.key, []), "new_date": _new_date(snap.new(item)),
             "name": _name(item.rec),
             "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url")} for o in others]}
 

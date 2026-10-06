@@ -65,6 +65,7 @@
   const AGES = [0, 5, 10, 20, 30];
   const WALKS = [5, 7, 10, 15, 20];
   const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"];
+  const QUICK = ["newOnly", "dropsOnly"];  // also one tap away above the results
   const PAGE = 30, TSUBO = 3.30578;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
   const TILES = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
@@ -92,6 +93,7 @@
   let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
   const stationHomes = new Map();  // station -> homes listing it
+  let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
   // The saved list is shared and kept on GitHub (saved.json, see suumo/saved.py): the heart opens a pre-filled
   // issue, a workflow applies it and rebuilds the site. Until then the request shows here as pending.
   const REPO = "https://github.com/huangwaylon/suumo";
@@ -155,7 +157,7 @@
 
   const KEYS = { q: "text", t: "types", a: "areas", st: "stations", f: "features", w: "walk", pmin: "priceMin",
     pmax: "priceMax", plan: "plan", s: "sizeMin", lm: "landMin", g: "ageMax", quake: "post1981", fh: "freehold",
-    nc: "noCondition", new: "newOnly", drop: "dropsOnly", sort: "sort" };
+    nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort" };
 
   function readHash() {
     const p = new URLSearchParams(location.hash.slice(1));
@@ -166,6 +168,7 @@
       const v = p.get(k), d = base[f];
       if (Array.isArray(d)) q[f] = v ? v.split(",") : [];
       else if (typeof d === "boolean") q[f] = v === "1";
+      else if (f === "since") q[f] = /^\d{10}$/.test(v) ? +v : null;
       else if (d === null) q[f] = CHOICES[f].includes(+v) ? +v : null;
       else q[f] = v;
     }
@@ -236,8 +239,9 @@
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
     const offers = mode === "search" ? suggestions() : [];
+    renderQuick();
     $("chips").innerHTML = mode !== "search" ? "" : offers.map(([f, v, label]) =>
-      `<button class="chip suggest" data-suggest="${f}" data-value="${esc(v)}">${esc(label)}</button>`).join("") + active.map(([label, , s], i) =>
+      `<button class="chip suggest" data-suggest="${f}" data-value="${esc(v)}">${esc(label)}</button>`).join("") + active.map(([label, , s], i) => s === "quick" ? "" :
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
@@ -271,6 +275,14 @@
     $("list").insertAdjacentHTML("beforeend", html);
     shown += PAGE;
   }
+  // 2026100619 (JST hour) -> "3時間前" within a day, else "10/6"
+  const atHour = (h) => Date.UTC(Math.floor(h / 1e6), Math.floor(h / 1e4) % 100 - 1, Math.floor(h / 100) % 100, h % 100 - 9);
+  function ago(h) {
+    if (!h) return "";
+    const hours = Math.round((Date.now() - atHour(h)) / 3600e3);
+    return hours < 24 ? t("hoursAgo", Math.max(hours, 0)) : `${Math.floor(h / 1e4) % 100}/${Math.floor(h / 100) % 100}`;
+  }
+
   // 20261006 -> "10月6日（火）" / "Tue, Oct 6"
   function weekday(d) {
     const date = new Date(Math.floor(d / 1e4), Math.floor(d / 100) % 100 - 1, d % 100);
@@ -280,8 +292,11 @@
   function tags(it) {
     const F = db.flags, out = [];
     if (it.flags & F.gone) out.push(`<span class="tag drop">${t("tag.gone")}</span>`);
-    if (it.flags & F.new) out.push(`<span class="tag new">${t("tag.new")}</span>`);
-    if (it.flags & F.dropped) out.push(`<span class="tag drop">${t("tag.dropped")}</span>`);
+    if (it.flags & F.new) out.push(`<span class="tag new">${t(it.flags & F.relisted ? "tag.relisted" : "tag.new")} ${esc(ago(it.newAt))}</span>`);
+    if (it.flags & F.dropped) {
+      const pct = it.prevPrice && it.price ? Math.round((1 - it.price / it.prevPrice) * 100) : 0;
+      out.push(`<span class="tag drop">${t("tag.dropped")}${pct ? ` −${pct}%` : ""}</span>`);
+    }
     if (it.flags & F.leasehold) out.push(`<span class="tag warn">${t("tag.leasehold")}</span>`);
     if (it.flags & F.conditional) out.push(`<span class="tag warn">${t("tag.conditional")}</span>`);
     if (it.others) out.push(`<span class="tag">${t("others", it.others)}</span>`);
@@ -332,6 +347,19 @@
     update();
   }
 
+  // 新着 / 値下げ / since the last visit, one tap each, with what they'd show under the current conditions.
+  function renderQuick() {
+    const box = $("quick");
+    box.hidden = mode !== "search" || daily;
+    if (box.hidden) return;
+    const chip = (field, label, value) => {
+      const on = q[field] === value, n = on ? hits.length : Filter.count(db, { ...q, [field]: value });
+      return n || on ? `<button class="chip" data-quick="${field}" aria-pressed="${on}">${esc(label)}<span class="n">${num(n)}</span></button>` : "";
+    };
+    box.innerHTML = chip("newOnly", t("quickNew"), true) + chip("dropsOnly", t("quickDrop"), true) +
+      (lastVisit ? chip("since", t("sinceVisit"), lastVisit) : "");
+  }
+
   // Typed a station or area name in the search box: offer it as a condition (walk limits, exact area).
   // The typed text as conditions to offer, best first: [[field, value, label], ...]. A ward or city named the same
   // as a station comes first unless 駅 was typed (世田谷 -> 世田谷区); a station may be typed in part (ふたこ).
@@ -373,7 +401,10 @@
     if (q.ageMax != null) out.push([t("ages")[q.ageMax] ?? t("ageYears", q.ageMax), reset("ageMax"), "age"]);
     for (const s of q.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
     if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk"), "stations"]);
-    for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : "extra"]);
+    for (const f of FLAGS) {
+      if (q[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
+    }
+    if (q.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
     for (const f of q.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
   }
@@ -866,7 +897,11 @@
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
       else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
-      else if (b.dataset.tab && (b.dataset.tab === "daily") !== daily) switchView("daily", () => { daily = !daily; });
+      else if (b.dataset.quick) {
+        const f = b.dataset.quick;
+        q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
+        update();
+      } else if (b.dataset.tab && (b.dataset.tab === "daily") !== daily) switchView("daily", () => { daily = !daily; });
       else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
@@ -922,6 +957,10 @@
         for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
       }
       refreshFavs();
+      // a visit = a new data version: the previous one is what "since your last visit" compares with
+      const visit = stored("suumo.visit", {}), now = +String(index.updated).replace(/\D/g, "").slice(0, 10) || null;
+      if (now && visit.cur !== now) { visit.prev = visit.cur ?? null; visit.cur = now; localStorage.setItem("suumo.visit", JSON.stringify(visit)); }
+      lastVisit = visit.prev ?? null;
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");
