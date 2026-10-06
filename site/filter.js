@@ -33,12 +33,15 @@
         town: town ? town[0].slice(index.prefs[area[2]].length) : null, lat: town ? town[1] : null,
         lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: c.image[i],
       };
-      it.haystack = normalize([it.name, it.town, it.areaName, it.layout, ...stations.map(([s]) => s + "駅")].join(" "));
       items[i] = it;
     }
     index.columns = null;  // the items hold everything now; free the raw columns
     return { index, items, flags: index.flags, byKey: new Map(items.map((it) => [it.key, it])) };
   }
+
+  // The text a search word is looked for in, built the first time a text search runs.
+  const haystack = (it) => (it.haystack ??= normalize(
+    [it.name, it.town, it.areaName, it.layout, ...it.stations.map(([s]) => s + "駅")].join(" ")));
 
   function walkTo(it, chosen) {
     let best = null;
@@ -62,7 +65,7 @@
     noCondition: (it, v, q, F) => !v || !(it.flags & F.conditional),
     newOnly: (it, v, q, F) => !v || !!(it.flags & F.new),
     dropsOnly: (it, v, q, F) => !v || !!(it.flags & F.dropped),
-    text: (it, v) => !v || normalize(v).split(/\s+/).every((w) => !w || it.haystack.includes(w)),
+    text: (it, v) => !v || normalize(v).split(/\s+/).every((w) => !w || haystack(it).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
@@ -119,7 +122,8 @@
   // choices: {condition: [values]} for thresholds (priceMax, plan, walk...); sets are counted by value.
   function facets(db, q, choices) {
     const out = { total: 0, types: {}, areas: {}, stations: {}, features: {} };
-    for (const d in choices) out[d] = {};
+    const n = {};  // threshold choices counted in arrays (much faster than objects keyed by large numbers)
+    for (const d in choices) n[d] = new Array(choices[d].length).fill(0);
     for (const flag of ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"]) out[flag] = 0;
     const tally = (o, k) => { o[k] = (o[k] || 0) + 1; };
     for (const it of db.items) {
@@ -135,14 +139,15 @@
       if (on("features")) for (const t of it.features) if (q.features.every((x) => x === t || it.features.has(x))) tally(out.features, t);
       for (const d in choices) {
         if (!on(GROUP[d] || d)) continue;
-        const check = CHECKS[d] || BUILDING[d];
-        for (const v of choices[d]) if (check(it, v, q, db.flags)) tally(out[d], v);
+        const check = CHECKS[d] || BUILDING[d], values = choices[d];
+        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db.flags)) n[d][i]++;
       }
       for (const flag in { freehold: 1, noCondition: 1, newOnly: 1, dropsOnly: 1 }) {
         if (on(flag) && CHECKS[flag](it, true, q, db.flags)) out[flag]++;
       }
       if (on("post1981") && BUILDING.post1981(it, true, q, db.flags)) out.post1981++;
     }
+    for (const d in choices) out[d] = Object.fromEntries(choices[d].map((v, i) => [v, n[d][i]]));
     return out;
   }
 

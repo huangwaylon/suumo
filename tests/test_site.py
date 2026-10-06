@@ -144,7 +144,7 @@ def test_choice_counts_in_one_pass(tmp_path):
     assert f["types"] == {"used_condo": 1, "used_house": 1, "land": 1}   # choosing 土地 would add it
     assert f["areas"] == {"13219": 1}                                    # 2 (調布) is a 2DK
     assert f["plan"] == {"7": 2, "11": 1}                                # other plan choices for the condos
-    assert f["priceMax"] == {"60000000": 1}
+    assert f["priceMax"] == {"40000000": 0, "60000000": 1}
 
 
 @needs_node

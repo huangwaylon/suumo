@@ -30,7 +30,8 @@
     ["js", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"],
     ["js", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js", "sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr"],
   ];
-  const WIDE = matchMedia("(min-width: 1100px)");  // filters, results and map side by side
+  const COARSE = matchMedia("(pointer: coarse)");
+  const WIDE = matchMedia("(min-width: 1280px)");  // filters, results and map side by side (style.css too)
 
   // ---------- state ----------
 
@@ -42,7 +43,8 @@
   let showMap = false;
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
-  let facets = null;
+  let facets = null, facetsFor = null;
+  let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   const favs = new Set(JSON.parse(localStorage.getItem("suumo.favorites") || "[]"));
 
   // ---------- formatting ----------
@@ -132,13 +134,22 @@
     return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }).filter((it) => keys.has(it.key));
   }
 
-  function update() {
+  function update(top = true) {
     history.replaceState(null, "", hashFor());
     render();
+    if (top && !WIDE.matches) window.scrollTo({ top: 0 });
+    else if (top) document.querySelector(".results").scrollIntoView({ block: "start" });
   }
 
   function render() {
     renderedFor = hashFor();
+    const covered = document.body.classList.contains("show-filters") && !WIDE.matches;
+    if (covered) {  // only the sheet is visible: its counts are enough until it closes
+      listStale = true;
+      renderFilters();
+      return;
+    }
+    listStale = false;
     hits = compute();
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
@@ -178,9 +189,9 @@
   }
 
   function card(it) {
-    const spec = [it.layout, size(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
+    const spec = [it.layout, ...size(it).split(" / "), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
-      <div class="ph">${it.image ? `<img src="${esc(image(it, 480, 320))}" alt="" loading="lazy" decoding="async">` : ""}</div>
+      <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
@@ -212,7 +223,8 @@
     const b = $("banner");
     b.hidden = mode === "search";
     if (mode === "favorites") {
-      b.innerHTML = `<span>お気に入り ${favs.size}件</span>${favs.size ? '<button class="btn" data-share="1">リストを共有</button>' : ""}`;
+      b.innerHTML = `<span>お気に入り ${favs.size}件</span><span>${favs.size ? '<button class="btn" data-share="1">リストを共有</button>' : ""}
+        <button class="btn ghost" data-search="1">検索に戻る</button></span>`;
     } else if (mode === "shared") {
       b.innerHTML = `<span>共有されたリスト ${shared.length}件</span><span><button class="btn" data-import="1">お気に入りに追加</button>
         <button class="btn ghost" data-search="1">検索に戻る</button></span>`;
@@ -262,10 +274,11 @@
   }
 
   function renderFilters() {
-    facets = Filter.facets(db, q, CHOICES);
+    const key = JSON.stringify({ ...q, sort: "" });  // the sort doesn't change any count
+    if (key !== facetsFor) { facets = Filter.facets(db, q, CHOICES); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
-      body.innerHTML = ["types", "price", "plan", "size", "age", "stations", "areas", "extra"].map((s) =>
+      body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>駅・徒歩</h3>
         <input class="text-input" id="station-q" type="search" placeholder="駅名で探す" autocomplete="off">
@@ -273,6 +286,7 @@
     }
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
     const isLand = q.types.length && q.types.every((t) => t === "land");
+    sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">「${esc(q.text)}」で絞り込み中${icon("x")}</button></div>` : "");
     sec("types", `<h3>種別</h3><div class="opts">${db.index.types.map((t) => many("types", t, TYPES[t], facets.types[t] || 0)).join("")}</div>`);
     sec("price", `<h3>価格</h3>${select("priceMin", "下限", PRICES, (v) => `${man(v)}以上`)}${select("priceMax", "上限", PRICES, (v) => `${man(v)}以下`)}`);
     sec("plan", isLand ? "" : `<h3>間取り<span class="hint">以上</span></h3><div class="opts">${PLANS.map(([v, l]) =>
@@ -286,7 +300,7 @@
     sec("areas", `<h3>エリア</h3>${areaGroups()}`);
     const tags = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
     const shownTags = [...q.features, ...tags.filter((t) => !q.features.includes(t)).slice(0, 30)];
-    sec("extra", `<h3>こだわり</h3><div class="opts">${FLAGS.filter(([f]) => f !== "post1981").map(([f, l]) =>
+    sec("extra", `<h3>こだわり</h3><div class="opts">${FLAGS.filter(([f]) => f !== "post1981" && (facets[f] || q[f])).map(([f, l]) =>
       flag(f, l, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.map((t) =>
       many("features", t, t.normalize("NFKC"), facets.features[t] || 0)).join("")}</div>`);
     $("apply").textContent = `${facets.total.toLocaleString()}件を表示`;
@@ -299,7 +313,7 @@
     if (term) names = db.index.stations.filter((s) => Filter.normalize(s).includes(term));
     names = names.filter((s) => !q.stations.includes(s)).sort((a, b) => (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
     $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, `${s}駅`, counts[s] || 0)).join("")
-      || '<span class="meta">該当する駅がありません</span>';
+      || `<span class="meta">${/^[ぁ-ゖァ-ヺー]+$/.test($("station-q").value.trim()) ? "駅名は漢字で入力してください" : "該当する駅がありません"}</span>`;
   }
 
   function areaGroups() {
@@ -350,14 +364,21 @@
     return leaflet;
   }
 
-  const pin = (n) => L.divIcon({ className: "", html: `<div class="pin${n >= 100 ? " big" : ""}">${n.toLocaleString()}</div>`,
-    iconSize: [Math.max(30, 16 + n.toLocaleString().length * 8), 26] });
+  const pins = new Map();  // one icon per count, reused across redraws
+  function pin(n) {
+    if (!pins.has(n)) {
+      const label = n.toLocaleString();
+      pins.set(n, L.divIcon({ className: "", html: `<div class="pin${n >= 100 ? " big" : ""}">${label}</div>`,
+        iconSize: [Math.max(30, 16 + label.length * 8), 26] }));
+    }
+    return pins.get(n);
+  }
 
   async function drawMap() {
     await loadLeaflet();
     if (!map) {
       map = L.map("map", { zoomControl: false }).setView([35.68, 139.7], 11);
-      L.control.zoom({ position: "topright" }).addTo(map);
+      if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
         iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0)) });
@@ -376,24 +397,25 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list))));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.hidden = !unplaced;
-    note.textContent = `位置不明 ${unplaced.toLocaleString()}件`;
+    note.textContent = hits.length ? `${hits.length.toLocaleString()}件${unplaced ? `（位置不明 ${unplaced.toLocaleString()}件）` : ""}`
+      : "条件に合う物件がありません";
     if (fittedFor !== renderedFor && towns.size) {  // follow the results when the conditions change
       fittedFor = renderedFor;
       map.fitBounds(coreBounds([...towns.values()]), { padding: [30, 30], maxZoom: 15 });
     }
   }
 
-  // Where most results are: the 2nd-98th percentile box (outlying islands don't shrink the view to nothing).
+  // Where most results are: the 10th-90th percentile box (outskirts and islands don't shrink the view).
   function coreBounds(points) {
     const pick = (i) => points.map((p) => p[i]).sort((a, b) => a - b);
     const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor(a.length * f))];
-    return [[at(lat, 0.02), at(lng, 0.02)], [at(lat, 0.98), at(lng, 0.98)]];
+    return [[at(lat, 0.1), at(lng, 0.1)], [at(lat, 0.9), at(lng, 0.9)]];
   }
 
   function popup(town, list) {
     return `<strong>${esc(town)}</strong> ${list.length}件<ul class="popup-list">${list.slice(0, 40).map((it) =>
-      `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${man(it.price)} · ${esc(it.layout || TYPES[it.type])} · ${esc(size(it))}</a></li>`).join("")}</ul>`;
+      `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
+        <span><b class="num">${man(it.price)}</b><br>${esc([it.layout || TYPES[it.type], age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
 
   // ---------- listing ----------
@@ -462,6 +484,7 @@
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      ${sec("価格の推移", [["価格", history]])}
       ${sec("交通", [["最寄り駅", (r.stations || []).map((s) => esc(`${s.line || ""} ${s.name}${s.bus_stop ? "" : "駅"} ${s.bus
         ? `バス${s.bus}分${s.walk != null ? `・停歩${s.walk}分` : ""}` : s.walk != null ? `徒歩${s.walk}分` : ""}`)).join("<br>")]])}
       ${sec("費用", [["管理費", yen(r.mgmt_fee) && `月${yen(r.mgmt_fee)}${r.mgmt_form ? `（${esc(r.mgmt_form)}）` : ""}`],
@@ -476,7 +499,6 @@
         ["接道", t(road)], ["地目", t(r.land_category)], ["土地状況", t(r.land_status)], ["建築条件", r.build_condition ? "あり" : null],
         ["設備", t(r.utilities)], ["制限", t(r.restrictions)]])}
       ${r.features?.length ? `<section class="d-sec"><h2>特徴</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(f.normalize("NFKC"))}</span>`).join("")}</div></section>` : ""}
-      ${sec("価格の推移", [["価格", history]])}
       ${sec("掲載", [["会社", t(r.agent)], ["取引態様", t(r.deal_type)], ["ほかの掲載", (r.others || []).map((o) =>
         `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.agent || "掲載ページ")}</a>`).join("<br>") || null],
         ["掲載確認", day(r.new_date || r.first_seen)]])}
@@ -526,16 +548,18 @@
 
   function openFilters(open) {
     document.body.classList.toggle("show-filters", open);
-    if (open) { renderFilters(); $("filters-close").focus(); } else $("filters-open").focus();
+    if (open) { renderFilters(); $("filters-close").focus(); return; }
+    if (listStale) render();
+    $("filters-open").focus();
   }
 
   function wire() {
     let timer = null;
     $("q").addEventListener("input", (e) => {
       clearTimeout(timer);
-      timer = setTimeout(() => { q.text = e.target.value.trim(); update(); }, 200);
+      timer = setTimeout(() => { q.text = e.target.value.trim(); mode = "search"; update(); }, 200);
     });
-    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
+    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && COARSE.matches) e.target.blur(); });  // hide the keyboard
     $("sort").innerHTML = Object.entries(SORTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(true));
@@ -561,10 +585,12 @@
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.remove != null) { activeConditions()[+b.dataset.remove][1](); update(); }
+      else if (b.dataset.cleartext) { q.text = ""; update(false); }
       else if (b.dataset.clear) { q = { ...Filter.emptyQuery(), sort: q.sort }; update(); }
       else if (b.dataset.share) {
         const url = `${location.origin}${location.pathname}#ids=${[...favs].join(",")}`;
-        navigator.clipboard?.writeText(url).then(() => toast("リンクをコピーしました"), () => prompt("このリンクを共有してください", url));
+        if (navigator.share && COARSE.matches) navigator.share({ title: `お気に入り ${favs.size}件`, url }).catch(() => {});
+        else navigator.clipboard?.writeText(url).then(() => toast("リンクをコピーしました"), () => prompt("このリンクを共有してください", url));
       } else if (b.dataset.import) {
         shared.forEach((k) => favs.add(k));
         localStorage.setItem("suumo.favorites", JSON.stringify([...favs]));
@@ -574,11 +600,21 @@
     });
     window.addEventListener("popstate", route);
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Tab" && !$("detail").hidden) trapFocus(e, $("detail"));
       if (e.key !== "Escape") return;
       if (!$("detail").hidden) closeDetail(); else if (document.body.classList.contains("show-filters")) openFilters(false);
     });
     WIDE.addEventListener("change", () => render());
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
+  }
+
+  // Keep Tab inside an open dialog.
+  function trapFocus(e, root) {
+    const f = [...root.querySelectorAll("a[href], button, select, input")].filter((el) => !el.disabled && el.offsetParent);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   function route() {
@@ -601,6 +637,7 @@
     }
     wire();
     route();
+    (window.requestIdleCallback || setTimeout)(() => loadLeaflet());  // so the first map opens without waiting
   }
 
   start();
