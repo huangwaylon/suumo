@@ -1,6 +1,7 @@
-"""In-memory index over the exported data/ for the search bot: load, filter, sort, facets, price history.
+"""In-memory index over the exported data/: load, filter, sort, facets, price history. The site builder uses it
+for the derived search fields, and its rules are the reference the site's JavaScript filter is tested against.
 
-Pure: reads files, no Discord, no network, never touches state.db. A `Snapshot` is immutable once built;
+Pure: reads files, no network, never touches state.db. A `Snapshot` is immutable once built;
 `Catalog.refresh()` builds a new one when any file under data/ changed and swaps it in.
 
 Listing keys are "type:id" strings (e.g. "used_condo:20205670").

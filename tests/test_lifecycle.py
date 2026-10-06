@@ -8,7 +8,6 @@ import pytest
 from suumo.archive import Archive
 from suumo.db import DB
 from suumo.export import export
-from suumo.notify import compose, man
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
 
@@ -193,45 +192,6 @@ def test_export_one_file_per_area_and_cleans_up(env):
     assert [json.loads(x)["id"] for x in (data / "tokyo/removed/used_condo.jsonl").read_text().splitlines()] == ["1"]
     export(db, [Target("tokyo", "land", None)], data)
     assert not (data / "tokyo/used_condo").exists()                                      # type left the scope
-
-
-def test_notification_text():
-    assert man(87_028_000) == "8,703万円" and man(131_800_000) == "1億3,180万円" and man(200_000_000) == "2億円"
-    ev = [{"kind": "price_changed", "type": "used_condo", "pref": "tokyo",
-           "payload": {"area": "狛江市", "town": "東和泉１", "price": 48_000_000, "old_price": 50_000_000,
-                       "layout": "2LDK", "floor_m2": 55.0, "built": "1998-03", "path": "/x/nc_1/",
-                       "stations": [{"line": "小田急線", "name": "狛江", "walk": 5}]}}]
-    [(msg, _)] = compose(ev, T0)
-    assert "5,000万円 → **4,800万円** ⬇️200万円" in msg and "狛江駅 徒歩5分" in msg
-    assert "[詳細](<https://suumo.jp/x/nc_1/>)" in msg
-
-
-def test_long_notifications_split_under_the_limit():
-    ev = [{"kind": "new", "type": "used_condo", "pref": "tokyo",
-           "seq": i, "payload": {"area": "狛江市", "town": "x" * 150, "price": i, "path": f"/p/nc_{i}/"}}
-          for i in range(18)]
-    msgs = compose(ev, T0)
-    assert len(msgs) > 1 and all(len(text) <= 2000 for text, _ in msgs)
-    assert "ほか3件" in "".join(text for text, _ in msgs)
-    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(18))  # every event in exactly one message
-
-
-def test_busy_day_is_a_summary_per_type_and_area():
-    wards = [(f"131{n:02d}", f"区{n}") for n in range(1, 64)]
-    ev, seq = [], 0
-    for code, name in wards:
-        for kind, extra in (("new", {}), ("price_changed", {"old_price": 60_000_000}),
-                            ("price_changed", {"old_price": 40_000_000}), ("removed", {})):
-            ev.append({"seq": seq, "kind": kind, "type": "used_condo" if seq % 3 else "land", "pref": "tokyo",
-                       "area_code": code, "payload": {"area": name, "price": 50_000_000, **extra}})
-            seq += 1
-    msgs = compose(ev, T0)
-    text = "\n".join(t for t, _ in msgs)
-    assert all(len(t) <= 2000 for t, _ in msgs)
-    assert "🆕 新着 **63件** ・ ⬇️ 値下げ **63件** ・ ⬆️ 値上げ **63件** ・ 🔚 掲載終了 **63件**" in text
-    assert "- **区1**　🆕1 ⬇️1 ⬆️1 🔚1" in text and "- 土地　" in text
-    assert "[詳細]" not in text                                        # no per-listing lines
-    assert sorted(s for _, seqs in msgs for s in seqs) == list(range(seq))
 
 
 class EmptyAreaPage:

@@ -1,4 +1,4 @@
-"""Discord posting, maintenance commands, the run lock and git data commits (no network)."""
+"""Maintenance commands, the run lock, git data commits, polite fetching and long runs (no network)."""
 import json
 import subprocess
 from datetime import datetime
@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from suumo import notify as notify_mod
 from suumo.archive import Archive
 from suumo.db import DB, exclusive
 from suumo.gitdata import commit_data
@@ -14,54 +13,6 @@ from suumo.maintenance import prune, reparse
 from suumo.scope import Target
 
 NOW = datetime(2026, 10, 6, 4, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
-
-
-def add_events(db, n, run_id="20261006T040000"):
-    for i in range(n):
-        db.x("INSERT INTO events (run_id, kind, type, id, pref, area_code, payload) VALUES (?,?,?,?,?,?,?)",
-             run_id, "new", "used_condo", str(i), "tokyo", "13219",
-             json.dumps({"area": "狛江市", "town": "x" * 150, "price": 10_000_000 + i, "path": f"/p/nc_{i}/"}))
-    db.commit()
-
-
-def pending(db):
-    return db.x("SELECT COUNT(*) FROM events WHERE posted=0").fetchone()[0]
-
-
-def test_failed_send_keeps_only_unsent_events_pending(tmp_path, monkeypatch):
-    db = DB(tmp_path / "s.db")
-    add_events(db, 15)                      # long lines -> several messages
-    sent = []
-
-    def fake_send(token, channel, text):
-        if len(sent) == 1:
-            raise RuntimeError("discord down")
-        sent.append(text)
-
-    monkeypatch.setattr(notify_mod, "send", fake_send)
-    msgs = notify_mod.notify(db, NOW, "t", "c", log=lambda *_: None)
-    assert len(msgs) > 1 and len(sent) == 1
-    first_batch = len(msgs[0][1])
-    assert pending(db) == 15 - first_batch
-    monkeypatch.setattr(notify_mod, "send", lambda *a: sent.append(a[-1]))
-    notify_mod.notify(db, NOW, "t", "c", log=lambda *_: None)
-    assert pending(db) == 0
-
-
-def test_unconfigured_discord_previews_and_keeps_events(tmp_path):
-    db = DB(tmp_path / "s.db")
-    add_events(db, 2)
-    out = []
-    notify_mod.notify(db, NOW, None, None, log=out.append)
-    assert pending(db) == 2 and "not configured" in out[0]
-
-
-def test_old_pending_events_are_skipped_not_posted(tmp_path, monkeypatch):
-    db = DB(tmp_path / "s.db")
-    add_events(db, 1, run_id="20261001T040000")   # 5 days old
-    monkeypatch.setattr(notify_mod, "send", lambda *a: pytest.fail("should not post"))
-    notify_mod.notify(db, NOW, "t", "c", log=lambda *_: None)
-    assert db.x("SELECT posted FROM events").fetchone()[0] == -1
 
 
 def test_second_writer_is_refused(tmp_path):

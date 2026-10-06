@@ -23,7 +23,7 @@ SUSPECT_DROP = 0.30      # an area losing more than this share at once is distru
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
 MAX_DETAIL_ATTEMPTS = 3
 PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to the run's report for `status`)
-CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the bot can search what's fetched so far
+CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the site shows what's fetched so far
 OUTAGE_STREAK = 5          # this many failed listing pages in a row = SUUMO (or the network) is down...
 OUTAGE_PAUSE = 600         # ...pause this long; those failures don't count toward MAX_DETAIL_ATTEMPTS
 
@@ -306,7 +306,7 @@ class Pipeline:
             self.db.dequeue(r["type"], r["id"])
             self.archive.delete_detail(r["pref"], r["type"], r["id"])
         old_runs = (self.now - timedelta(days=EVENT_DAYS)).strftime("%Y%m%dT%H%M%S")
-        self.db.x("DELETE FROM events WHERE run_id < ? AND posted != 0", old_runs)
+        self.db.x("DELETE FROM events WHERE run_id < ?", old_runs)
         self.db.x("DELETE FROM runs WHERE run_id < ?", old_runs)
         for pref in {t.pref for t in self.targets}:
             self.archive.prune_lists(pref, self.now.date())

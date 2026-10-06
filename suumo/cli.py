@@ -2,8 +2,6 @@
 import argparse
 import fcntl
 import json
-import logging
-import os
 import re
 import sys
 import time
@@ -12,8 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from dotenv import load_dotenv
-
 from . import scope as scope_mod
 from .archive import Archive
 from .db import DB, exclusive
@@ -21,7 +17,6 @@ from .export import export
 from .gitdata import commit_data
 from .http import Client
 from .maintenance import out_of_scope, prune, reparse
-from .notify import notify
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -37,16 +32,12 @@ def parse_budget(s):
 
 class Ctx:
     def __init__(self, args):
-        load_dotenv(ROOT / ".env", override=True)  # .env wins over whatever the shell exported
         self.args = args
         self.db = DB(ROOT / args.db)
         self.archive = Archive(ROOT / args.archive)
         self.targets = scope_mod.load(ROOT / args.scope)
         self.data = ROOT / args.data
         self.lock = ROOT / (args.db + ".lock")
-
-    def notify(self, now):
-        notify(self.db, now, os.getenv("DISCORD_TOKEN"), os.getenv("DISCORD_CHANNEL_ID"))
 
     def out_of_scope_hint(self):
         oos = out_of_scope(self.db, self.targets)
@@ -79,8 +70,6 @@ def cmd_run(c: Ctx):
           f"events {dict(kinds) or 'none'}")
     if a.commit or a.push:
         commit_data(ROOT, run_id, push=a.push)
-    if not a.no_notify:
-        c.notify(now)
     c.out_of_scope_hint()
 
 
@@ -154,30 +143,7 @@ def cmd_reparse(c: Ctx):
     export(c.db, c.targets, c.data)
 
 
-def cmd_notify(c: Ctx):
-    c.notify(datetime.now(JST))
-
-
-def cmd_bot(args):
-    """The search bot: a long-running process beside the daily crawl (see suumo/bot/)."""
-    load_dotenv(ROOT / ".env", override=True)
-    token, channel, state = (os.getenv(k) for k in ("DISCORD_TOKEN", "DISCORD_CHANNEL_ID", "DISCORD_STATE_CHANNEL_ID"))
-    if not (token and channel and state):
-        raise SystemExit("bot: set DISCORD_TOKEN, DISCORD_CHANNEL_ID and DISCORD_STATE_CHANNEL_ID in .env")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    with open(ROOT / "bot.lock", "w") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            print("bot: another copy is already running")  # exit 0: launchd doesn't restart it
-            return
-        from .bot.app import SuumoBot
-        bot = SuumoBot(ROOT / args.data, int(channel), int(state), ROOT / "bot_state.backup.json",
-                       lambda: datetime.now(JST).date(), proxy=os.getenv("HTTPS_PROXY") or None)
-        bot.run(token, log_handler=None)
-
-
-COMMANDS = {"run": cmd_run, "status": cmd_status, "prune": cmd_prune, "reparse": cmd_reparse, "notify": cmd_notify}
+COMMANDS = {"run": cmd_run, "status": cmd_status, "prune": cmd_prune, "reparse": cmd_reparse}
 READ_ONLY = {"status"}
 
 
@@ -190,22 +156,16 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--delay", type=float, default=1.5, help="base seconds between requests (+0-50%% jitter)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="crawl, fetch listing pages, clean up, export, notify")
+    r = sub.add_parser("run", help="crawl, fetch listing pages, clean up, export")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
     r.add_argument("--no-crawl", action="store_true", help="skip search results; only work the queue")
-    r.add_argument("--no-notify", action="store_true")
     r.add_argument("--commit", action="store_true", help="git-commit data/ after the run")
     r.add_argument("--push", action="store_true", help="commit and push data/")
     sub.add_parser("status", help="coverage, queue, out-of-scope data")
     pr = sub.add_parser("prune", help="delete data no longer in scope.toml (dry run without --yes)")
     pr.add_argument("--yes", action="store_true")
     sub.add_parser("reparse", help="re-run parsers over the raw archive (no requests)")
-    sub.add_parser("notify", help="post pending events to Discord")
-    sub.add_parser("bot", help="run the interactive search bot (long-running)")
     args = ap.parse_args()
-    if args.cmd == "bot":  # reads data/ only: no state.db, no run lock
-        cmd_bot(args)
-        return
     c = Ctx(args)
     if args.cmd in READ_ONLY:
         COMMANDS[args.cmd](c)

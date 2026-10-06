@@ -1,4 +1,4 @@
-"""Export state.db to git-tracked files that the bot reads.
+"""Export state.db to git-tracked files (the site is built from them).
 
   data/<pref>/<type>/<area_code>.jsonl  active listings in scope, one per line, sorted by id, fixed key order
   data/<pref>/removed/<type>.jsonl      listings removed in the last PURGE_DAYS days
@@ -73,7 +73,7 @@ def dup_key(r):
 
 
 def _write(path, text):
-    """Replace atomically (the bot reads these while a run writes them), and only when the content changed."""
+    """Replace atomically (readers may load them while a run writes them), and only when the content changed."""
     data = text.encode("utf-8")
     if path.exists() and path.read_bytes() == data:
         return

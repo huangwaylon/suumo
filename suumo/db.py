@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS events (
     run_id TEXT NOT NULL, kind TEXT NOT NULL,   -- new | price_changed | removed | relisted
     type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL, area_code TEXT NOT NULL,
     payload TEXT NOT NULL,
-    posted INTEGER NOT NULL DEFAULT 0           -- 0 pending, 1 posted, -1 skipped (too old to post)
+    posted INTEGER NOT NULL DEFAULT 0           -- unused since the Discord feed was removed
 );
 CREATE INDEX IF NOT EXISTS events_posted ON events (posted);
 

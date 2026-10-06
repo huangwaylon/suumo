@@ -1,26 +1,22 @@
 [project]
 name = "suumo"
 version = "0.2.0"
-description = "Track SUUMO for-sale listings and post changes to Discord"
+description = "Track SUUMO for-sale listings and publish them as a searchable site"
 requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.15.0",
-    "discord-py>=2.7,<3",
     "lxml>=6.1.3",
-    "python-dotenv>=1.2.4",
     "requests>=2.34.2",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
-    "pytest-asyncio>=1.4",
     "ruff>=0.14",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [[tool.uv.index]]
