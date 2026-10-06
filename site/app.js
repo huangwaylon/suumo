@@ -85,6 +85,7 @@
   let hits = [], shown = 0;
   let showMap = false;
   let compare = false;          // favorites as a side-by-side table
+  let daily = false;            // search: only new listings, grouped by the day they appeared
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
@@ -172,6 +173,7 @@
     q.types = q.types.filter((type) => db.index.types.includes(type));
     q.areas = q.areas.filter((a) => areaNames.has(a));
     mode = p.get("fav") === "1" ? "favorites" : "search";
+    daily = mode === "search" && p.get("daily") === "1";
     showMap = p.get("view") === "map";
     compare = mode !== "search" && p.get("cmp") === "1";
     return p.get("id");
@@ -187,6 +189,7 @@
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
     if (compare && mode !== "search") p.set("cmp", "1");
+    if (daily && mode === "search") p.set("daily", "1");
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
@@ -194,6 +197,7 @@
   // ---------- results ----------
 
   function compute() {
+    if (mode === "search" && daily) return Filter.search(db, { ...q, sort: "new" }).filter((it) => it.newDate);
     if (mode === "search") return Filter.search(db, q);
     return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => db.byKey.get(k)).filter(Boolean));
   }
@@ -219,8 +223,10 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = t(mode === "favorites" ? "favBanner" : "count", num(hits.length));
-    $("sort").hidden = hits.length < 2 || compare;
+    $("count").textContent = t(mode === "favorites" ? "favBanner" : daily ? "dailyCount" : "count", num(hits.length));
+    $("tabs").hidden = mode !== "search";
+    for (const b of $("tabs").children) b.setAttribute("aria-selected", (b.dataset.tab === "daily") === daily);
+    $("sort").hidden = hits.length < 2 || compare || daily;  // by day: newest first
     $("view").hidden = (!hits.length && !showMap) || compare;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
@@ -252,8 +258,23 @@
 
   function more() {
     if (shown >= hits.length || compare) return;
-    $("list").insertAdjacentHTML("beforeend", hits.slice(shown, shown + PAGE).map(card).join(""));
+    let html = "";
+    for (let i = shown; i < Math.min(shown + PAGE, hits.length); i++) {
+      const d = hits[i].newDate;
+      if (daily && (i === 0 || hits[i - 1].newDate !== d)) {  // a heading for each day
+        let n = 0;
+        for (let j = i; j < hits.length && hits[j].newDate === d; j++) n++;
+        html += `<h3 class="day">${esc(weekday(d))}<span>${esc(t("count", num(n)))}</span></h3>`;
+      }
+      html += card(hits[i]);
+    }
+    $("list").insertAdjacentHTML("beforeend", html);
     shown += PAGE;
+  }
+  // 20261006 -> "10月6日（火）" / "Tue, Oct 6"
+  function weekday(d) {
+    const date = new Date(Math.floor(d / 1e4), Math.floor(d / 100) % 100 - 1, d % 100);
+    return date.toLocaleDateString(S.lang === "en" ? "en-US" : "ja-JP", { month: "short", day: "numeric", weekday: "short" });
   }
 
   function tags(it) {
@@ -282,8 +303,8 @@
   }
 
   function emptyState(active) {
-    if (mode !== "search") {
-      const [title, hint] = t("favEmpty");
+    if (mode !== "search" || (daily && !active.length)) {
+      const [title, hint] = t(mode !== "search" ? "favEmpty" : "dailyEmpty");
       return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
     const loosen = active.map(([label, remove], i) => {
@@ -845,6 +866,7 @@
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
       else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
+      else if (b.dataset.tab && (b.dataset.tab === "daily") !== daily) switchView("daily", () => { daily = !daily; });
       else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
