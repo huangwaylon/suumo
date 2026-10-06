@@ -13,14 +13,13 @@ _num = re.compile(r"\d+(?:\.\d+)?")
 
 
 def spec_table(soup):
-    """{label: value} from every th/td pair; first occurrence wins (the summary and full tables repeat)."""
+    """{label: (value, td)} from every th/td pair; first occurrence wins (the summary and full tables repeat)."""
     spec = {}
     for th in soup.find_all("th"):
         td = th.find_next_sibling("td")
         k = re.sub(r"ヒント|\s", "", th.get_text())
         if td and k and len(k) < 20 and k not in spec:
-            v = re.sub(r"\[[^\]]*\]", "", text(td)).strip()  # drop "[ 乗り換え案内 ]" style links
-            spec[k] = v
+            spec[k] = (re.sub(r"\[[^\]]*\]", "", text(td)).strip(), td)  # drop "[ 乗り換え案内 ]" style links
     return spec
 
 
@@ -40,7 +39,7 @@ def _monthly_sum(s):
 
 def _structure(s):
     """'RC22階地下1階建' / '木造2階建（軸組工法）' / '11階/SRC15階建' / '2階建' -> (structure, above, below)."""
-    s = s.split("/")[-1] if "/" in s else s
+    s = s.split("/")[-1]
     m = re.match(r"\s*([^\d\s（(]*?)\s*(?:地上)?(\d+)階", s)
     if m:
         structure, above = m.group(1) or None, int(m.group(2))
@@ -82,7 +81,7 @@ def _ratios(s):
 
 
 def _parking(s, notes):
-    if s and s != "-":
+    if s:
         lo, hi = parse_prices(s)
         p = {"status": re.split(r"[（(]", s)[0].strip(), "fee_min": lo, "fee_max": hi if hi != lo else None}
         return clean(p)
@@ -94,7 +93,7 @@ def _road(s):
     """Private-road share and frontage road:
     '無、北4ｍ幅（接道幅8ｍ）' -> {dir: 北, width_m: 4}; '23.73m2、北西4ｍ幅' -> {private_m2: 23.73, ...};
     '道路幅：10ｍ、アスファルト舗装、セットバック：48.24m2' -> {width_m: 10, setback_m2: 48.24}."""
-    if not s or s == "-":
+    if not s:
         return None
     r = {}
     m = re.search(r"([北南東西]{1,2})\s*(\d+(?:\.\d+)?)\s*[ｍm]幅", s)
@@ -126,14 +125,14 @@ def parse_detail(html):
 
     def g(*keys):
         """First non-empty value among the labels (SUUMO uses '-' for 'not stated')."""
-        return next((spec[k] for k in keys if spec.get(k) not in (None, "", "-")), None)
+        return next((spec[k][0] for k in keys if k in spec and spec[k][0] not in ("", "-")), None)
 
     notes = g("その他概要・特記事項")
     r = {}
 
-    if (v := g("交通")):
-        stations = [st for st in (parse_station(div.get_text(" ").strip()) for div in _cell_divs(soup, "交通")) if st]
-        r["stations"] = stations or ([parse_station(v)] if parse_station(v) else None)
+    if (v := g("交通")):  # one station per <div> in the cell
+        divs = spec["交通"][1].find_all("div")
+        r["stations"] = [st for st in map(parse_station, [d.get_text(" ").strip() for d in divs] or [v]) if st]
     if (v := g("価格", "販売価格")) and ("土地のみの価格" in v or "建物価格は含みません" in v):
         r["price_excludes_building"] = True
     if (v := g("管理費")):
@@ -202,18 +201,4 @@ def parse_detail(html):
     r["features"] = _features(soup)
     m = re.search(r"取引態様：\s*＜([^＞]+)＞", text(soup))
     r["deal_type"] = m.group(1) if m else None
-
-    # bookkeeping kept in the local DB only (they change on their own; not exported)
-    meta = {"info_date": _date(g("情報提供日")), "next_update": _date(g("次回更新予定日"))}
-    return clean(r), meta
-
-
-def _cell_divs(soup, label):
-    th = next((t for t in soup.find_all("th") if re.sub(r"ヒント|\s", "", t.get_text()) == label), None)
-    td = th.find_next_sibling("td") if th else None
-    return td.find_all("div") if td else []
-
-
-def _date(s):
-    m = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", s or "")
-    return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else None
+    return clean(r)

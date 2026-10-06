@@ -31,17 +31,16 @@ def test_list_pages_parse_every_listing(type_key, hits):
 
 
 def test_condo_listing_page():
-    d, meta = parse_detail(page("detail_used_condo_20205670.html.gz"))
+    d = parse_detail(page("detail_used_condo_20205670.html.gz"))
     assert d["mgmt_fee"] == 146000 and d["repair_fee"] == 26000
     assert (d["floor"], d["structure"], d["floors_above"]) == (3, "RC", 5)
     assert d["land_rights"] == "定期借地権" and "借地期間残存36年" in d["land_rights_note"]
     assert [s["name"] for s in d["stations"]] == ["喜多見", "狛江"]
     assert "南向き" in d["features"] and d["deal_type"] == "仲介"
-    assert meta == {"info_date": "2026-10-01", "next_update": "2026-10-09"}
 
 
 def test_house_listing_page():
-    d, _ = parse_detail(page("detail_used_house_20779514.html.gz"))
+    d = parse_detail(page("detail_used_house_20779514.html.gz"))
     assert (d["structure"], d["floors_above"], d["coverage_pct"], d["far_pct"]) == ("木造", 2, 40, 80)
     assert d["road"]["dir"] == "東" and d["road"]["width_m"] == 5.0
     assert d["stations"][2] == {"line": "小田急バス", "name": "狛江第5小学校", "bus_stop": True, "walk": 3}
@@ -49,6 +48,6 @@ def test_house_listing_page():
 
 
 def test_land_listing_page():
-    d, _ = parse_detail(page("detail_land_20862637.html.gz"))
+    d = parse_detail(page("detail_land_20862637.html.gz"))
     assert d["build_condition"] is True and (d["coverage_pct"], d["far_pct"]) == (60, 200)
     assert d["road"] == {"width_m": 10.0, "setback_m2": 48.24, "text": d["road"]["text"]}

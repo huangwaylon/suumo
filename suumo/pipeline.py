@@ -32,13 +32,6 @@ P_NEW, P_CHANGED, P_BACKFILL = 2, 1, 0
 
 # list-page fields whose change means the listing page is worth re-fetching
 CHANGE_FIELDS = ("price", "price_max", "title", "layout", "floor_m2", "land_m2", "building_m2")
-SUMMARY_FIELDS = ("name", "title", "price", "price_max", "layout", "floor_m2", "land_m2", "building_m2", "built",
-                  "town", "stations", "path")
-
-
-def summary(rec, area_name):
-    """Small snapshot stored with events so a notification can be written even after the row is purged."""
-    return {"area": area_name, **{k: rec[k] for k in SUMMARY_FIELDS if k in rec}}
 
 
 class Pipeline:
@@ -126,13 +119,12 @@ class Pipeline:
             hits, recs, errors = self._fetch_area(pref, type_key, a)
             if len(recs) < hits or errors:
                 # listings shift between pages while paginating; a second pass (unioned) closes the gap
-                h2, recs2, errors = self._fetch_area(pref, type_key, a)
-                recs2.update(recs)
-                hits, recs = h2, recs2
+                hits, recs2, errors = self._fetch_area(pref, type_key, a)
+                recs.update(recs2)  # union; the second pass is fresher
         except Exception as e:
             self.log(f"  {a['name']:<10} ERROR {e!r}")
-            self.db.x("UPDATE areas SET last_status='error', last_crawled=? WHERE pref=? AND type=? AND code=?",
-                      self.ts, pref, type_key, a["code"])
+            self.db.x("UPDATE areas SET last_status='error' WHERE pref=? AND type=? AND code=?",
+                      pref, type_key, a["code"])
             return {"code": a["code"], "name": a["name"], "status": "error", "error": repr(e)}
         complete = not errors and len(recs) >= hits
         return self.reconcile(pref, type_key, a, hits, recs, complete, errors)
@@ -155,7 +147,7 @@ class Pipeline:
                              last_seen) VALUES (?,?,?,?,?,?,?,?)""",
                           type_key, lid, pref, a["code"], a["name"], dumps(rec), self.today, self.ts)
                 if baselined:
-                    self.db.add_event(self.run_id, "new", ident, summary(rec, a["name"]))
+                    self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
                     self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
                     counts["new"] += 1
                 else:
@@ -165,11 +157,11 @@ class Pipeline:
             old = json.loads(row["list_json"])
             if row["status"] == "removed":
                 counts["relisted"] += 1
-                self.db.add_event(self.run_id, "relisted", ident, summary(rec, a["name"]))
+                self.db.add_event(self.run_id, "relisted", ident, {"price": rec.get("price")})
             if old.get("price") != rec.get("price"):
                 counts["price_changed"] += 1
                 self.db.add_event(self.run_id, "price_changed", ident,
-                                  {**summary(rec, a["name"]), "old_price": old.get("price")})
+                                  {"price": rec.get("price"), "old_price": old.get("price")})
             if any(old.get(k) != rec.get(k) for k in CHANGE_FIELDS):
                 self.db.enqueue(type_key, lid, P_CHANGED, "changed", self.ts)
             elif row["detail_json"] is None:
@@ -188,16 +180,16 @@ class Pipeline:
                               self.ts, missed, type_key, lid)
                     self.db.dequeue(type_key, lid)
                     self.db.add_event(self.run_id, "removed", row,
-                                      summary(json.loads(row["list_json"]), row["area_name"]))
+                                      {"price": json.loads(row["list_json"]).get("price")})
                     counts["removed"] += 1
                 else:
                     self.db.x("UPDATE listings SET missed=? WHERE type=? AND id=?", missed, type_key, lid)
                     counts["missing"] += 1
 
         status = "suspect" if suspect else ("complete" if complete else "incomplete")
-        self.db.x("""UPDATE areas SET last_hits=?, last_status=?, last_crawled=?, baselined=?
+        self.db.x("""UPDATE areas SET last_hits=?, last_status=?, baselined=?
                      WHERE pref=? AND type=? AND code=?""",
-                  prev_hits if suspect else hits, status, self.ts,
+                  prev_hits if suspect else hits, status,
                   1 if (baselined or (complete and not suspect)) else 0, pref, type_key, a["code"])
         line = f"  {a['name']:<10} hits={hits:>5} parsed={len(recs):>5} {status}"
         if not baselined and complete:
@@ -258,7 +250,7 @@ class Pipeline:
             streak = []
             self.archive.save_detail(r["pref"], r["type"], r["id"], html)
             try:
-                apply_detail(self.db, r["type"], r["id"], html, self.today)
+                apply_detail(self.db, r["type"], r["id"], html)
                 self.db.dequeue(r["type"], r["id"])
                 done += 1
             except Exception as e:
@@ -321,9 +313,6 @@ def _hm(seconds):
     return f"{h}h{m:02d}m" if h else f"{m}m"
 
 
-def apply_detail(db, type_key, lid, html, fetched=None):
+def apply_detail(db, type_key, lid, html):
     """Parse a listing page into the DB row (used by the queue and by `reparse`)."""
-    detail, meta = parse_detail(html)
-    db.x("""UPDATE listings SET detail_json=?, detail_fetched=COALESCE(?, detail_fetched), info_date=?,
-            next_update=? WHERE type=? AND id=?""",
-         dumps(detail), fetched, meta.get("info_date"), meta.get("next_update"), type_key, lid)
+    db.x("UPDATE listings SET detail_json=? WHERE type=? AND id=?", dumps(parse_detail(html)), type_key, lid)

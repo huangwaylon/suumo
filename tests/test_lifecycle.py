@@ -41,7 +41,7 @@ def env(tmp_path):
 
 
 def events(db, kind=None):
-    rows = db.x("SELECT kind, id, payload FROM events ORDER BY seq").fetchall()
+    rows = db.x("SELECT kind, id FROM events ORDER BY seq").fetchall()
     return [(r["kind"], r["id"]) for r in rows if kind in (None, r["kind"])]
 
 
@@ -226,8 +226,8 @@ def test_listing_that_moves_area_keeps_its_history(env):
 def test_purge_drops_old_event_and_run_rows(env):
     db, _, _, crawl, _ = env
     crawl(0, [rec(1)])
-    db.x("INSERT INTO events (run_id, kind, type, id, pref, area_code, payload, posted) "
-         "VALUES ('20200101T000000', 'new', 'used_condo', '1', 'tokyo', '13219', '{}', 1)")
+    db.x("INSERT INTO events (run_id, kind, type, id, pref, area_code, payload) "
+         "VALUES ('20200101T000000', 'new', 'used_condo', '1', 'tokyo', '13219', '{}')")
     p, _ = crawl(1, [rec(1)])
     p.purge()
     assert db.x("SELECT COUNT(*) FROM events WHERE run_id='20200101T000000'").fetchone()[0] == 0

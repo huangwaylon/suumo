@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS listings (
     last_seen TEXT NOT NULL,          -- ISO timestamp of the last crawl that saw it
     missed INTEGER NOT NULL DEFAULT 0,       -- consecutive complete crawls of its area that didn't see it
     removed_at TEXT,
-    detail_fetched TEXT, info_date TEXT, next_update TEXT,
     PRIMARY KEY (type, id)
 );
 CREATE INDEX IF NOT EXISTS listings_area ON listings (pref, type, area_code, status);
@@ -27,7 +26,7 @@ CREATE TABLE IF NOT EXISTS areas (
     pref TEXT NOT NULL, type TEXT NOT NULL, code TEXT NOT NULL,
     name TEXT, slug TEXT,
     baselined INTEGER NOT NULL DEFAULT 0,   -- 1 once a complete crawl established its starting set
-    last_hits INTEGER, last_status TEXT, last_crawled TEXT,
+    last_hits INTEGER, last_status TEXT,
     PRIMARY KEY (pref, type, code)
 );
 
@@ -43,10 +42,9 @@ CREATE TABLE IF NOT EXISTS events (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL, kind TEXT NOT NULL,   -- new | price_changed | removed | relisted
     type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL, area_code TEXT NOT NULL,
-    payload TEXT NOT NULL,
-    posted INTEGER NOT NULL DEFAULT 0           -- unused since the Discord feed was removed
+    payload TEXT NOT NULL                       -- {"price"} (+ "old_price" for price_changed)
 );
-CREATE INDEX IF NOT EXISTS events_posted ON events (posted);
+DROP INDEX IF EXISTS events_posted;
 
 CREATE TABLE IF NOT EXISTS runs (
     run_id TEXT PRIMARY KEY, started TEXT, finished TEXT, report TEXT
@@ -88,11 +86,8 @@ class DB:
     def listing(self, type_key, lid):
         return self.x("SELECT * FROM listings WHERE type=? AND id=?", type_key, lid).fetchone()
 
-    def area_listings(self, pref, type_key, code, status=None):
-        sql = "SELECT * FROM listings WHERE pref=? AND type=? AND area_code=?"
-        if status:
-            return self.x(sql + " AND status=?", pref, type_key, code, status).fetchall()
-        return self.x(sql, pref, type_key, code).fetchall()
+    def area_listings(self, pref, type_key, code):
+        return self.x("SELECT * FROM listings WHERE pref=? AND type=? AND area_code=?", pref, type_key, code).fetchall()
 
     # areas
     def area(self, pref, type_key, code):
