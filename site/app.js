@@ -87,6 +87,8 @@
   let showMap = false;
   let compare = false;          // favorites as a side-by-side table
   let daily = false;            // search: only new listings, grouped by the day they appeared
+  let area = null;              // [south, west, north, east]: the map view, listing what's in the visible area
+  let mapHits = [];             // what the map shows: the results (in the map area view, before the area cut)
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
@@ -177,7 +179,10 @@
     q.areas = q.areas.filter((a) => areaNames.has(a));
     mode = p.get("fav") === "1" ? "favorites" : "search";
     daily = mode === "search" && p.get("daily") === "1";
+    const b = (p.get("b") || "").split(",").map(Number);
+    area = p.get("view") === "area" && b.length === 4 && b.every(Number.isFinite) ? b : null;
     showMap = p.get("view") === "map";
+    if (area) showMap = false;
     compare = mode !== "search" && p.get("cmp") === "1";
     return p.get("id");
   }
@@ -191,6 +196,7 @@
     }
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
+    if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
     if (compare && mode !== "search") p.set("cmp", "1");
     if (daily && mode === "search") p.set("daily", "1");
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
@@ -222,15 +228,17 @@
       return;
     }
     listStale = false;
-    hits = compute();
+    hits = mapHits = compute();
+    if (area) hits = inArea(mapHits);
+    document.body.classList.toggle("areamode", !!area);
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = t(mode === "favorites" ? "favBanner" : daily ? "dailyCount" : "count", num(hits.length));
-    $("tabs").hidden = mode !== "search";
+    $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : daily ? "dailyCount" : "count", num(hits.length));
+    $("tabs").hidden = mode !== "search" || !!area;
     for (const b of $("tabs").children) b.setAttribute("aria-selected", (b.dataset.tab === "daily") === daily);
     $("sort").hidden = hits.length < 2 || compare || daily;  // by day: newest first
-    $("view").hidden = (!hits.length && !showMap) || compare;
+    $("view").hidden = (!hits.length && !showMap) || compare || !!area;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
     $("filters-n").textContent = set;
@@ -254,6 +262,15 @@
   }
 
   const scrollFor = {};
+  // Views (list/map, favorites, by day, the map area) are history entries (back returns), each keeping its place.
+  function switchView(name, change) {
+    if (history.state?.view === name) { history.back(); return; }  // undoing the last switch: back to where it was
+    scrollFor[renderedFor] = window.scrollY;
+    change();
+    history.pushState({ view: name }, "", hashFor());
+    render();
+    restoreScroll();
+  }
   function restoreScroll() {
     const y = scrollFor[renderedFor] || 0;
     while (document.documentElement.scrollHeight < y + innerHeight && shown < hits.length) more();
@@ -515,7 +532,27 @@
   // ---------- map ----------
 
   let leaflet = null, map = null, cluster = null, fittedFor = null;
-  const mapVisible = () => WIDE.matches || showMap;
+  const mapVisible = () => WIDE.matches || showMap || !!area;
+  const inArea = (list) => list.filter((it) => it.lat != null && it.lat >= area[0] && it.lng >= area[1] && it.lat <= area[2] && it.lng <= area[3]);
+  const boundsOf = (m) => { const b = m.getBounds(); return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]; };
+
+  // The map area view follows the map: after a pan or zoom, the list is what's visible (the pins stay as they are).
+  let areaTimer = null;
+  function onMapMove() {
+    if (!area) return;
+    clearTimeout(areaTimer);
+    areaTimer = setTimeout(() => {
+      area = boundsOf(map);
+      history.replaceState(history.state, "", hashFor());
+      renderedFor = hashFor();
+      fittedFor = renderedFor;
+      hits = inArea(mapHits);
+      $("count").textContent = t("areaCount", num(hits.length));
+      $("list").innerHTML = hits.length ? "" : `<div class="empty"><h3>${esc(t("areaEmpty"))}</h3></div>`;
+      shown = 0;
+      more();
+    }, 250);
+  }
 
   function loadLeaflet() {
     leaflet ||= Promise.all(LEAFLET.map(([kind, url, integrity]) => new Promise((ok, fail) => {
@@ -547,6 +584,13 @@
       map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion });
       map.on("popupopen", (e) => e.popup.getElement()?.querySelector(".popup-list a")?.focus({ preventScroll: true }));
       map.on("popupopen popupclose", (e) => $("map").classList.toggle("popup-open", e.type === "popupopen"));
+      map.on("moveend", onMapMove);
+      // the map area view: list what's in sight
+      const go = document.createElement("button");
+      go.className = "btn primary area-btn";
+      go.addEventListener("click", () => switchView("area", () => { area = area ? null : boundsOf(map); showMap = false; }));
+      L.DomEvent.disableClickPropagation(go);
+      $("map").append(go);
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
@@ -556,7 +600,8 @@
     map.invalidateSize();
     const towns = new Map();
     let unplaced = 0;
-    for (const it of hits) {
+    $("map").querySelector(".area-btn").textContent = t(area ? "areaClose" : "areaOpen");
+    for (const it of mapHits) {
       if (it.lat == null) { unplaced++; continue; }
       if (!towns.has(it.town)) towns.set(it.town, [it.lat, it.lng, []]);
       towns.get(it.town)[2].push(it);
@@ -566,8 +611,13 @@
       L.marker([lat, lng], { icon: pin(list.length), count: list.length, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
-    note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t("favEmpty")[0];
-    if (fittedFor !== renderedFor) {  // follow the results when the conditions change
+    note.textContent = area ? t("areaNote") : hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t("favEmpty")[0];
+    if (area && fittedFor === null) {  // opened from a link: show that area
+      fittedFor = renderedFor;
+      map.fitBounds([[area[0], area[1]], [area[2], area[3]]]);
+    } else if (area) {
+      fittedFor = renderedFor;     // the map area view keeps the user's view
+    } else if (fittedFor !== renderedFor) {  // follow the results when the conditions change
       fittedFor = renderedFor;
       const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
       if (points.length) map.fitBounds(coreBounds(points), { padding: [30, 30], maxZoom: 15 });
@@ -868,15 +918,6 @@
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
     });
     DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
-    // List/map and search/favorites are history entries (back returns), each keeping its scroll position.
-    const switchView = (name, change) => {
-      if (history.state?.view === name) { history.back(); return; }  // undoing the last switch: back to where it was
-      scrollFor[renderedFor] = window.scrollY;
-      change();
-      history.pushState({ view: name }, "", hashFor());
-      render();
-      restoreScroll();
-    };
     $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
     $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
     $("detail-back").addEventListener("click", closeDetail);
