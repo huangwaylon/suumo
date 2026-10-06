@@ -27,7 +27,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
-| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`). Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
+| `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (localStorage, shareable as `#ids=`, compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
 

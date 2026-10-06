@@ -15,18 +15,23 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 | Tablet | tile grid; filters and listing as side sheets |
 | Desktop (≥1280px) | filters rail · results · live map side by side; listing as a drawer |
 
-- **Search**: station, town or building name; several words narrow down; hiragana, katakana and half-width kana match.
+- **Search**: station, town or building name; several words narrow down; hiragana, katakana, half-width kana and
+  romaji match (station readings from Wikidata). Typing a station or ward name offers it as a filter in one tap.
 - **Filters** (one panel, every choice shows its count): 種別, 価格, 間取り（以上: 2LDK〜…）, 広さ, 土地, 築年数,
   新耐震, 駅 (search by name) and 徒歩, エリア (by prefecture and 区部/市部/町村), こだわり (所有権のみ, 建築条件なし,
-  新着, 値下げ, SUUMO's tags). Active conditions show as chips under the count; tap one to remove it.
+  新着, 値下げ, SUUMO's tags). Active conditions show as chips under the count: the label opens the filters at that
+  condition, × removes it. The last search comes back when the site is reopened; browser back closes the filter
+  sheet, settings, the map view and the listing.
 - **Results**: cards with photo, price, layout, size, age, nearest station, town; 7 sort orders; more load as you
   scroll. The map follows the results (pins by town, 丁目 level). No results → the conditions to drop, with counts.
 - **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
   map, a link to SUUMO.
 - **Settings** (gear icon): language 日本語 (default) or English, and theme システム / ライト / ダーク, saved in the
   browser. In English the interface, units, prices (¥49.9M) and fixed values (land rights, deal type) are
-  translated; town, station and building names and SUUMO's tags stay as SUUMO writes them.
-- **Favorites** are kept in the browser; 「リストを共有」 copies a link that opens the list on another device.
+  translated, and so are ward and station names and common tags; towns, building names and free text stay as
+  SUUMO writes them.
+- **Favorites** are kept in the browser; 「比較する」 shows them side by side (price, size, age, station, monthly
+  costs, floor, land rights); 「リストを共有」 copies a link that opens the list on another device.
   Conditions live in the URL, so any search or listing can be shared too.
 
 One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
