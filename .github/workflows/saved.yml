@@ -30,7 +30,8 @@ jobs:
       - name: Apply
         id: apply
         run: |
-          if msg=$(uv run python -m suumo saved "$TITLE" 2>&1); then ok=1; else ok=0; fi
+          uv sync -q
+          if msg=$(uv run -q python -m suumo saved "$TITLE" 2>&1); then ok=1; else ok=0; fi
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
           printf '%s\n' "$msg" > /tmp/msg
       - name: Commit
