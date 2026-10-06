@@ -22,6 +22,9 @@ def test_prices(s, want):
     ("ＪＲ中央線「吉祥寺」バス12分停歩3分", {"line": "ＪＲ中央線", "name": "吉祥寺", "bus": 12, "walk": 3}),
     ("ＪＲ常磐線「亀有」バス6分亀有新道歩1分", {"line": "ＪＲ常磐線", "name": "亀有", "bus": 6, "walk": 1}),
     ("小田急線/経堂 徒歩6分", {"line": "小田急線", "name": "経堂", "walk": 6}),
+    ("ＪＲ常磐線「牛久」車2.4km", {"line": "ＪＲ常磐線", "name": "牛久", "car_km": 2.4}),
+    ("関東鉄道常総線「水海道」車４．８ｋｍ～５．９ｋｍ",
+     {"line": "関東鉄道常総線", "name": "水海道", "car_km": 4.8, "car_km_max": 5.9}),
 ])
 def test_stations(s, want):
     assert parse_station(s) == want

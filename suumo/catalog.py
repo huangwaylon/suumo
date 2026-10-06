@@ -39,14 +39,18 @@ def plan_rank(layout):
 # The same line is written several ways ("ＪＲ山手線", "山手線", "東急大井町線", "大井町線"): one name per line.
 _OPERATORS = {
     "JR": "山手線 中央線 総武線 京浜東北線 埼京線 常磐線 京葉線 高崎線 横須賀線 南武線 武蔵野線 "
-          "青梅線 五日市線 八高線 横浜線",
+          "青梅線 五日市線 八高線 横浜線 宇都宮線 川越線 根岸線 相模線 鶴見線 東海道本線 内房線 外房線 成田線 "
+          "総武本線 東金線 久留里線 鹿島線 水戸線 水郡線 御殿場線",
     "東京メトロ": "銀座線 丸ノ内線 日比谷線 東西線 千代田線 有楽町線 半蔵門線 南北線 副都心線",
     "都営": "浅草線 三田線 新宿線 大江戸線",
     "東急": "東横線 目黒線 田園都市線 大井町線 池上線 多摩川線 世田谷線",
 }
 _BARE = {line: op + line for op, lines in _OPERATORS.items() for line in lines.split()}
 _ALIASES = {"都営地下鉄": "都営", "新交通ゆりかもめ": "ゆりかもめ", "東京臨海高速鉄道りんかい線": "りんかい線",
-            "TOKYO BRT": "東京BRT", "BRT": "東京BRT"}
+            "TOKYO BRT": "東京BRT", "BRT": "東京BRT",
+            # old and alternate names around Tokyo
+            "新京成線": "京成松戸線", "東武アーバンパークライン": "東武野田線",
+            "東武スカイツリーライン": "東武伊勢崎線", "京浜急行本線": "京急本線"}
 
 
 def line_name(line):
@@ -98,6 +102,7 @@ class Item:
         self.stations = [(s["name"], line_name(s.get("line")), None if s.get("bus") else s.get("walk"))
                          for s in rec.get("stations") or [] if s.get("name") and not is_bus(s)]
         self.bus = {s["name"]: s["bus"] for s in rec.get("stations") or [] if s.get("bus") and not is_bus(s)}  # minutes
+        self.car = {s["name"]: s["car_km"] for s in rec.get("stations") or [] if s.get("car_km") and not is_bus(s)}
         self.features = sorted(rec.get("features") or ())
         self.leasehold = rec.get("land_rights") in LEASEHOLD
         self.first_seen = rec.get("first_seen") or ""

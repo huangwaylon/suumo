@@ -141,9 +141,9 @@
     const chosen = mode === "search" && q.stations.length;
     const best = closest(chosen);  // a chosen station when there are any: that's why it's listed
     if (best) return t("walk", stationName(best[0]), best[1]);
-    const byBus = chosen && it.stations.find(([s]) => q.stations.includes(s));
-    if (byBus) return t("bus", stationName(byBus[0]), byBus[2]);
-    return it.stations.length ? t("bus", stationName(it.stations[0][0]), it.stations[0][2]) : "";
+    const [s, , bus, car] = (chosen && it.stations.find(([n]) => q.stations.includes(n))) || it.stations[0] || [];
+    if (!s) return "";
+    return car ? t("car", stationName(s), car) : t("bus", stationName(s), bus);
   }
   function image(it, w, h) {
     let p = it.image;
@@ -531,13 +531,17 @@
       || `<span class="meta">${esc(t(found.length ? "noStationHomes" : "noStation"))}</span>`;
   }
 
+  // Areas grouped as the index says (23区, a designated city's wards, cities, towns), prefecture by prefecture.
   function areaGroups() {
     const prefs = new Set(db.index.areas.map((a) => a[2])), kinds = t("kinds");
     const groups = new Map();
-    for (const [code, name, pref] of [...db.index.areas].sort((a, b) => a[0].localeCompare(b[0]))) {
-      const g = `${prefs.size > 1 ? place(db.index.prefs[pref]) + " " : ""}${kinds[code[2]] || kinds[3]}`;
+    const order = (a) => [a[2], a[3] === "ku" ? 0 : a[3] === "shi" ? 2 : a[3] === "gun" ? 3 : 1, a[0]];
+    const sorted = [...db.index.areas].sort((a, b) => { const x = order(a), y = order(b); return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]); });
+    for (const [code, name, pref, group] of sorted) {
+      const city = !kinds[group];  // a designated city: its wards without the city's name
+      const g = `${prefs.size > 1 ? place(db.index.prefs[pref]) + " " : ""}${city ? place(group) : kinds[group]}`;
       if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push([code, many("areas", code, place(name), facets.areas[code] || 0)]);
+      groups.get(g).push([code, many("areas", code, city ? place(name).replace(group, "") || place(name) : place(name), facets.areas[code] || 0)]);
     }
     return [...groups].map(([g, chips], i) => {
       const open = i === 0 || chips.some(([code]) => q.areas.includes(code));
@@ -770,7 +774,7 @@
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
     const access = (r.stations || []).map((s) => esc([s.line, t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
-      : s.walk != null ? t("walkMin", s.walk) : ""].filter(Boolean).join(" "))).join("<br>");
+      : s.walk != null ? t("walkMin", s.walk) : s.car_km ? t("carKm", s.car_km_max ? `${s.car_km}–${s.car_km_max}` : s.car_km) : ""].filter(Boolean).join(" "))).join("<br>");
     return `
       ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="">` : ""}
       <div class="d-head">

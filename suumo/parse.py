@@ -1,6 +1,7 @@
 """Parse SUUMO area-selection pages and search-result (list) pages."""
 import math
 import re
+import unicodedata
 
 from bs4 import BeautifulSoup
 
@@ -21,6 +22,7 @@ _built = re.compile(r"(\d{4})年(\d{1,2})月")
 _station = re.compile(r"(.*?)「(.+?)」")
 _walk = re.compile(r"(?:徒)?歩(\d+)分")
 _bus = re.compile(r"バス(\d+)分")
+_car = re.compile(r"車\s*([\d.]+)\s*km(?:\s*[～~]\s*([\d.]+)\s*km)?")  # rural access: 車2.4km, 車4.8km～5.9km
 _nc = re.compile(r"/nc_(\d+)/")
 
 
@@ -53,7 +55,8 @@ def parse_built(s):
 
 
 def parse_station(s):
-    """'京王線「仙川」歩16分' / 'ＪＲ中央線「吉祥寺」バス12分停歩3分' / '小田急線/経堂 徒歩6分' -> station dict."""
+    """'京王線「仙川」歩16分' / 'ＪＲ中央線「吉祥寺」バス12分停歩3分' / '小田急線/経堂 徒歩6分' /
+    'ＪＲ常磐線「牛久」車2.4km' -> station dict."""
     m = _station.search(s)
     if m:
         st = {"line": m.group(1).strip() or None, "name": m.group(2)}
@@ -73,6 +76,11 @@ def parse_station(s):
     w = _walk.search(rest)
     if w:
         st["walk"] = int(w.group(1))
+    car = _car.search(unicodedata.normalize("NFKC", rest))
+    if car and not w and not b:
+        st["car_km"] = float(car.group(1))
+        if car.group(2):
+            st["car_km_max"] = float(car.group(2))
     return st
 
 

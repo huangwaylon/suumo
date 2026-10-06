@@ -28,7 +28,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     assert {"index.html", "app.js", "filter.js", "i18n.js", "style.css", ".nojekyll"} <= {p.name for p in out.iterdir()}
     cols = index["columns"]
     assert len(cols["id"]) < 46                               # 46 listings, duplicates folded
-    assert index["prefs"] == ["東京都"] and index["areas"] == [["13219", "狛江市", 0]]
+    assert index["prefs"] == ["東京都"] and index["areas"] == [["13219", "狛江市", 0, "shi"]]
     assert {t: (lat, lng) for t, lat, lng in index["towns"]}["東京都狛江市岩戸北３"] == (35.63, 139.58)
     ids_ = [sum(cols["id"][:n + 1]) for n in range(len(cols["id"]))]   # stored as deltas
     row = ids_.index(20205670)
@@ -197,8 +197,9 @@ def test_stations_by_kana_and_english(tmp_path):
 
 
 @needs_node
-def test_bus_access_keeps_its_minutes(tmp_path):
-    recs = [rec(1, stations=[{"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2}])]
+def test_bus_and_car_access_keep_their_minutes_and_km(tmp_path):
+    recs = [rec(1, stations=[{"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2},
+                             {"line": "ＪＲ常磐線", "name": "牛久", "car_km": 2.4}])]
     script = """
     const Filter = require(process.argv[1]);
     const db = Filter.load(JSON.parse(require("fs").readFileSync(process.argv[2], "utf8")));
@@ -207,7 +208,7 @@ def test_bus_access_keeps_its_minutes(tmp_path):
     site_queries(tmp_path, recs, [])
     out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/index.json")],
                          capture_output=True, text=True, check=True)
-    assert json.loads(out.stdout) == [["喜多見", None, 8]]   # not walkable; 8 minutes by bus
+    assert json.loads(out.stdout) == [["喜多見", None, 8, None], ["牛久", None, None, 2.4]]  # by bus; by car
 
 
 @needs_node
@@ -237,3 +238,24 @@ def test_since_drops_and_reposts(tmp_path):
     assert out[0]["ids"] == ["3", "4", "1"]   # new or cheaper after 10/14 09:00 (2 was seen then)
     assert out[1]["ids"] == ["1", "4"]        # -20% before -10%
     assert out[2]["ids"] == ["3", "2"]        # 5 re-posts a property already listed: not new
+
+
+@pytest.mark.parametrize("code,name,group", [
+    ("13104", "新宿区", "ku"), ("13219", "狛江市", "shi"), ("13305", "西多摩郡", "gun"),
+    ("14103", "横浜市西区", "横浜市"), ("11101", "さいたま市西区", "さいたま市"), ("12320", "印旛郡", "gun"),
+    ("08201", "水戸市", "shi"),
+])
+def test_area_groups(code, name, group):
+    from suumo.site import _area_group
+    assert _area_group(code, name) == group
+
+
+def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
+    from tests.helpers import write
+    data = tmp_path / "data"
+    st = [{"line": "東武東上線", "name": "小川町", "walk": 5}]
+    write(data, [rec(1, stations=[{"line": "都営新宿線", "name": "小川町", "walk": 3}])])
+    write(data, [rec(2, area_code="11343", stations=st)], areas={"11343": "比企郡"}, pref="saitama")
+    index = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
+    assert sorted(index["stations"]) == ["小川町（埼玉）", "小川町（東京）"]
+    assert index["prefs"][0] == "東京都"          # Tokyo first

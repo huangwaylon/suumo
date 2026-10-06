@@ -13,6 +13,7 @@ import json
 import re
 import shutil
 import subprocess
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -54,6 +55,25 @@ def _name(rec):
     return name if name and not _ad_copy.search(name) else None
 
 
+def _access(walk, bus, car_km):
+    if walk is not None:
+        return walk
+    if bus:
+        return -bus
+    return 1000 + round(car_km * 10) if car_km else None
+
+
+def _area_group(code, name):
+    """The filter panel's group for an area: 'ku' (Tokyo's 23 wards), the city for a designated city's ward
+    (横浜市西区 -> 横浜市), 'shi' (cities), 'gun' (towns and villages)."""
+    if code.startswith("131"):
+        return "ku"
+    if code[2] == "1":
+        m = re.match(r"(.+?市)", name)
+        return m.group(1) if m else "shi"
+    return "shi" if code[2] == "2" else "gun"
+
+
 def _new_date(at):
     """(2026100619, kind) -> '2026-10-06'."""
     return f"{str(at[0])[:4]}-{str(at[0])[4:6]}-{str(at[0])[6:8]}" if at else None
@@ -93,6 +113,19 @@ def representatives(snap):
 
 def build_index(snap, reps, towns_cache, updated, readings=None):
     types, prefs, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table(), Table()
+    # Tokyo first, then the prefectures with most listings (the filter panel lists them in this order)
+    by_pref = Counter(i.pref for i in reps)
+    for p in sorted(by_pref, key=lambda p: (p != "tokyo", -by_pref[p])):
+        prefs(PREFS.get(p, p))
+    # A station name in two prefectures (小川町: 東京 and 埼玉) is two stations: "小川町（埼玉）"
+    station_prefs = defaultdict(set)
+    for i in reps:
+        for name, _, _ in i.stations:
+            station_prefs[name].add(i.pref)
+
+    def station(name, pref):
+        return name if len(station_prefs[name]) < 2 else f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）"
+
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
                             "stations", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
                             "name", "layout", "image")}
@@ -104,9 +137,9 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
             "land": i.land, "age": i.age, "built": i.built,
-            # pairs (station, minutes): on foot, or negative by bus, or null
-            "stations": [x for name, _, walk in i.stations
-                         for x in (stations(name), walk if walk is not None else -i.bus.get(name, 0) or None)],
+            # pairs (station, access): minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
+            "stations": [x for name, _, walk in i.stations for x in (
+                stations(station(name, i.pref)), _access(walk, i.bus.get(name), i.car.get(name)))],
             "features": [features(f) for f in i.features],
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
@@ -126,7 +159,8 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             cols[k].append(v)
     return {
         "updated": updated, "flags": FLAGS, "columns": cols, "types": types.values,
-        "areas": [[code, snap.areas.get(code, code), prefs(PREFS.get(pref, pref))] for code, pref in areas.values],
+        "areas": [[code, snap.areas.get(code, code), prefs(PREFS.get(pref, pref)),
+                   _area_group(code, snap.areas.get(code, ""))] for code, pref in areas.values],
         "prefs": prefs.values, "stations": stations.values,
         # [kana, English] per station (null when unknown: bus stops), so either finds it
         "stationNames": [(readings or {}).get(station_key(s)) for s in stations.values],
