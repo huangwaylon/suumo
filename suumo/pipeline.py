@@ -45,9 +45,10 @@ class Pipeline:
 
     # ---------- search results ----------
 
-    def save_progress(self, **progress):
+    def save_progress(self, phase, text):
         """Put progress in the run's report so `status` (another process) can show it while the run goes on."""
-        self.report["progress"] = {**progress, "at": datetime.now(self.now.tzinfo).isoformat(timespec="seconds")}
+        at = datetime.now(self.now.tzinfo).isoformat(timespec="seconds")
+        self.report["progress"] = {"phase": phase, "text": text, "at": at}
         self.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(self.report, ensure_ascii=False), self.run_id)
         self.db.commit()
 
@@ -84,8 +85,7 @@ class Pipeline:
                 rep["areas"].append({"code": code, "status": "not_listed"})
 
         for k, a in enumerate(areas):
-            self.save_progress(phase="search results", target=f"{t.pref}/{t.type}", area=a["name"],
-                               areas_done=k, areas=len(areas))
+            self.save_progress("search results", f"{t.pref}/{t.type}: area {k + 1}/{len(areas)} ({a['name']})")
             self.db.upsert_area(t.pref, t.type, a)
             if not a["slug"]:
                 status = "empty" if a["expected"] == 0 else "no_slug"
@@ -269,12 +269,11 @@ class Pipeline:
     def _queue_progress(self, n, total, done, failed, gone, elapsed, budget_left):
         per = elapsed / n
         eta = (total - n) * per
-        delay = getattr(self.client, "delay", None)
-        self.log(f"  listing pages {n:,}/{total:,} ({100 * n / total:.1f}%) · {per:.2f} s/page · "
-                 f"ETA {_hm(min(eta, budget_left))}{' (budget ends first)' if budget_left < eta else ''} · "
-                 f"fetched {done:,} failed {failed:,} gone {gone:,}" + (f" · delay {delay:.2f}s" if delay else ""))
-        self.save_progress(phase="listing pages", done=n, total=total, fetched=done, failed=failed, gone=gone,
-                           seconds_per_page=round(per, 2), eta_seconds=round(min(eta, budget_left)), delay=delay)
+        text = (f"{n:,}/{total:,} ({100 * n / total:.1f}%) · {per:.2f} s/page · "
+                f"ETA {_hm(min(eta, budget_left))}{' (budget ends first)' if budget_left < eta else ''} · "
+                f"fetched {done:,} failed {failed:,} gone {gone:,} · delay {self.client.delay:.2f}s")
+        self.log(f"  listing pages {text}")
+        self.save_progress("listing pages", text)
 
     def _pause_for_outage(self, streak, deadline):
         """Several failures in a row: SUUMO or the network is down. Give the attempts back and wait."""
@@ -284,7 +283,7 @@ class Pipeline:
         pause = max(0, min(OUTAGE_PAUSE, deadline - time.monotonic()))
         self.log(f"  ! {len(streak)} listing pages failed in a row; pausing {pause / 60:.0f} min "
                  "(these failures don't count toward the attempt limit)")
-        self.save_progress(phase="paused (SUUMO or network down)", resume_in_seconds=round(pause))
+        self.save_progress("paused", f"SUUMO or the network is down; retrying in {pause / 60:.0f} min")
         time.sleep(pause)
 
     # ---------- cleanup ----------

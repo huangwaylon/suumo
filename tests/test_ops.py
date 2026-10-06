@@ -153,13 +153,13 @@ def test_long_queue_reports_progress_and_checkpoints(tmp_path, monkeypatch):
     seen = []
     real_save = p.save_progress
 
-    def spy(**kw):
-        seen.append(kw)
-        real_save(**kw)
+    def spy(*args):
+        seen.append(args)
+        real_save(*args)
 
     p.save_progress = spy
     p.process_queue(3600, checkpoint=lambda: checkpoints.append(1))
-    assert [s["done"] for s in seen] == [2, 4] and seen[-1]["total"] == 5
+    assert [s[1].split(" ")[0] for s in seen] == ["2/5", "4/5"]
     assert any("listing pages 4/5 (80.0%)" in line for line in out)
     assert checkpoints                                      # data/ exported during the run
     assert "progress" not in p.report                       # cleared when the queue phase ends
@@ -167,11 +167,10 @@ def test_long_queue_reports_progress_and_checkpoints(tmp_path, monkeypatch):
 
 def test_status_shows_a_running_backfill(tmp_path, capsys):
     from suumo.cli import is_locked, print_progress
-    progress = {"phase": "listing pages", "done": 1200, "total": 64000, "fetched": 1190, "failed": 3, "gone": 7,
-                "seconds_per_page": 1.31, "eta_seconds": 82_000, "delay": 1.0, "at": NOW.isoformat()}
+    progress = {"phase": "listing pages", "text": "1,200/64,000 (1.9%) · ETA 22h46m", "at": NOW.isoformat()}
     print_progress({"run_id": "r1", "report": json.dumps({"progress": progress})}, running=True)
     out = capsys.readouterr().out
-    assert "running" in out and "1,200/64,000 (1.9%)" in out and "ETA 22h46m" in out
+    assert "— running" in out and "listing pages (updated" in out and "1,200/64,000 (1.9%) · ETA 22h46m" in out
     lock = tmp_path / "state.db.lock"
     assert not is_locked(lock)
     with exclusive(lock):

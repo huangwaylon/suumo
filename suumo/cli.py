@@ -1,5 +1,6 @@
 """Command line: `uv run python -m suumo <command>` (see README)."""
 import argparse
+import contextlib
 import fcntl
 import json
 import re
@@ -65,11 +66,15 @@ def cmd_run(c: Ctx):
         p.process_queue(a.budget, checkpoint=lambda: export(c.db, c.targets, c.data))
     p.purge()
     p.report.update(export=export(c.db, c.targets, c.data, run_id), requests=client.requests_made,
+                    slowdowns=client.slowdowns,
                     seconds=round(time.monotonic() - t0), mb=round(client.bytes_downloaded / 1e6, 1))
     c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
            datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
     c.db.commit()
-    geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)  # towns of new listings, for the site's map
+    try:  # towns of new listings, for the site's map; never stops the commit below
+        geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
+    except Exception as e:
+        print(f"geocoding failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
     print(f"\nrun {run_id}: {client.requests_made} requests, {p.report['mb']} MB, {p.report['seconds']}s; "
           f"events {dict(kinds) or 'none'}")
@@ -95,8 +100,7 @@ def cmd_status(c: Ctx):
         pct = f"{100 * sum(r['d'] for r in active) / len(active):.0f}%" if active else "-"
         print(f"{t.pref + '/' + t.type:<22}{len(active):>7}{pct:>8}{queued:>7}{len(rows) - len(active):>8}  "
               f"{dict(areas)}")
-    per_page = c.args.delay * 1.25 + 0.3  # mean delay with jitter + response time
-    print(f"\nqueue: {total_q} listing pages, about {total_q * per_page / 60:.0f} min")
+    print(f"\nqueue: {total_q:,} listing pages")
     parse_failures = db.x("SELECT COUNT(*) FROM queue WHERE last_error LIKE 'parse:%'").fetchone()[0]
     if parse_failures:
         print(f"parse failures: {parse_failures} (fix the parser, then `reparse`)")
@@ -122,20 +126,12 @@ def is_locked(lock_path):
 
 
 def print_progress(run, running):
-    p = json.loads(run["report"] or "{}").get("progress") or {}
-    state = "running" if running else "not running (interrupted; the next run continues the queue)"
-    print(f"\ncurrent run: {run['run_id']} — {state}")
-    if not p:
-        return
-    ago = datetime.now(JST) - datetime.fromisoformat(p["at"])
-    print(f"  phase: {p['phase']} (updated {int(ago.total_seconds() // 60)} min ago)")
-    if p["phase"] == "search results":
-        print(f"  {p['target']}: area {p['areas_done'] + 1}/{p['areas']} ({p['area']})")
-    elif p["phase"] == "listing pages":
-        eta_h, eta_m = divmod(p["eta_seconds"] // 60, 60)
-        print(f"  {p['done']:,}/{p['total']:,} ({100 * p['done'] / p['total']:.1f}%) · {p['seconds_per_page']} s/page"
-              f" · ETA {eta_h}h{eta_m:02d}m · fetched {p['fetched']:,} failed {p['failed']:,} gone {p['gone']:,}"
-              + (f" · delay {p['delay']:.2f}s" if p.get("delay") else ""))
+    p = json.loads(run["report"] or "{}").get("progress")
+    print(f"\ncurrent run: {run['run_id']} — "
+          + ("running" if running else "not running (interrupted; the next run continues the queue)"))
+    if p:
+        minutes = int((datetime.now(JST) - datetime.fromisoformat(p["at"])).total_seconds() // 60)
+        print(f"  {p['phase']} (updated {minutes} min ago): {p.get('text', '')}")
 
 
 def cmd_prune(c: Ctx):
@@ -144,22 +140,16 @@ def cmd_prune(c: Ctx):
 
 
 def cmd_geocode(args):
-    """Fill geo/towns.json for every town in data/ (reads data/ only: no state.db, no run lock)."""
     geocode(ROOT / args.data, ROOT / GEO_CACHE)
 
 
 def cmd_site(args):
-    """Build the static site into --out (reads data/ and geo/ only: no state.db, no run lock)."""
     build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out)
 
 
 def cmd_reparse(c: Ctx):
     reparse(c.db, c.archive)
     export(c.db, c.targets, c.data)
-
-
-COMMANDS = {"run": cmd_run, "status": cmd_status, "prune": cmd_prune, "reparse": cmd_reparse}
-READ_ONLY = {"status"}
 
 
 def main():
@@ -171,28 +161,30 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--delay", type=float, default=1.5, help="base seconds between requests (+0-50%% jitter)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="crawl, fetch listing pages, clean up, export")
+
+    def command(name, func, access, help):
+        """access: "write" (state.db, run lock), "read" (state.db), "files" (data/ and geo/ only)."""
+        p = sub.add_parser(name, help=help)
+        p.set_defaults(func=func, access=access)
+        return p
+
+    r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
     r.add_argument("--no-crawl", action="store_true", help="skip search results; only work the queue")
-    r.add_argument("--commit", action="store_true", help="git-commit data/ after the run")
-    r.add_argument("--push", action="store_true", help="commit and push data/")
-    sub.add_parser("status", help="coverage, queue, out-of-scope data")
-    pr = sub.add_parser("prune", help="delete data no longer in scope.toml (dry run without --yes)")
-    pr.add_argument("--yes", action="store_true")
-    sub.add_parser("reparse", help="re-run parsers over the raw archive (no requests)")
-    sub.add_parser("geocode", help="look up map coordinates for towns not in geo/towns.json yet")
-    st = sub.add_parser("site", help="build the static search site (GitHub Pages)")
-    st.add_argument("--out", default="_site")
+    r.add_argument("--commit", action="store_true", help="git-commit data/ and geo/ after the run")
+    r.add_argument("--push", action="store_true", help="commit and push (rebuilds the site)")
+    command("status", cmd_status, "read", "coverage, queue, the current run's progress")
+    command("prune", cmd_prune, "write", "delete data no longer in scope.toml (dry run without --yes)").add_argument(
+        "--yes", action="store_true")
+    command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
+    command("geocode", cmd_geocode, "files", "look up map coordinates for towns not in geo/towns.json yet")
+    command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
     args = ap.parse_args()
-    if args.cmd in ("geocode", "site"):  # read data/ only
-        {"geocode": cmd_geocode, "site": cmd_site}[args.cmd](args)
-        return
+    if args.access == "files":
+        return args.func(args)
     c = Ctx(args)
-    if args.cmd in READ_ONLY:
-        COMMANDS[args.cmd](c)
-    else:
-        with exclusive(c.lock):
-            COMMANDS[args.cmd](c)
+    with exclusive(c.lock) if args.access == "write" else contextlib.nullcontext():
+        args.func(c)
 
 
 if __name__ == "__main__":
