@@ -373,9 +373,10 @@
     $("walk-from").textContent = t(q.stations.length ? "walkFromChosen" : "walkFromNearest");
     $("walk-list").innerHTML = WALKS.map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
     const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
-    const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f)).slice(0, 30)];
+    const narrows = (n) => n < facets.total;  // a choice every result has changes nothing: not shown
+    const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f) && narrows(facets.features[f])).slice(0, 30)];
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
-    sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (facets[f] || q[f])).map((f) =>
+    sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f])))).map((f) =>
       flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
       shownTags.length > 12 ? `<details class="group"><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.slice(12).map(tagChip).join("")}</div></details>` : ""}`);
     $("apply").textContent = t("show", num(facets.total));
@@ -444,13 +445,14 @@
   const mapReady = () => loadLeaflet().then(() => true, () => { leaflet = null; return false; });
 
   const pins = new Map();  // one icon per count, reused across redraws
-  function pin(n) {
-    if (!pins.has(n)) {
+  function pin(n, cluster = false) {  // a cluster (filled) zooms in; a town (outlined) opens its list
+    const key = `${n}${cluster ? "c" : ""}`;
+    if (!pins.has(key)) {
       const label = num(n);
-      pins.set(n, L.divIcon({ className: "", html: `<div class="pin${n >= 100 ? " big" : ""}">${label}</div>`,
+      pins.set(key, L.divIcon({ className: "", html: `<div class="pin${cluster ? " cluster" : ""}">${label}</div>`,
         iconSize: [Math.max(30, 16 + label.length * 8), 26] }));
     }
-    return pins.get(n);
+    return pins.get(key);
   }
 
   async function drawMap() {
@@ -461,7 +463,7 @@
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
-        iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0)) });
+        iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0), true) });
       map.addLayer(cluster);
     }
     map.invalidateSize();
@@ -495,7 +497,7 @@
   function popup(town, list) {
     return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map((it) =>
       `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
-        <span><b class="num">${money(it.price)}</b><br>${esc([it.layout || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
+        <span><b class="num">${money(it.price)}</b><br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
 
   // ---------- listing ----------
@@ -551,8 +553,7 @@
     const facts = [["layout", r.layout], [isCondo(type) ? "floor" : "building", m2(r.floor_m2 || r.building_m2)],
       [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && m2(r.land_m2) + t("paren", tsubo(r.land_m2))],
       ["age", it ? age(it) : ""], ["station", it ? station(it) : ""], ["unit", unit]].filter(([, v]) => v);
-    const history = r.history?.length ? r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>")
-      : esc(t("unchanged"));
+    const changes = r.history?.length && r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>");
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
     const access = (r.stations || []).map((s) => esc([s.line, t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
@@ -566,7 +567,7 @@
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact${k === "station" ? " wide" : ""}"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
-      ${sec("history", [["price", history]])}
+      ${changes ? sec("history", [["price", changes]]) : ""}
       ${sec("access", [["nearest", access]])}
       ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
         ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))], ["repairOnce", yen(r.repair_fund_once)],
