@@ -25,7 +25,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     geo.write_text(json.dumps({"東京都狛江市岩戸北３": [35.63, 139.58]}, ensure_ascii=False))
     out = tmp_path / "site"
     index = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
-    assert {"index.html", "app.js", "filter.js", "style.css", ".nojekyll"} <= {p.name for p in out.iterdir()}
+    assert {"index.html", "app.js", "filter.js", "i18n.js", "style.css", ".nojekyll"} <= {p.name for p in out.iterdir()}
     cols = index["columns"]
     assert len(cols["id"]) < 46                               # 46 listings, duplicates folded
     assert index["prefs"] == ["東京都"] and index["areas"] == [["13219", "狛江市", 0]]
