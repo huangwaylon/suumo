@@ -94,7 +94,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - Listing-page labels end in `ヒント` (a help link) and the summary and full spec tables repeat labels; `spec_table`
   strips the suffix and keeps the first value. Deal type is `取引態様：＜…＞` in the agent block.
 - `land_rights` text can be a paragraph; `_tenure` maps it to a category and keeps the text in `land_rights_note`.
-- Image URLs are SUUMO resize URLs (`resizeImage?src=…&w=&h=`); any size works, the site asks for 360×270 (cards), 640×480 (listing) and 120×90 (map popups).
+- Image URLs are SUUMO resize URLs (`resizeImage?src=…&w=&h=`); any size works, the site asks for 360×270 (cards), 640×480 (listing) and 120×90 (map popups). SUUMO pads small originals instead of enlarging them, so larger sizes make some photos smaller.
 - Addresses mostly stop at the 丁目 (full-width digit); some add 番地 in ASCII digits, which `geo.town_of` drops.
 
 ## Extending

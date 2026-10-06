@@ -14,9 +14,15 @@
   let S = I18N[settings.lang] || I18N.ja;
   const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
   const t = (key, ...args) => { const v = lookup(S, key) ?? lookup(I18N.ja, key); return typeof v === "function" ? v(...args) : v; };
-  // fixed SUUMO values (land rights, zoning, parking...) in English; "商業、１種住居" part by part
-  const value = (v) => (v == null || !S.values ? v : S.values[v] ?? v.split("、").map((p) => S.values[p] ?? p).join(", "));
+  // fixed SUUMO values (land rights, zoning, utilities...) in English: whole, else part by part ("商業、１種住居")
+  const value = (v) => {
+    if (v == null || !S.yearMonth) return v;  // Japanese: as listed
+    const month = /^(\d{4})年(\d{1,2})月(上旬|中旬|下旬)?(予定)?$/.exec(v);
+    if (month) return S.yearMonth(...month.slice(1));
+    return S.values[v] ?? v.split(/([、／/])/).map((p) => S.values[p.trim()] ?? (p === "、" || p === "／" ? ", " : p)).join("");
+  };
   const place = (name) => S.places?.[name] ?? name;
+  const feature = (f) => S.features?.[f] ?? f.normalize("NFKC");
   const DARK = matchMedia("(prefers-color-scheme: dark)");
 
   function applyTheme() {
@@ -200,7 +206,8 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = t("count", num(hits.length));
+    $("count").textContent = mode === "search" ? t("count", num(hits.length)) : "";  // the banner counts favorites
+    $("view").hidden = !hits.length && !showMap;
     const active = activeConditions();
     $("filters-n").hidden = !active.length;
     $("filters-n").textContent = active.length;
@@ -292,7 +299,7 @@
     for (const s of q.stations) out.push([t("station", s), drop("stations", s)]);
     if (q.walk != null) out.push([t("walkWithin", q.walk), reset("walk")]);
     for (const f of FLAGS) if (q[f]) out.push([t("flags")[f], reset(f)]);
-    for (const f of q.features) out.push([f, drop("features", f)]);
+    for (const f of q.features) out.push([feature(f), drop("features", f)]);
     return out;
   }
 
@@ -310,7 +317,7 @@
   const flag = (field, n) => chipBtn(`data-flag="${field}"`, t("flags")[field], n, q[field]);
   function select(field, label, values, fmt) {
     return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${values.map((v) =>
-      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))} ${esc(t("paren", num(facets[field][v] || 0)))}</option>`).join("")}</select></label>`;
+      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}${esc(t("paren", num(facets[field][v] || 0)))}</option>`).join("")}</select></label>`;
   }
 
   function renderFilters() {
@@ -328,7 +335,7 @@
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
-    sec("types", `${h3("types")}<div class="opts">${db.index.types.map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
+    sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
     sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}${
       select("priceMax", t("max"), PRICES, (v) => t("priceMax", money(v)))}`);
@@ -344,14 +351,16 @@
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f)).slice(0, 30)];
     sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (facets[f] || q[f])).map((f) =>
       flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.map((f) =>
-      many("features", f, f.normalize("NFKC"), facets.features[f] || 0)).join("")}</div>`);
+      many("features", f, feature(f), facets.features[f] || 0)).join("")}</div>`);
     $("apply").textContent = t("show", num(facets.total));
   }
 
   function stationList() {
     const raw = $("station-q").value.trim(), term = Filter.normalize(raw), counts = facets.stations;
     let names = term ? db.index.stations.filter((s) => Filter.normalize(s).includes(term)) : Object.keys(counts);
-    names = names.filter((s) => !q.stations.includes(s)).sort((a, b) => (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
+    const rank = (s) => (!term ? 0 : Filter.normalize(s) === term ? 0 : Filter.normalize(s).startsWith(term) ? 1 : 2);
+    names = names.filter((s) => !q.stations.includes(s))
+      .sort((a, b) => rank(a) - rank(b) || (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
     $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, t("station", s), counts[s] || 0)).join("")
       || `<span class="meta">${esc(t(/^[ぁ-ゖァ-ヺー]+$/.test(raw) ? "stationKanji" : "noStation"))}</span>`;
   }
@@ -439,7 +448,7 @@
     }
     cluster.clearLayers();
     cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
-      L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list))));
+      L.marker([lat, lng], { icon: pin(list.length), count: list.length }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
     note.textContent = hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : t("emptyTitle");
@@ -513,10 +522,10 @@
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
     const unit = it?.unit ? t("perM2", it.unit) + (isCondo(type) ? "" : t("paren", t("perTsubo", Math.round(it.unit * TSUBO)))) : "";
     const facts = [["layout", r.layout], [isCondo(type) ? "floor" : "building", m2(r.floor_m2 || r.building_m2)],
-      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && `${m2(r.land_m2)} ${t("paren", tsubo(r.land_m2))}`],
+      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && m2(r.land_m2) + t("paren", tsubo(r.land_m2))],
       ["age", it ? age(it) : ""], ["station", it ? station(it) : ""], ["unit", unit]].filter(([, v]) => v);
     const history = r.history?.length ? r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>")
-      : esc(t("unchanged", day(r.new_date || r.first_seen)));
+      : esc(t("unchanged"));
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
     const access = (r.stations || []).map((s) => esc([s.line, t("station", s.name), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
@@ -529,10 +538,10 @@
         <div class="d-price num">${it ? price(it, true) : money(r.price, true)}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
-      <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      <div class="facts">${facts.map(([k, v]) => `<div class="fact${k === "station" ? " wide" : ""}"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
       ${sec("history", [["price", history]])}
       ${sec("access", [["nearest", access]])}
-      ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", r.mgmt_form)) : "")],
+      ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
         ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))], ["repairOnce", yen(r.repair_fund_once)],
         ["otherFees", txt(r.other_fees)], ["parking", txt(parking)]])}
       ${sec("bldg", [["built", r.built && t("month", +r.built.slice(0, 4), +r.built.slice(5, 7)) + (r.built_planned ? t("planned") : "")],
@@ -543,7 +552,7 @@
         ["zoning", txt(r.zoning)], ["ratios", r.coverage_pct || r.far_pct ? esc(`${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%`) : null],
         ["road", txt(road)], ["category", txt(r.land_category)], ["landStatus", txt(r.land_status)], ["condition", r.build_condition ? t("yes") : null],
         ["utilities", txt(r.utilities)], ["restrictions", txt(r.restrictions)]])}
-      ${r.features?.length ? `<section class="d-sec"><h2>${esc(L_("features"))}</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(f.normalize("NFKC"))}</span>`).join("")}</div></section>` : ""}
+      ${r.features?.length ? `<section class="d-sec"><h2>${esc(L_("features"))}</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(feature(f))}</span>`).join("")}</div></section>` : ""}
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
         ["seen", day(r.new_date || r.first_seen)]])}
@@ -600,6 +609,7 @@
   function clearAll() {
     q = { ...Filter.emptyQuery(), sort: q.sort };
     mode = "search";
+    if ($("station-q")) $("station-q").value = "";
     update(false);
   }
 
