@@ -32,6 +32,12 @@ GEO_BUDGET = 600  # seconds a run spends geocoding new towns (a new prefecture f
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def seconds_until_minute(now, minute):
+    """Seconds from now to the next time the clock shows :minute (0 when that's under a minute away)."""
+    left = (minute - now.minute) % 60 * 60 - now.second
+    return max(left, 0)
+
+
 def parse_budget(s):
     m = re.fullmatch(r"(\d+(?:\.\d+)?)([smh]?)", s.strip())
     if not m:
@@ -68,8 +74,11 @@ def cmd_run(c: Ctx):
     p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
     if not a.no_crawl:
         p.crawl_lists()
-    if a.budget > 0:
-        p.process_queue(a.budget, checkpoint=lambda: export(c.db, c.targets, c.data))
+    budget = a.budget
+    if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
+        budget = min(budget, seconds_until_minute(datetime.now(JST), a.until_minute))
+    if budget > 0:
+        p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
     p.purge()
     p.report.update(export=export(c.db, c.targets, c.data, run_id), requests=client.requests_made,
                     slowdowns=client.slowdowns,
@@ -186,6 +195,8 @@ def main():
 
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
+    r.add_argument("--until-minute", type=int, choices=range(60), metavar="0-59",
+                   help="stop listing pages at the next :MM (hourly runs end before the next one starts)")
     r.add_argument("--no-crawl", action="store_true", help="skip search results; only work the queue")
     r.add_argument("--commit", action="store_true", help="git-commit data/ and geo/ after the run")
     r.add_argument("--push", action="store_true", help="commit and push (rebuilds the site)")

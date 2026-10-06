@@ -217,3 +217,12 @@ def test_geocoder_titles_match_district_towns_and_ke_spellings():
     assert _same_spelling("神奈川県箱根町強羅").startswith(_municipality("神奈川県足柄下郡箱根町強羅"))
     assert _same_spelling("茨城県龍ケ崎市佐貫町").startswith(_municipality("茨城県龍ヶ崎市佐貫町"))
     assert not _same_spelling("東京都府中市").startswith(_municipality("広島県府中市"))
+
+
+def test_hourly_runs_stop_listing_pages_before_the_next_run():
+    from datetime import datetime
+
+    from suumo.cli import seconds_until_minute
+    assert seconds_until_minute(datetime(2026, 10, 6, 21, 30, 0), 55) == 25 * 60
+    assert seconds_until_minute(datetime(2026, 10, 6, 21, 58, 30), 55) == 56 * 60 + 30   # next hour's :55
+    assert seconds_until_minute(datetime(2026, 10, 6, 21, 55, 0), 55) == 0
