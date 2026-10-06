@@ -9,7 +9,9 @@ tests/test_site.py runs the same queries through site/filter.js (Node) and the c
 The build output is not committed: GitHub Actions builds and deploys it on every push.
 """
 import json
+import re
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -29,11 +31,17 @@ COLUMNS = ["id", "type", "area", "price", "price_max", "rooms", "size", "land", 
            "features", "flags", "dup", "new_date", "first_seen", "unit", "town", "name", "layout", "image"]
 
 
-def _image(url):
-    """Keep only SUUMO's image path (the resize URL around it is rebuilt in the browser)."""
+_IMAGE_PATH = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
+
+
+def _image(url, lid):
+    """SUUMO's image path, shortened: 'gazo/bukken/030/N010000/img/670/<id>/<id>_0004.jpg' -> '030/N010000/670/0004.jpg'
+    (site/app.js rebuilds it with the id). Other forms keep the path, or the whole URL."""
     if not url or not url.startswith(IMAGE_PREFIX):
         return url
-    return parse_qs(urlparse(url).query).get("src", [None])[0]
+    path = parse_qs(urlparse(url).query).get("src", [None])[0]
+    m = _IMAGE_PATH.match(path or "")
+    return "/".join(m.group(1, 2, 3, 5)) if m and m.group(4) == lid else path
 
 
 def _date_int(s):
@@ -77,7 +85,8 @@ def build_index(snap, towns_cache, updated):
             dups(i.dup) if i.dup and len(snap.groups.get(i.dup, ())) > 1 else None,
             _date_int(snap.new_dates.get(i.key)), _date_int(i.first_seen),
             round(i.unit_price) if i.unit_price else None,
-            towns(town) if town else None, r.get("name") or r.get("title"), r.get("layout"), _image(r.get("image")),
+            towns(town) if town else None, r.get("name") or r.get("title"), r.get("layout"),
+            _image(r.get("image"), r["id"]),
         ])
     for line in sorted(line_stations):
         lines(line)
@@ -102,6 +111,17 @@ def listing_record(snap, item):
     return rec
 
 
+def _updated(data_dir):
+    """When the data last changed: the last commit touching data/ (file times are checkout times in CI)."""
+    for args in (["--", str(data_dir)], []):
+        out = subprocess.run(["git", "-C", str(data_dir), "log", "-1", "--format=%ct", *args],
+                             capture_output=True, text=True)
+        if out.returncode == 0 and out.stdout.strip():
+            return datetime.fromtimestamp(int(out.stdout), JST).strftime("%Y-%m-%d %H:%M")
+    newest = max((p.stat().st_mtime for p in data_dir.glob("*/*/*.jsonl")), default=0)
+    return datetime.fromtimestamp(newest, JST).strftime("%Y-%m-%d %H:%M") if newest else ""
+
+
 def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
@@ -113,9 +133,7 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print):
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
     (out / ".nojekyll").write_text("")
-    updated = max((p.stat().st_mtime for p in Path(data_dir).glob("*/*/*.jsonl")), default=0)
-    index = build_index(snap, load_cache(geo_cache),
-                        datetime.fromtimestamp(updated, JST).strftime("%Y-%m-%d %H:%M") if updated else "")
+    index = build_index(snap, load_cache(geo_cache), _updated(Path(data_dir)))
     (out / "data").mkdir(exist_ok=True)
     (out / "data" / "index.json").write_text(_dump(index), encoding="utf-8")
     for item in snap.items:

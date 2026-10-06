@@ -19,6 +19,7 @@ from .gitdata import commit_data
 from .http import Client
 from .maintenance import out_of_scope, prune, reparse
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
+from .site import build as build_site
 
 JST = ZoneInfo("Asia/Tokyo")
 GEO_CACHE = "geo/towns.json"
@@ -147,6 +148,11 @@ def cmd_geocode(args):
     geocode(ROOT / args.data, ROOT / GEO_CACHE)
 
 
+def cmd_site(args):
+    """Build the static site into --out (reads data/ and geo/ only: no state.db, no run lock)."""
+    build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out)
+
+
 def cmd_reparse(c: Ctx):
     reparse(c.db, c.archive)
     export(c.db, c.targets, c.data)
@@ -175,9 +181,11 @@ def main():
     pr.add_argument("--yes", action="store_true")
     sub.add_parser("reparse", help="re-run parsers over the raw archive (no requests)")
     sub.add_parser("geocode", help="look up map coordinates for towns not in geo/towns.json yet")
+    st = sub.add_parser("site", help="build the static search site (GitHub Pages)")
+    st.add_argument("--out", default="_site")
     args = ap.parse_args()
-    if args.cmd == "geocode":
-        cmd_geocode(args)
+    if args.cmd in ("geocode", "site"):  # read data/ only
+        {"geocode": cmd_geocode, "site": cmd_site}[args.cmd](args)
         return
     c = Ctx(args)
     if args.cmd in READ_ONLY:

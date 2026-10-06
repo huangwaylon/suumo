@@ -146,7 +146,7 @@ class Item:
         self.first_seen = rec.get("first_seen") or ""
         self.dup = rec.get("dup_key")
         base = rec.get("floor_m2") or rec.get("building_m2") or (rec.get("land_m2") if self.type == "land" else None)
-        self.unit_price = self.price_lo / base if self.price_lo and base and not rec.get("price_max") else None
+        self.unit_price = round(self.price_lo / base) if self.price_lo and base and not rec.get("price_max") else None
         self.removed = removed
         self.built = rec.get("built")
         self.has_detail = bool(rec.get("has_detail"))

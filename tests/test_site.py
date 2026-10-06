@@ -61,7 +61,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     town = dict((t, (lat, lng)) for t, lat, lng in index["towns"])
     assert town["東京都狛江市岩戸北３"] == (35.63, 139.58)
     row = dict(zip(index["columns"], next(r for r in index["rows"] if r[0] == "20205670"), strict=True))
-    assert row["image"].startswith("gazo/bukken/") and row["price"] == 12_000_000
+    assert row["image"] == "030/N010000/670/20205670_0004.jpg".replace("20205670_", "") and row["price"] == 12_000_000
     detail = json.loads((out / "data/l/used_condo/20205670.json").read_text())
     assert detail["url"].startswith("https://suumo.jp/") and detail["land_rights"] == "定期借地権"
     dropped = json.loads((out / "data/l/used_condo/20635014.json").read_text())
