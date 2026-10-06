@@ -17,6 +17,7 @@
   // fixed SUUMO values (land rights, zoning, utilities...) in English: whole, else part by part ("商業、１種住居")
   const value = (v) => {
     if (v == null || !S.yearMonth) return v;  // Japanese: as listed
+    v = v.replace(/[（(]納戸[)）]/g, S.values["（納戸）"]);  // 6LDK+2S（納戸）
     const month = /^(\d{4})年(\d{1,2})月(上旬|中旬|下旬)?(予定)?$/.exec(v);
     if (month) return S.yearMonth(...month.slice(1));
     return S.values[v] ?? v.split(/([、／/])/).map((p) => S.values[p.trim()] ?? (p === "、" || p === "／" ? ", " : p)).join("");
@@ -84,6 +85,7 @@
   let shared = [];
   let hits = [], shown = 0;
   let showMap = false;
+  let compare = false;          // favorites / shared list as a side-by-side table
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
@@ -121,7 +123,8 @@
   function station(it) {
     const closest = (chosen) => it.stations.reduce((best, [s, w]) =>
       (w != null && (!chosen || q.stations.includes(s)) && (!best || w < best[1]) ? [s, w] : best), null);
-    const best = (q.stations.length && closest(true)) || closest(false);  // the chosen stations first
+    const chosen = mode === "search" && q.stations.length;
+    const best = (chosen && closest(true)) || closest(false);  // the chosen stations first
     if (best) return t("walk", stationName(best[0]), best[1]);
     return it.stations.length ? t("bus", stationName(it.stations[0][0])) : "";
   }
@@ -164,6 +167,7 @@
     shared = p.get("ids") ? p.get("ids").split(",") : [];
     mode = shared.length ? "shared" : p.get("fav") === "1" ? "favorites" : "search";
     showMap = p.get("view") === "map";
+    compare = mode !== "search" && p.get("cmp") === "1";
     return p.get("id");
   }
 
@@ -177,6 +181,7 @@
     if (mode === "favorites") p.set("fav", "1");
     if (mode === "shared") p.set("ids", shared.join(","));
     if (showMap) p.set("view", "map");
+    if (compare && mode !== "search") p.set("cmp", "1");
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
@@ -209,7 +214,8 @@
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
-    $("count").textContent = mode === "search" ? t("count", num(hits.length)) : "";  // the banner counts favorites
+    $("count").textContent = t(mode === "favorites" ? "favBanner" : mode === "shared" ? "sharedBanner" : "count", num(hits.length));
+    $("sort").hidden = hits.length < 2 || compare;
     $("view").hidden = !hits.length && !showMap;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
@@ -219,12 +225,12 @@
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     $("chips").innerHTML = mode !== "search" ? "" : suggestion() + active.map(([label, , s], i) =>
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
-      (active.length > 1 ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
+      (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
     $("list").innerHTML = hits.length ? "" : emptyState(active);
     shown = 0;
-    more();
+    if (compare && hits.length) renderCompare(); else more();
     if (mapVisible()) drawMap();
     if (filtersVisible()) renderFilters();
   }
@@ -237,7 +243,7 @@
   }
 
   function more() {
-    if (shown >= hits.length) return;
+    if (shown >= hits.length || compare) return;
     $("list").insertAdjacentHTML("beforeend", hits.slice(shown, shown + PAGE).map(card).join(""));
     shown += PAGE;
   }
@@ -253,14 +259,14 @@
   }
 
   function card(it) {
-    const spec = [it.layout, ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
+    const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
       <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
-        <div class="meta">${esc(station(it))}</div>
-        <div class="meta">${esc([it.town, it.name || ((mode !== "search" || q.types.length !== 1) && typeName(it.type))].filter(Boolean).join(" · "))}</div>
+        <div class="meta wrap">${esc(station(it))}</div>
+        <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name || ((mode !== "search" || q.types.length !== 1) && typeName(it.type))].filter(Boolean).join(" · "))}</div>
         <div class="tags">${tags(it)}</div>
       </div></a>
       <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favFor", money(it.price), it.layout, it.town || it.areaName))}">${icon("heart")}</button></article>`;
@@ -282,12 +288,12 @@
   function renderBanner() {
     const b = $("banner");
     b.hidden = mode === "search";
+    const cmp = hits.length > 1 ? `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>` : "";
+    const back = `<button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button>`;
     if (mode === "favorites") {
-      b.innerHTML = `<span>${esc(t("favBanner", favs.size))}</span><span>${favs.size ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}
-        <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
+      b.innerHTML = `${cmp}${hits.length ? `<button class="btn" data-share="1">${esc(t("share"))}</button>` : ""}${back}`;
     } else if (mode === "shared") {
-      b.innerHTML = `<span>${esc(t("sharedBanner", hits.length))}</span><span><button class="btn" data-import="1">${esc(t("importFavs"))}</button>
-        <button class="btn ghost" data-search="1">${esc(t("backToSearch"))}</button></span>`;
+      b.innerHTML = `${cmp}<button class="btn" data-import="1">${esc(t("importFavs"))}</button>${back}`;
     }
   }
 
@@ -376,20 +382,22 @@
     const narrows = (n) => n < facets.total;  // a choice every result has changes nothing: not shown
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f) && narrows(facets.features[f])).slice(0, 30)];
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
-    sec("extra", `${h3("extra")}<div class="opts">${FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f])))).map((f) =>
+    const flagsShown = FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f]))));
+    sec("extra", !flagsShown.length && !shownTags.length ? "" : `${h3("extra")}<div class="opts">${flagsShown.map((f) =>
       flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
       shownTags.length > 12 ? `<details class="group"><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.slice(12).map(tagChip).join("")}</div></details>` : ""}`);
     $("apply").textContent = t("show", num(facets.total));
+    $("clear").disabled = !activeConditions().length;
   }
 
   function stationList() {
     const typed = $("station-q").value.trim(), counts = facets.stations, rank = new Map();
     if (typed) for (const s of db.index.stations) rank.set(s, Filter.stationMatch(db, s, typed));
-    let names = typed ? db.index.stations.filter((s) => rank.get(s) < 3) : Object.keys(counts);
-    names = names.filter((s) => !q.stations.includes(s))
+    const found = typed ? db.index.stations.filter((s) => rank.get(s) < 3) : Object.keys(counts);
+    const names = found.filter((s) => !q.stations.includes(s) && counts[s])  // stations with no homes left aren't offered
       .sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0) || (counts[b] || 0) - (counts[a] || 0)).slice(0, 24);
     $("station-list").innerHTML = [...q.stations, ...names].map((s) => many("stations", s, t("station", stationName(s)), counts[s] || 0)).join("")
-      || `<span class="meta">${esc(t("noStation"))}</span>`;
+      || `<span class="meta">${esc(t(found.length ? "noStationHomes" : "noStation"))}</span>`;
   }
 
   function areaGroups() {
@@ -512,6 +520,41 @@
     showDetail(key);
   }
 
+  // A listing's full record (data/l/<type>/<id>.json); rejects with the HTTP status (404: ended) or a network error.
+  const records = new Map();
+  function record(key) {
+    if (!records.has(key)) {
+      records.set(key, fetch(`data/l/${key.replace(":", "/")}.json`)
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.status))))
+        .catch((e) => { records.delete(key); throw e; }));
+    }
+    return records.get(key);
+  }
+
+  // ---------- compare ----------
+
+  async function renderCompare() {
+    const list = hits.slice(0, 12), forKey = renderedFor;
+    $("list").innerHTML = '<div class="skeleton"></div>';
+    const recs = await Promise.all(list.map((it) => record(it.key).catch(() => null)));
+    if (renderedFor !== forKey) return;
+    const cols = list.map((it, i) => [it, recs[i] || {}]);
+    const yen = (v) => (v ? t("yen", num(v)) : "");
+    const ROWS = [
+      ["", ([it]) => `<a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy">` : ""}</div></a>`],
+      ["price", ([it]) => `<b class="num">${price(it, true)}</b>`],
+      ["layout", ([it]) => esc(value(it.layout) || typeName(it.type))],
+      ["floor", ([it]) => esc(it.size ? m2(it.size) : "")], ["land", ([it]) => esc(it.land ? m2(it.land) : "")],
+      ["age", ([it]) => esc(age(it))], ["station", ([it]) => esc(station(it))],
+      ["monthly", ([, r]) => esc(r.mgmt_fee || r.repair_fee ? t("perMonth", yen((r.mgmt_fee || 0) + (r.repair_fee || 0))) : "")],
+      ["floors", ([, r]) => esc([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
+      ["units", ([, r]) => esc(r.units ? t("unitsN", r.units) : "")], ["rights", ([, r]) => esc(value(r.land_rights) || "")],
+      ["place", ([it]) => esc(it.town || areaName(it.area))],
+    ];
+    $("list").innerHTML = `<div class="compare"><table><tbody>${ROWS.filter(([, f]) => cols.some((c) => f(c))).map(([k, f]) =>
+      `<tr><th scope="row">${k ? esc(t(`d.${k}`)) : ""}</th>${cols.map((c) => `<td>${f(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+
   let detailMap = null;
   async function showDetail(key) {
     openKey = key;
@@ -525,9 +568,7 @@
     body.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
     try {
-      const res = await fetch(`data/l/${key.replace(":", "/")}.json`);
-      if (!res.ok) throw new Error(res.status);
-      r = await res.json();
+      r = await record(key);
     } catch (e) {  // 404: the listing ended; anything else: the network
       if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
       return;
@@ -551,10 +592,11 @@
     const sec = (k, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h2>${esc(L_(k))}</h2><dl>${html}</dl></section>` : ""; };
     const yen = (v) => (v ? esc(t("yen", num(v))) : null);
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
-    const unit = it?.unit ? t("perM2", it.unit) + (isCondo(type) ? "" : t("paren", t("perTsubo", Math.round(it.unit * TSUBO)))) : "";
-    const facts = [["layout", r.layout], [isCondo(type) ? "floor" : "building", m2(r.floor_m2 || r.building_m2)],
-      [isCondo(type) ? "balcony" : "land", isCondo(type) ? m2(r.balcony_m2) : m2(r.land_m2) && m2(r.land_m2) + t("paren", tsubo(r.land_m2))],
-      ["age", it ? age(it) : ""], ["station", it ? station(it) : ""], ["unit", unit]].filter(([, v]) => v);
+    const second = (main, sub) => esc(main) + (sub ? `<small>${esc(sub)}</small>` : "");  // 坪 on a line of its own
+    const unit = it?.unit ? second(t("perM2", it.unit), !isCondo(type) && t("perTsubo", Math.round(it.unit * TSUBO))) : "";
+    const facts = [["layout", esc(value(r.layout) || "")], [isCondo(type) ? "floor" : "building", esc(m2(r.floor_m2 || r.building_m2))],
+      [isCondo(type) ? "balcony" : "land", isCondo(type) ? esc(m2(r.balcony_m2)) : m2(r.land_m2) && second(m2(r.land_m2), tsubo(r.land_m2))],
+      ["age", it ? esc(age(it)) : ""], ["station", it ? esc(station(it)) : ""], ["unit", unit]].filter(([, v]) => v);
     const changes = r.history?.length && r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>");
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
@@ -568,7 +610,7 @@
         <div class="d-price num">${it ? price(it, true) : money(r.price, true)}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
-      <div class="facts">${facts.map(([k, v]) => `<div class="fact${k === "station" ? " wide" : ""}"><span>${esc(L_(k))}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${v}</b></div>`).join("")}</div>
       ${changes ? sec("history", [["price", changes]]) : ""}
       ${sec("access", [["nearest", access]])}
       ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
@@ -623,7 +665,7 @@
 
   function setFavButton() {
     $("detail-fav").setAttribute("aria-pressed", favs.has(openKey));
-    $("detail-fav").querySelector("span").textContent = t(favs.has(openKey) ? "saved" : "favorites");
+    $("detail-fav").querySelector("span").textContent = t(favs.has(openKey) ? "saved" : "save");
   }
 
   let toastTimer = null;
@@ -665,7 +707,7 @@
     if (open) {
       renderFilters();
       const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
-      if (sec) sec.scrollIntoView({ block: "start" });
+      if (sec) sec.scrollIntoView({ block: "start" }); else $("filters-body").scrollTop = 0;
       (WIDE.matches ? sec?.querySelector("button, input, select") : $("filters-close"))?.focus();
       return;
     }
@@ -725,16 +767,16 @@
     });
     DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
     // List/map and search/favorites are history entries (back returns), each keeping its scroll position.
-    const switchView = (change) => {
-      if (history.state?.view) { history.back(); return; }  // back to the view it came from
+    const switchView = (name, change) => {
+      if (history.state?.view === name) { history.back(); return; }  // undoing the last switch: back to where it was
       scrollFor[renderedFor] = window.scrollY;
       change();
-      history.pushState({ view: true }, "", hashFor());
+      history.pushState({ view: name }, "", hashFor());
       render();
       restoreScroll();
     };
-    $("favs").addEventListener("click", () => switchView(() => { mode = mode === "favorites" ? "search" : "favorites"; }));
-    $("view").addEventListener("click", () => switchView(() => { showMap = !showMap; }));
+    $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
+    $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
     $("detail-back").addEventListener("click", closeDetail);
     $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
     document.addEventListener("click", (e) => {
@@ -765,7 +807,8 @@
         saveFavs();
         toast(t("imported", shared.length));
         mode = "favorites"; shared = []; update();
-      } else if (b.dataset.search) { mode = "search"; shared = []; update(); }
+      } else if (b.dataset.search) { mode = "search"; shared = []; compare = false; update(); }
+      else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
@@ -790,6 +833,7 @@
       const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings")
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
+      if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
       if (e.key !== "Escape") return;
       if (!$("settings").hidden) openSettings(false);
       else if (!$("detail").hidden) closeDetail();
