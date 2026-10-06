@@ -180,7 +180,8 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
 @pytest.mark.parametrize("address,town", [
     ("東京都狛江市東和泉２-20-20", "東京都狛江市東和泉２"), ("東京都北区栄町47", "東京都北区栄町"),
     ("港区三田５", "東京都港区三田５"), ("東京都八王子市元本郷町", "東京都八王子市元本郷町"), (None, None),
-    ("東京都三鷹市下連雀３-４１－１２", "東京都三鷹市下連雀３"), ("東京都あきる野市上代継６０－１", "東京都あきる野市上代継"),
+    ("東京都三鷹市下連雀３-４１－１２", "東京都三鷹市下連雀３"),
+    ("東京都あきる野市上代継６０－１", "東京都あきる野市上代継"),
 ])
 def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
     assert town_of(address, "tokyo") == town
