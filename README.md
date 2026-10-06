@@ -19,8 +19,8 @@ Plain HTML/JS, phone first, in Japanese, rebuilt by GitHub Actions on every push
 - **Favorites** (☆) are kept in the browser. The conditions live in the URL, so a search or a listing can be shared
   as a link.
 
-The same property listed by several agents (same `dup_key`) counts once. 新着 = first seen in the last 7 days
-(not counting the first crawl of an area), 値下げ = a price drop in the last 30 days.
+The same property listed by several agents (same `dup_key`) counts once. 新着 = new or relisted in the last 7 days
+(the first crawl of an area records its listings silently), 値下げ = a price drop in the last 30 days.
 
 The site is public (GitHub Pages) but marked `noindex`. Photos are loaded from SUUMO's image server.
 
@@ -190,5 +190,5 @@ IDs are per agent listing; `dup_key` groups the same property listed by several 
 
 ## Tests
 
-`uv run pytest -q` (offline; parsers are also checked against real pages in `tests/fixtures/`; the site's
-`filter.js` is checked against the Python catalog with Node). `uv run ruff check suumo tests` for lint.
+`uv run pytest -q` (offline; parsers are also checked against real pages in `tests/fixtures/`; the site's search
+rules in `filter.js` are tested with Node). `uv run ruff check suumo tests` for lint.

@@ -10,23 +10,23 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 
 | File | Role |
 |---|---|
-| `suumo/cli.py` | Entry point (`python -m suumo`). Thin: builds `Ctx` (DB, archive, scope), takes the run lock, dispatches. `geocode` and `site` read `data/` only and skip the lock |
+| `suumo/cli.py` | Entry point (`python -m suumo`). Each command declares its access: `write` (state.db + run lock), `read` (`status`), `files` (`geocode`, `site`: data/ and geo/ only) |
 | `suumo/pipeline.py` | `Pipeline`: `crawl_lists` → `reconcile` per area → `process_queue` → `purge`. All lifecycle rules and constants live here; progress is saved to the run's report for `status` |
 | `suumo/parse.py` | `TYPES`, area-selection pages (`parse_areas`), search-result pages (`parse_list_page`), shared value parsers (prices, m², stations, town) |
-| `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail` returns `(fields, meta)`) |
+| `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail`) |
 | `suumo/db.py` | SQLite schema, small query helpers, `dumps` (canonical JSON), `exclusive` (flock) |
 | `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
 | `suumo/maintenance.py` | `prune` (out-of-scope data) and `reparse` (rebuild parsed fields from `archive/`) |
-| `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page |
+| `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page; `write_atomic` (used by all file writers) |
 | `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `in_scope` |
 | `suumo/http.py` | `Client`: one request at a time, delay + jitter, retries, automatic slow-down; 404/410 → `FileNotFoundError` |
 | `suumo/gitdata.py` | `commit_data`: commit `data/` and `geo/` only, optionally push |
-| `suumo/catalog.py` | `data/` → `Snapshot`: `Query`, `Item` (derived search fields), bitset `mask`, reference `matches`, `search`/`count`/facets. The site's rules are tested against it |
+| `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
-| `site/filter.js` | The site's search rules (load index, `matches`, fold duplicates, sort, counts); mirrors `catalog.py` |
+| `site/filter.js` | The search rules, the only implementation (load index, `matches`, fold duplicates, sort, counts) |
 | `site/app.js`, `index.html`, `style.css` | The page: URL state, chips and sheets, list, Leaflet map, listing view, favorites (localStorage) |
-| `.github/workflows/pages.yml` | On push: tests (incl. Node), build, deploy to Pages |
+| `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (daily 04:00, `run --push`) |
 
 Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo`/`site` →
@@ -35,12 +35,13 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 ## Data model
 
 - `listings` (PK `type, id`): `list_json` (search-result fields, refreshed every crawl), `detail_json` (listing-page
-  fields), `status` active/removed, `first_seen`, `last_seen`, `missed`, `removed_at`, plus DB-only bookkeeping
-  (`detail_fetched`, `info_date`, `next_update`).
+  fields), `status` active/removed, `first_seen`, `last_seen`, `missed`, `removed_at`.
 - `areas` (PK `pref, type, code`): `slug`, `baselined`, `last_hits`, `last_status` (complete / incomplete / suspect / error).
 - `queue` (PK `type, id`): `priority` 2 new / 1 changed / 0 backfill, `attempts`, `last_error` (`parse:` prefix = parser failure).
-- `events`: `kind` new / price_changed / removed / relisted, `payload` (a summary snapshot), exported per run to
-  `data/events/<run_id>.json`; the site's 新着, 値下げ and price history come from those files. (`posted` is unused.)
+- `events`: `kind` new / price_changed / removed / relisted, `payload` `{"price"}` (+ `"old_price"` for price
+  changes), exported per run to `data/events/<run_id>.json`; the site's 新着, 値下げ and price history come from them.
+  (Older databases also carry unused columns: `events.posted`, `listings.detail_fetched/info_date/next_update`,
+  `areas.last_crawled`.)
 - `runs`: one row per run with a JSON report (`progress` while running).
 - IDs are SUUMO `nc_` numbers, per agent listing. The same property listed by several agents has several IDs;
   `dup_key` (type + building/address + size + price) groups them.
@@ -62,14 +63,12 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - **Archive before parse.** Every fetched page is saved to `archive/` before parsing; a parser exception is logged and
   recorded in the queue, never fatal. Fix the parser, then `reparse` (no requests).
 - **Deterministic export.** `data/` files are sorted by id with `FIELD_ORDER` key order and contain nothing that
-  changes on its own (`last_seen`, `missed`, `info_date`, `next_update`, `detail_fetched` stay in the DB). An
+  changes on its own (`last_seen`, `missed` stay in the DB). An
   unchanged day must be an empty git diff; check this after any export change. Files are replaced atomically.
 - **One writer.** Writing commands hold `state.db.lock`; `status`, `geocode` and `site` don't.
-- **The site's rules equal the catalog's.** `site/filter.js` (`matches`, `fold`, sort keys) mirrors
-  `catalog.Snapshot` (`matches`/`mask`, `fold`, `sort_hits`); `site.build_index` precomputes the tricky fields from
-  `catalog.Item` so the JS only compares. `test_site_filter_matches_the_catalog` runs 300+ random queries through
-  both (Node) and requires identical keys, order and counts; `test_bitset_index_agrees_with_the_reference_rules`
-  does the same for `mask` vs `matches`. Change all of them together.
+- **One implementation of the search rules: `site/filter.js`.** Python only derives fields (`catalog.Item`,
+  `site.build_index`) so the JS compares plain values; flag bits travel in the index (`site.FLAGS`). The rule tests
+  in `tests/test_site.py` build a site from synthetic records and run queries through filter.js in Node.
 - **Rules the site shows:** duplicates (`dup_key`) count once, represented by the cheapest matching listing. Land
   listed under both `new_house` and `land` is kept once, as land. Stations are identified by name. A building
   condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly. 新着 = a new/relisted
@@ -103,9 +102,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   `geo.PREF_JA` and the site's title assume Tokyo; add the prefecture there.
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
   add it to `TYPE_JA` in `site/app.js`.
-- **New search condition:** a `Query` field and its rule in `Snapshot.mask` and `Snapshot.matches`; a derived
-  column in `site.build_index` if the JS needs one; the same rule in `site/filter.js`; a control in `site/app.js`
-  (`CHIPS`/`SHEETS`, URL key in `LISTS`/`NUMS`/`BOOLS`); both random tests' query generators.
+- **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` if the JS needs one;
+  the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`CHIPS`/`SHEETS`, URL key in
+  `LISTS`/`NUMS`/`BOOLS`); a test in `tests/test_site.py`.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, progress,
   checkpoints, outage pause), `http.py` (slow-down), `archive.LIST_DAYS`, `catalog.NEW_DAYS`/`DROP_DAYS`,
   `cli.GEO_BUDGET`, and the choice lists at the top of `site/app.js`.
@@ -116,8 +115,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   (line length 120).
 - Tests: `test_lifecycle.py` (reconcile/purge/export with synthetic records), `test_parsers.py` (value parsers),
   `test_pages.py` (real pages in `tests/fixtures/`), `test_ops.py` (prune, reparse, lock, git commit, slow-down,
-  outage pause, progress), `test_catalog.py` (filters, folding, sorts, facets, reload), `test_site.py` (build output,
-  JS/Python parity, text search; real listings in `tests/fixtures/data/`). Tests never touch the network.
+  outage pause, progress, town names), `test_catalog.py` (derived fields), `test_site.py` (build output on real
+  listings in `tests/fixtures/data/`, every search rule through filter.js). Shared helpers: `tests/helpers.py`
+  (`rec`, `write`, `site_queries`, `QUIET`). Tests never touch the network.
 - Look at the site locally: `uv run python -m suumo site && cd _site && python3 -m http.server`.
 - Try changes on a copy: `--db`, `--archive`, `--data` point anywhere (`python -m suumo --db /tmp/s.db ... run`).
 - Testing parser changes without requests: `reparse`, then `git diff -- data` shows exactly what changed.
