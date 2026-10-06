@@ -252,7 +252,7 @@ details.group .opts { padding-bottom: 12px; }
 .d-sec .tag { font-size: 12px; font-weight: 400; color: var(--text); }
 #detail-map { height: 220px; margin: 8px 16px 24px; border-radius: var(--radius); }
 
-.toast { width: max-content; max-width: calc(100vw - 32px); position: fixed; z-index: 60; left: 50%; bottom: calc(84px + var(--safe-b)); transform: translateX(-50%);
+.toast { width: max-content; max-width: calc(100vw - 32px); position: fixed; z-index: 60; left: 50%; top: calc(var(--bar) + 12px); transform: translateX(-50%);
   padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 14px; box-shadow: var(--shadow);
   transition: opacity .2s; }
 .toast:not(.on) { opacity: 0; pointer-events: none; }  /* kept rendered: a live region */

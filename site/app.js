@@ -91,6 +91,7 @@
   let facets = null, facetsFor = null;
   let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
+  const stationHomes = new Map();  // station -> homes listing it
   const favs = new Set([].concat(stored("suumo.favorites", [])).filter((k) => typeof k === "string"));
 
   // ---------- formatting ----------
@@ -227,8 +228,9 @@
     $("favs-n").textContent = favs.size;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
-    const sug = mode === "search" && suggestion();
-    $("chips").innerHTML = mode !== "search" ? "" : (sug ? `<button class="chip suggest" data-suggest="${sug[0]}" data-value="${esc(sug[1])}">${esc(sug[2])}</button>` : "") + active.map(([label, , s], i) =>
+    const offers = mode === "search" ? suggestions() : [];
+    $("chips").innerHTML = mode !== "search" ? "" : offers.map(([f, v, label]) =>
+      `<button class="chip suggest" data-suggest="${f}" data-value="${esc(v)}">${esc(label)}</button>`).join("") + active.map(([label, , s], i) =>
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
@@ -310,16 +312,26 @@
   }
 
   // Typed a station or area name in the search box: offer it as a condition (walk limits, exact area).
-  // -> [field, value, label] or null
-  function suggestion() {
-    const typed = q.text.replace(/\s*(駅|station|sta\.?)$/i, "");
-    if (!typed) return null;
-    const s = db.index.stations.find((n) => !q.stations.includes(n) && Filter.stationMatch(db, n, typed) === 0);
-    if (s) return ["stations", s, t("useStation", stationName(s))];
+  // The typed text as conditions to offer, best first: [[field, value, label], ...]. A ward or city named the same
+  // as a station comes first unless 駅 was typed (世田谷 -> 世田谷区); a station may be typed in part (ふたこ).
+  function suggestions() {
+    const station = /(駅|station|sta\.?)$/i.test(q.text), typed = q.text.replace(/\s*(駅|station|sta\.?)$/i, "");
+    if (typed.length < 2) return [];
     const key = Filter.normalize(typed).replace(/ /g, "");
-    const area = db.index.areas.find(([code, name]) => !q.areas.includes(code) &&
-      [name, I18N.en.places[name]].some((n) => n && Filter.normalize(n).replace(/ /g, "") === key));
-    return area ? ["areas", area[0], t("useArea", place(area[1]))] : null;
+    const plain = (n) => Filter.normalize(n).replace(/ /g, "");
+    const area = db.index.areas.find(([code, name]) => !q.areas.includes(code) && [name, name.replace(/[区市町村]$/, ""),
+      I18N.en.places[name]].some((n) => n && plain(n) === key));
+    let best = null;  // the exact station, else the one with most homes among those starting with the text
+    for (const s of db.index.stations) {
+      if (q.stations.includes(s)) continue;
+      const m = Filter.stationMatch(db, s, typed);
+      if (m === 0) { best = s; break; }
+      if (m === 1 && (!best || (stationHomes.get(s) || 0) > (stationHomes.get(best) || 0))) best = s;
+    }
+    const out = [];
+    if (area) out.push(["areas", area[0], t("useArea", place(area[1]))]);
+    if (best) out[station ? "unshift" : "push"](["stations", best, t("useStation", stationName(best))]);
+    return out;
   }
 
   // The conditions in force, as [label, remove(query), filter section] for the chips and the empty state.
@@ -723,7 +735,7 @@
       renderFilters();
       const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
       if (sec) sec.scrollIntoView({ block: "start" }); else $("filters-body").scrollTop = 0;
-      (WIDE.matches ? sec?.querySelector("button, input, select") : $("filters-close"))?.focus();
+      (WIDE.matches ? (sec || $("filters-body")).querySelector("button:not(:disabled), input, select") : $("filters-close"))?.focus();
       return;
     }
     if (listStale) render();
@@ -756,8 +768,8 @@
       if (e.key !== "Enter") return;
       clearTimeout(timer);
       q.text = e.target.value.trim();
-      const sug = suggestion();
-      if (sug) applySuggestion(sug[0], sug[1]); else update();
+      const [best] = suggestions();
+      if (best) applySuggestion(best[0], best[1]); else update();
       if (COARSE.matches) e.target.blur(); else e.target.focus();
     });
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
@@ -833,7 +845,8 @@
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
-      $(a.getAttribute("href").slice(1))?.focus();
+      const id = a.getAttribute("href").slice(1);
+      if (id === "filters") openFilters(true); else $(id)?.focus();
     }));
     window.addEventListener("popstate", () => {
       if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
@@ -878,7 +891,10 @@
     try {
       const index = await (await fetch("data/index.json")).json();
       db = Filter.load(index);
-      for (const it of db.items) it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
+      for (const it of db.items) {
+        it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
+        for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
+      }
       areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");
@@ -889,6 +905,7 @@
     wire();
     if (!location.hash && localStorage.getItem("suumo.last")) history.replaceState(null, "", localStorage.getItem("suumo.last"));
     route();
+    if (mode === "search") localStorage.setItem("suumo.last", location.hash);
     if (early && !q.text) { q.text = early; update(); }
     (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
   }
