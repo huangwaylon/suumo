@@ -14,12 +14,15 @@ from . import scope as scope_mod
 from .archive import Archive
 from .db import DB, exclusive
 from .export import export
+from .geo import geocode
 from .gitdata import commit_data
 from .http import Client
 from .maintenance import out_of_scope, prune, reparse
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
 
 JST = ZoneInfo("Asia/Tokyo")
+GEO_CACHE = "geo/towns.json"
+GEO_BUDGET = 1800  # seconds a daily run spends on geocoding new towns (the first fill takes hours: `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -65,6 +68,7 @@ def cmd_run(c: Ctx):
     c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
            datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
     c.db.commit()
+    geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)  # towns of new listings, for the site's map
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
     print(f"\nrun {run_id}: {client.requests_made} requests, {p.report['mb']} MB, {p.report['seconds']}s; "
           f"events {dict(kinds) or 'none'}")
@@ -138,6 +142,11 @@ def cmd_prune(c: Ctx):
         export(c.db, c.targets, c.data)
 
 
+def cmd_geocode(args):
+    """Fill geo/towns.json for every town in data/ (reads data/ only: no state.db, no run lock)."""
+    geocode(ROOT / args.data, ROOT / GEO_CACHE)
+
+
 def cmd_reparse(c: Ctx):
     reparse(c.db, c.archive)
     export(c.db, c.targets, c.data)
@@ -165,7 +174,11 @@ def main():
     pr = sub.add_parser("prune", help="delete data no longer in scope.toml (dry run without --yes)")
     pr.add_argument("--yes", action="store_true")
     sub.add_parser("reparse", help="re-run parsers over the raw archive (no requests)")
+    sub.add_parser("geocode", help="look up map coordinates for towns not in geo/towns.json yet")
     args = ap.parse_args()
+    if args.cmd == "geocode":
+        cmd_geocode(args)
+        return
     c = Ctx(args)
     if args.cmd in READ_ONLY:
         COMMANDS[args.cmd](c)
