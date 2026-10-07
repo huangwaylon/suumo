@@ -182,7 +182,7 @@ def env(name):
 
 
 def cmd_rail(args):
-    rail_mod.update(ROOT / RAIL, token=env("ODPT_TOKEN"))
+    rail_mod.update(ROOT / RAIL, {k: env(k) for k in ("ODPT_TOKEN", "ODPT_CHALLENGE_TOKEN")})
 
 
 def cmd_saved(args):

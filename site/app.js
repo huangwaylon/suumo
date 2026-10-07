@@ -676,6 +676,7 @@
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
     note.textContent = area ? t("areaNote") : hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t("favEmpty")[0];
+    showRail();  // the chosen stations' lines stand out
     if (area && fittedFor === null) {  // opened from a link: show that area
       fittedFor = renderedFor;
       map.fitBounds([[area[0], area[1]], [area[2], area[3]]]);
@@ -688,47 +689,119 @@
     }
   }
 
-  // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ, ODPT line colours) ----------
-  let railLines = null, railStations = null;
+  // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ; colours, English names from ODPT) ----------
+  let railData = null;              // loading or loaded with the first map: {operators, lines, stations}
+  const loadRail = () => (railData ||= fetch("data/rail.json").then((r) => r.json()).then((d) => {
+    for (const line of d.lines) {    // each line's box, to find what's in view
+      const pts = line[4].flat();
+      line.box = [Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0]))];
+    }
+    return d;
+  }).catch(() => { railData = null; return null; }));
+  const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
+  const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
+  const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
+  let rail = null, railLines = [], railStations = null;
+  const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
+
   async function drawRail() {
-    let rail;
-    try { rail = await (await fetch("data/rail.json")).json(); } catch { return; }  // the map works without it
+    rail = await loadRail();
+    if (!rail) return;  // the map works without it
     const canvas = L.canvas({ padding: 0.3 });
-    railLines = L.layerGroup(rail.lines.map(([, , colour, parts]) => L.polyline(parts.map((p) => p.map(([lng, lat]) => [lat, lng])),
-      { renderer: canvas, color: colour, weight: 3, opacity: 0.7, interactive: false })));
+    railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
     railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
       L.circleMarker([lat, lng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
         .bindTooltip(name, { direction: "top", offset: [0, -4] }).bindPopup(() => stationPopup(name, lines))));
     map.attributionControl.addAttribution(esc(rail.attribution));
-    const toggle = document.createElement("button");
-    toggle.className = "rail-btn";
-    toggle.addEventListener("click", () => {
-      settings.rail = settings.rail === false;
+    const open = document.createElement("button"), panel = document.createElement("div");
+    open.className = "rail-btn";
+    panel.className = "rail-panel";
+    panel.hidden = true;
+    open.addEventListener("click", () => { panel.hidden = !panel.hidden; if (!panel.hidden) railPanel(); });
+    panel.addEventListener("change", (e) => {  // a switch: all lines, or one operator
+      const op = e.target.dataset.op;
+      if (op == null) settings.rail = e.target.checked;
+      else if (e.target.checked) hiddenOps.delete(op); else hiddenOps.add(op);
+      settings.railHidden = [...hiddenOps];
       localStorage.setItem("suumo.settings", JSON.stringify(settings));
       showRail();
     });
-    L.DomEvent.disableClickPropagation(toggle);
-    $("map").append(toggle);
+    panel.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-ops]");
+      if (!b) return;
+      for (const op of railOperatorsInView()) if (b.dataset.ops === "none") hiddenOps.add(op[0]); else hiddenOps.delete(op[0]);
+      panel.dispatchEvent(new Event("change"));
+      railPanel();
+    });
+    for (const el of [open, panel]) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); $("map").append(el); }
     map.on("zoomend", showRail);
+    map.on("moveend", () => { if (!panel.hidden) railPanel(); });
     showRail();
   }
-  // Lines unless switched off; stations once there's room for them (zoom 12+).
+
+  // The operators with lines in view, most lines first.
+  function railOperatorsInView() {
+    const b = map.getBounds(), seen = new Set();
+    for (const line of rail.lines) {
+      const [s, w, n, e] = line.box;
+      if (n >= b.getSouth() && s <= b.getNorth() && e >= b.getWest() && w <= b.getEast()) seen.add(line[0]);
+    }
+    return [...seen].sort((a, c) => a - c).map((i) => rail.operators[i]);
+  }
+
+  function railPanel() {
+    const panel = $("map").querySelector(".rail-panel"), on = settings.rail !== false;
+    panel.innerHTML = `<label class="rail-all"><input type="checkbox"${on ? " checked" : ""}> ${esc(t("railShow"))}</label>
+      <div class="rail-ops"${on ? "" : " hidden"}><div class="rail-bulk"><button data-ops="all">${esc(t("railAll"))}</button><button data-ops="none">${esc(t("railNone"))}</button></div>${
+      railOperatorsInView().map((op) => `<label><input type="checkbox" data-op="${esc(op[0])}"${hiddenOps.has(op[0]) ? "" : " checked"}><i style="background:${esc(op[2])}"></i>${esc(operatorName(op))}</label>`).join("")}</div>`;
+  }
+
+  // The lines of the chosen stations (they're highlighted; the others fade).
+  function chosenLines() {
+    const names = new Set(q.stations.map((s) => s.replace(/（.*）$/, "")));
+    return new Set(names.size ? rail.stations.filter(([n]) => names.has(n)).flatMap(([, , , lines]) => lines) : []);
+  }
+
+  // Lines unless switched off (all, or by operator); stations once there's room for them (zoom 12+).
   function showRail() {
-    const on = settings.rail !== false, show = (layer, yes) => (yes ? layer.addTo(map) : layer.remove());
-    const z = map.getZoom();
-    show(railLines, on);
-    railLines.eachLayer((l) => l.setStyle({ weight: z < 11 ? 1.5 : z < 13 ? 2.5 : 4, opacity: z < 11 ? 0.5 : 0.75 }));  // thin when zoomed out
-    show(railStations, on && z >= 12);
+    if (!rail || !map) return;
+    const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines();
+    railLines.forEach((l, i) => {
+      const visible = on && !hiddenOps.has(rail.operators[rail.lines[i][0]][0]);
+      if (visible !== map.hasLayer(l)) { if (visible) l.addTo(map); else l.remove(); }
+      if (!visible) return;
+      const lit = focus.has(i);
+      l.setStyle({ weight: (z < 11 ? 1.5 : z < 13 ? 2.5 : 4) + (lit ? 3 : 0), opacity: focus.size && !lit ? 0.2 : z < 11 ? 0.5 : 0.8 });
+      if (lit) l.bringToFront();
+    });
+    if ((on && z >= 12) !== map.hasLayer(railStations)) { if (on && z >= 12) railStations.addTo(map); else railStations.remove(); }
     const b = $("map").querySelector(".rail-btn");
     b.textContent = t("railLayer");
     b.setAttribute("aria-pressed", on);
   }
+
   // A station on the map: its lines, and its homes under the current conditions in one tap.
   function stationPopup(name, lines) {
     const s = db.index.stations.find((n) => n === name || n.startsWith(name + "（"));
     const n = s ? Filter.count(db, { ...q, stations: [s] }) : 0;  // under the current conditions
-    return `<strong>${esc(t("station", stationName(s || name)))}</strong><div class="meta wrap">${esc(lines.join("・"))}</div>${
+    return `<strong>${esc(t("station", stationName(s || name)))}</strong><div class="meta wrap">${esc(lines.map((i) => lineName(rail.lines[i])).join("・"))}</div>${
       n ? `<button class="btn primary station-pick" data-station-pick="${esc(s)}">${esc(t("stationHomes", num(n)))}</button>` : ""}`;
+  }
+
+  // The listing's map: the lines and stations around it.
+  async function railNear(target, lat, lng) {
+    const data = await loadRail();
+    if (!data || target !== detailMap) return;  // closed meanwhile
+    const canvas = L.canvas({ padding: 0.3 }), r = 0.05;
+    for (const [, , , colour, parts] of data.lines.filter((l) => l.box[0] <= lat + r && l.box[2] >= lat - r && l.box[1] <= lng + r && l.box[3] >= lng - r)) {
+      L.polyline(latlngs(parts), { renderer: canvas, color: colour, weight: 3.5, opacity: 0.8, interactive: false }).addTo(target);
+    }
+    for (const [name, slat, slng] of data.stations) {
+      if (Math.abs(slat - lat) < 0.03 && Math.abs(slng - lng) < 0.03) {
+        L.circleMarker([slat, slng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
+          .bindTooltip(name, { direction: "top", offset: [0, -4] }).addTo(target);
+      }
+    }
   }
 
   // Where most results are: the 10th-90th percentile box (outskirts and islands don't shrink the view).
@@ -821,6 +894,7 @@
         .setView([it.lat, it.lng], 15);
       L.tileLayer(TILES).addTo(detailMap);
       L.circle([it.lat, it.lng], { radius: 180, color: getComputedStyle(document.body).getPropertyValue("--accent") }).addTo(detailMap);
+      railNear(detailMap, it.lat, it.lng);
     }
   }
 

@@ -28,6 +28,7 @@ from .stations import key as station_key
 from .stations import names as station_names
 
 JST = ZoneInfo("Asia/Tokyo")
+SPLIT_KM = 3  # same-named stations further apart than this are different stations
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
@@ -112,13 +113,21 @@ def representatives(snap):
     return reps
 
 
-def station_prefectures(reps):
-    """station name -> the prefectures it's in (a name in two is two stations: "小川町（埼玉）")."""
-    out = defaultdict(set)
+def station_prefectures(reps, rail_stations=()):
+    """station name -> the prefectures to tell apart, for a name that is really two stations (小川町 in Tokyo and
+    in Saitama: "小川町（埼玉）"). A name in listings of two prefectures is usually one station near the border
+    (二子玉川); it's two only when the railway data has stations of that name more than SPLIT_KM apart."""
+    used = defaultdict(set)
     for i in reps:
         for name, _, _ in i.stations:
-            out[name].add(i.pref)
-    return out
+            used[name].add(i.pref)
+    where = defaultdict(list)
+    for name, lat, lng, _ in rail_stations:
+        if len(used.get(name, ())) > 1:
+            where[name].append((lat, lng))
+    far = {name for name, pts in where.items()
+           if max(abs(a[0] - b[0]) + abs(a[1] - b[1]) for a in pts for b in pts) * 111 > SPLIT_KM}
+    return {name: prefs for name, prefs in used.items() if name in far}
 
 
 def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=None):
@@ -127,7 +136,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
     station_prefs = station_prefs if station_prefs is not None else station_prefectures(reps)
 
     def station(name, pref):
-        return name if len(station_prefs[name]) < 2 else f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）"
+        return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
 
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
                             "stations", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
@@ -206,7 +215,8 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     by_pref = defaultdict(dict)
     for item, others in reps.items():
         by_pref[item.pref][item] = others
-    station_prefs = station_prefectures(reps)
+    rail = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
+    station_prefs = station_prefectures(reps, json.loads(rail.read_text())["stations"] if rail.exists() else ())
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = {}
     for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
@@ -216,7 +226,6 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
-    rail = Path(geo_cache).with_name("rail.json")  # the map's railway lines and stations (suumo.rail)
     if rail.exists():
         shutil.copyfile(rail, out / "data" / "rail.json")
     for item, others in reps.items():

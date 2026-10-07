@@ -256,9 +256,15 @@ def test_area_groups(code, name, group):
 def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     from tests.helpers import write
     data = tmp_path / "data"
-    st = [{"line": "東武東上線", "name": "小川町", "walk": 5}]
-    write(data, [rec(1, stations=[{"line": "都営新宿線", "name": "小川町", "walk": 3}])])
-    write(data, [rec(2, area_code="11343", stations=st)], areas={"11343": "比企郡"}, pref="saitama")
+    futako = {"line": "東急田園都市線", "name": "二子玉川", "walk": 9}
+    write(data, [rec(1, stations=[{"line": "都営新宿線", "name": "小川町", "walk": 3}, futako])])
+    write(data, [rec(2, area_code="11343", stations=[{"line": "東武東上線", "name": "小川町", "walk": 5}])],
+          areas={"11343": "比企郡"}, pref="saitama")
+    write(data, [rec(3, area_code="14131", stations=[futako])], areas={"14131": "川崎市川崎区"}, pref="kanagawa")
+    (tmp_path / "rail.json").write_text(json.dumps({"lines": [], "stations": [   # where the railway data has them
+        ["小川町", 35.6949, 139.7676, []], ["小川町", 36.0567, 139.2614, []], ["二子玉川", 35.6118, 139.6267, []]]}))
     built = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
-    assert built["tokyo"]["stations"] == ["小川町（東京）"] and built["saitama"]["stations"] == ["小川町（埼玉）"]
-    assert [p for p, _, _ in built["manifest"]["prefs"]] == ["tokyo", "saitama"]          # Tokyo first
+    assert built["tokyo"]["stations"] == ["小川町（東京）", "二子玉川"]
+    assert built["saitama"]["stations"] == ["小川町（埼玉）"]
+    assert built["kanagawa"]["stations"] == ["二子玉川"]          # one station near the border: one name
+    assert [p for p, _, _ in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
