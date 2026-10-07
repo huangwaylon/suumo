@@ -4,3 +4,7 @@
 
 [[scope]]
 pref = "tokyo"   # all 62 municipalities, all five types
+
+[[scope]]
+pref = "gumma"   # 群馬 (SUUMO's slug); crawled in turn with the other prefectures around Tokyo
+rotate = true
