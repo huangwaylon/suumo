@@ -50,6 +50,7 @@
       <div class="toolbar">
         <h2 id="count" aria-live="polite" tabindex="-1"></h2>
         <span class="toolbar-end">
+          <button id="map-toggle" class="btn ghost map-toggle" aria-pressed="true"><svg class="i"><use href="#i-map"/></svg><span data-t="map"></span></button>
           <button id="keep" class="icon-btn" data-t-label="keepSearch" aria-pressed="false"><svg class="i"><use href="#i-star"/></svg></button>
           <select id="sort" class="select" data-t-label="sort"></select>
         </span>
@@ -73,7 +74,11 @@
       </div>
     </aside>
 
-    <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
+    <aside id="side" class="side" data-tab="map">
+      <div id="side-tabs" class="side-tabs" role="tablist"></div>
+      <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
+      <div id="side-body" class="side-body" role="tabpanel"></div>
+    </aside>
   </div>
 
   <button id="view" class="fab"></button>

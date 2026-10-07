@@ -250,6 +250,7 @@
     hits = mapHits = compute();
     if (area) hits = inArea(mapHits);
     document.body.classList.toggle("areamode", !!area);
+    sideLayout();
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     $("q").value = q.text;
     $("sort").value = q.sort;
@@ -345,7 +346,7 @@
 
   function card(it) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
-    return `<article class="card"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
+    return `<article class="card${sideTabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
       <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}</div>
@@ -594,7 +595,7 @@
   // ---------- map ----------
 
   let leaflet = null, map = null, cluster = null, fittedFor = null;
-  const mapVisible = () => WIDE.matches || showMap || !!area;
+  const mapVisible = () => (WIDE.matches ? !!area || (mapOn() && sideTab === "map") : showMap || !!area);
   const inArea = (list) => list.filter((it) => it.lat != null && it.lat >= area[0] && it.lng >= area[1] && it.lat <= area[2] && it.lng <= area[3]);
   const boundsOf = (m) => { const b = m.getBounds(); return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]; };
 
@@ -792,7 +793,7 @@
   // The listing's map: the lines and stations around it.
   async function railNear(target, lat, lng) {
     const data = await loadRail();
-    if (!data || target !== detailMap) return;  // closed meanwhile
+    if (!data || !target.getContainer().isConnected) return;  // closed meanwhile
     const canvas = L.canvas({ padding: 0.3 }), r = 0.05;
     for (const [, , , colour, parts] of data.lines.filter((l) => l.box[0] <= lat + r && l.box[2] >= lat - r && l.box[1] <= lng + r && l.box[3] >= lng - r)) {
       L.polyline(latlngs(parts), { renderer: canvas, color: colour, weight: 3.5, opacity: 0.8, interactive: false }).addTo(target);
@@ -842,10 +843,15 @@
   // ---------- compare ----------
 
   async function renderCompare() {
-    const list = hits.slice(0, 12), forKey = renderedFor;
+    const forKey = renderedFor;
     $("list").innerHTML = '<div class="skeleton"></div>';
+    const html = await compareHtml(hits.slice(0, 12));
+    if (renderedFor === forKey) $("list").innerHTML = html;
+  }
+
+  // Listings side by side: a row per fact, a column per listing (favorites, and the side panel's 比較).
+  async function compareHtml(list) {
     const recs = await Promise.all(list.map((it) => record(it.key).catch(() => null)));
-    if (renderedFor !== forKey) return;
     const cols = list.map((it, i) => [it, recs[i] || {}]);
     const yen = (v) => (v ? t("yen", num(v)) : "");
     const ROWS = [
@@ -861,11 +867,10 @@
       ["units", ([, r]) => esc(r.units ? t("unitsN", r.units) : "")], ["rights", ([, r]) => esc(value(r.land_rights) || "")],
       ["place", ([it]) => esc(it.town || areaName(it.area))],
     ];
-    $("list").innerHTML = `<div class="compare"><table><tbody>${ROWS.filter(([, f]) => cols.some((c) => f(c))).map(([k, f]) =>
+    return `<div class="compare"><table><tbody>${ROWS.filter(([, f]) => cols.some((c) => f(c))).map(([k, f]) =>
       `<tr><th scope="row">${k ? esc(t(`d.${k}`)) : ""}</th>${cols.map((c) => `<td>${f(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
 
-  let detailMap = null;
   async function showDetail(key) {
     openKey = key;
     const it = db.byKey.get(key);
@@ -874,29 +879,38 @@
     $("detail-back").focus();
     setFavButton();
     $("detail-link").removeAttribute("href");
-    const body = $("detail-body");
-    body.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
+    const r = await renderListing($("detail-body"), key);
+    if (openKey !== key) return;
+    $("detail-link").href = r ? safeUrl(r.url) : "";
+    $("detail-link").hidden = !r || !!(it && it.flags & db.flags.gone);  // ended: SUUMO's page is gone too
+  }
+
+  // A listing's page into box (the full-page view, or a tab of the side panel), with its small map.
+  // Resolves to the record, or null when it couldn't be loaded (ended, offline) or box moved on to another.
+  async function renderListing(box, key) {
+    const it = allByKey.get(key);
+    box.dataset.key = key;
+    box.leaflet?.remove();
+    box.leaflet = null;
+    box.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
     try {
       r = await record(key);
     } catch (e) {  // 404: the listing ended; anything else: the network
-      if (openKey === key) body.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
-      $("detail-link").hidden = true;
-      return;
+      if (box.dataset.key === key) box.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
+      return null;
     }
-    if (openKey !== key) return;
-    $("detail-link").href = safeUrl(r.url);
-    $("detail-link").hidden = !!(it && it.flags & db.flags.gone);  // ended: SUUMO's page is gone too
-    body.innerHTML = detailHtml(r, it);
-    if (it?.lat != null) {
-      if (!(await mapReady()) || openKey !== key) return;
-      detailMap?.remove();
-      detailMap = L.map("detail-map", { zoomControl: false, attributionControl: false, dragging: !L.Browser.mobile })
-        .setView([it.lat, it.lng], 15);
-      L.tileLayer(TILES).addTo(detailMap);
-      L.circle([it.lat, it.lng], { radius: 180, color: getComputedStyle(document.body).getPropertyValue("--accent") }).addTo(detailMap);
-      railNear(detailMap, it.lat, it.lng);
+    if (box.dataset.key !== key) return null;
+    box.innerHTML = detailHtml(r, it);
+    const el = box.querySelector(".d-map");
+    if (el && (await mapReady()) && box.dataset.key === key) {
+      const m = (box.leaflet = L.map(el, { zoomControl: false, attributionControl: false, dragging: !L.Browser.mobile })
+        .setView([it.lat, it.lng], 15));
+      L.tileLayer(TILES).addTo(m);
+      L.circle([it.lat, it.lng], { radius: 180, color: getComputedStyle(document.body).getPropertyValue("--accent") }).addTo(m);
+      railNear(m, it.lat, it.lng);
     }
+    return r;
   }
 
   function detailHtml(r, it) {
@@ -941,13 +955,13 @@
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
         ["seen", day(r.new_date || r.first_seen)]])}
-      ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div id="detail-map"></div>` : ""}`;
+      ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div class="d-map"></div>` : ""}`;
   }
 
   function hideDetail() {
     openKey = null;
-    detailMap?.remove();
-    detailMap = null;
+    $("detail-body").leaflet?.remove();
+    $("detail-body").leaflet = null;
     $("detail").hidden = true;
     document.body.style.overflow = "";
     lastFocus?.focus();
@@ -957,6 +971,69 @@
     if (pushed) { pushed = false; history.back(); return; }  // popstate hides it
     history.replaceState(null, "", hashFor());              // opened from a link: stay on the site
     hideDetail();
+  }
+
+  // ---------- side panel (desktop): the map, and the listings opened from the list, as tabs ----------
+  // Opened listings stay open for comparing until closed; the map can be hidden (then the list takes the room,
+  // unless listings are open).
+  const MAX_TABS = 8;
+  const sideTabs = [];      // listing keys, in the order opened
+  let sideTab = "map";      // "map", a listing key, or "compare"
+  const mapOn = () => settings.map !== false;
+  const sideMode = () => WIDE.matches && !area;  // (the map area view keeps its own layout)
+
+  function openListing(key) {
+    if (!sideMode()) return openDetail(key);
+    if (!sideTabs.includes(key)) sideTabs.push(key);
+    if (sideTabs.length > MAX_TABS) sideTabs.shift();
+    showSide(key);
+  }
+
+  function closeTab(key) {
+    if (key === "all") sideTabs.length = 0; else sideTabs.splice(sideTabs.indexOf(key), 1);
+    showSide(sideTabs.includes(sideTab) || sideTab === "compare" ? sideTab : sideTabs.at(-1) ?? "map");
+  }
+
+  // The page's layout for the panel: hidden (no map, no listings open), or showing the map / a listing / 比較.
+  function sideLayout() {
+    const wide = sideMode();
+    document.body.classList.toggle("side-off", wide && !mapOn() && !sideTabs.length);
+    $("map-toggle").setAttribute("aria-pressed", mapOn());
+    $("side").dataset.tab = wide ? (sideTab === "map" || sideTab === "compare" ? sideTab : "listing") : "map";
+  }
+
+  // Shows a tab (and draws the panel's tab bar).
+  function showSide(tab = sideTab) {
+    const wide = sideMode();
+    if (tab === "map" && !mapOn()) tab = sideTabs.at(-1) ?? "map";
+    if (tab === "compare" && sideTabs.length < 2) tab = sideTabs.at(-1) ?? "map";
+    sideTab = tab;
+    sideLayout();
+    if (!wide) return;
+    const button = (id, label, extra = "") => `<span class="side-tab${sideTab === id ? " on" : ""}" role="presentation">
+      <button role="tab" aria-selected="${sideTab === id}" data-tab-show="${esc(id)}">${extra}${esc(label)}</button>${
+      id !== "map" && id !== "compare" ? `<button class="side-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
+    $("side-tabs").innerHTML = (mapOn() ? button("map", t("map"), icon("map")) : "") + sideTabs.map((key) => {
+      const it = allByKey.get(key);
+      return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key);
+    }).join("") + (sideTabs.length > 1 ? button("compare", t("compareTab")) : "") +
+      (sideTabs.length ? `<button class="side-all" data-tab-close="all">${esc(t("closeAll"))}</button>` : "");
+    $("side-tabs").querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", sideTabs.includes(c.querySelector("[data-key]")?.dataset.key)));
+    const body = $("side-body");
+    if (tab === "map") { body.leaflet?.remove(); body.leaflet = null; body.dataset.key = ""; drawMap(); }
+    else if (tab === "compare") {
+      body.dataset.key = "compare";
+      compareHtml(sideTabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
+    } else if (body.dataset.key !== tab) {
+      renderListing(body, tab).then((r) => {
+        if (!r || body.dataset.key !== tab) return;
+        body.insertAdjacentHTML("afterbegin", `<div class="side-actions">
+          <button class="btn fav-btn" data-fav="${esc(tab)}" aria-pressed="${favs.has(tab)}">${icon("heart")}<span>${esc(t(favs.has(tab) ? "saved" : "save"))}</span></button>
+          ${r.url && !(allByKey.get(tab)?.flags & db.flags.gone) ? `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>` : ""}</div>`);
+        body.scrollTop = 0;
+      });
+    }
   }
 
   // ---------- favorites ----------
@@ -982,8 +1059,9 @@
       "_blank", "noopener");
     pending[key] = [save, Date.now()];
     refreshFavs();
-    document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
+    document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"], .fav-btn[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
     if (openKey === key) setFavButton();
+    document.querySelectorAll(`.fav-btn[data-fav="${CSS.escape(key)}"] span`).forEach((s) => { s.textContent = t(favs.has(key) ? "saved" : "save"); });
     toast(t(save ? "favAdded" : "favRemoved"));
     if (mode === "favorites") render();
   }
@@ -1117,7 +1195,7 @@
       const fav = e.target.closest("[data-fav]");
       if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav || openKey); return; }
       const link = e.target.closest("a[data-key]");
-      if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openDetail(link.dataset.key); return; }
+      if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openListing(link.dataset.key); return; }
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.remove != null) {
@@ -1147,6 +1225,8 @@
         else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
         update();
       }
+      else if (b.dataset.tabShow) showSide(b.dataset.tabShow);
+      else if (b.dataset.tabClose) closeTab(b.dataset.tabClose);
       else if (b.dataset.stationPick) {  // from a station on the map
         q.stations = [b.dataset.stationPick];
         map?.closePopup();
@@ -1183,7 +1263,12 @@
       else if (!$("detail").hidden) closeDetail();
       else if (document.body.classList.contains("show-filters")) openFilters(false);
     });
-    WIDE.addEventListener("change", () => render());
+    WIDE.addEventListener("change", () => { render(); showSide(); });
+    $("map-toggle").addEventListener("click", () => {  // desktop: the map in the side panel, or more room for the list
+      settings.map = !mapOn();
+      localStorage.setItem("suumo.settings", JSON.stringify(settings));
+      showSide(mapOn() ? "map" : sideTab);
+    });
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
   }
 
@@ -1224,7 +1309,8 @@
     if (want.join() !== chosen.join()) choosePrefs(want);
     const key = readHash();
     if (hashFor() !== renderedFor) render();
-    if (key) showDetail(key);
+    if (key && sideMode()) { history.replaceState(null, "", hashFor()); openListing(key); }  // a link to a listing
+    else if (key) showDetail(key);
     else if (!$("detail").hidden) { pushed = false; hideDetail(); }
   }
 
@@ -1251,6 +1337,7 @@
     const early = $("q").value.trim();  // typed while the listings were loading
     wire();
     route();
+    showSide();
     if (mode === "search") localStorage.setItem("suumo.last", location.hash);
     if (early && !q.text) { q.text = early; update(); }
     (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
