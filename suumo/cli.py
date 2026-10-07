@@ -8,7 +8,7 @@ import re
 import sys
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -33,6 +33,16 @@ RAIL = "geo/rail.json"  # railway lines and stations for the map (`rail`)
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
 GEO_BUDGET = 600  # seconds a run spends geocoding new towns (a new prefecture fills over a few runs; or run `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def crawl_due(db, now, hour):
+    """SUUMO updates its search results once a day: crawl them when the last crawl is from before today's
+    :hour (or yesterday's, before then)."""
+    since = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if now < since:
+        since -= timedelta(days=1)
+    last = db.x("SELECT MAX(crawled_at) FROM prefs").fetchone()[0]
+    return last is None or datetime.fromisoformat(last) < since
 
 
 def seconds_until_minute(now, minute):
@@ -75,7 +85,9 @@ def cmd_run(c: Ctx):
     client = Client(delay=a.delay)
     t0 = time.monotonic()
     p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
-    if not a.no_crawl:
+    if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at):
+        print(f"search results: crawled since {a.crawl_at:02d}:00; this run works the listing-page queue")
+    elif not a.no_crawl:
         p.crawl_lists()
     budget = a.budget
     if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
@@ -215,6 +227,8 @@ def main():
 
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
+    r.add_argument("--crawl-at", type=int, choices=range(24), metavar="0-23",
+                   help="crawl search results only once a day, at the first run after this hour (SUUMO's daily update)")
     r.add_argument("--no-geocode", action="store_true",
                    help="leave geo/ alone (a second crawler next to the hourly one; that one geocodes all of data/)")
     r.add_argument("--until-minute", type=int, choices=range(60), metavar="0-59",

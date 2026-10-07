@@ -226,3 +226,18 @@ def test_hourly_runs_stop_listing_pages_before_the_next_run():
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 30, 0), 55) == 25 * 60
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 58, 30), 55) == 56 * 60 + 30   # next hour's :55
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 55, 0), 55) == 0
+
+
+def test_search_results_are_crawled_once_a_day(tmp_path):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from suumo.cli import crawl_due
+    from suumo.db import DB
+    jst = ZoneInfo("Asia/Tokyo")
+    db = DB(tmp_path / "s.db")
+    assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                     # never crawled
+    db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00')")
+    assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                 # done today
+    assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4)                  # before tomorrow's 04:00
+    assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4)                      # after it

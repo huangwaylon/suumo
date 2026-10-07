@@ -120,10 +120,12 @@ launchctl kickstart gui/$(id -u)/local.suumo     # run once now to check
 tail -f logs/run.log
 ```
 
-The job runs `python -m suumo run --budget 45m --push` every hour at :05 (once on wake if the Mac was asleep;
-a run still going makes the next one exit): it pulls (for `saved.json`), crawls all search results (~800
-requests, ~17 minutes), fetches the listing pages of listings not stored yet, geocodes new towns, then commits
-`data/` and `geo/` and pushes, which rebuilds the site. `--push` needs a git remote that pushes without a prompt (an SSH key in the
+The job runs `python -m suumo run --crawl-at 4 --budget 3h --until-minute 50 --push` every hour at :05 (once on
+wake if the Mac was asleep; a run still going makes the next one exit). SUUMO updates its search results once a
+day, around 03:00–04:00, so the first run after 04:00 crawls all search results (~800 requests for Tokyo, ~25
+minutes) and the others only fetch listing pages of listings not stored yet, until :50. Every run pulls (for
+`saved.json`), geocodes new towns, then commits `data/` and `geo/` and pushes, which rebuilds the site. A
+listing missing from 2 daily crawls is removed (so within about two days). `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
 `launchctl bootout gui/$(id -u)/local.suumo`.
 

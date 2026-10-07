@@ -14,8 +14,12 @@
         <string>-m</string>
         <string>suumo</string>
         <string>run</string>
+        <string>--crawl-at</string>
+        <string>4</string>
         <string>--budget</string>
-        <string>45m</string>
+        <string>3h</string>
+        <string>--until-minute</string>
+        <string>50</string>
         <string>--push</string>
     </array>
     <key>WorkingDirectory</key>
@@ -25,7 +29,8 @@
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
-    <!-- hourly at :05 (a run still going then makes the next one exit at once); after sleep, once on wake -->
+    <!-- hourly at :05: search results once a day (the first run after 04:00, SUUMO's daily update), otherwise
+         the listing-page queue until :50; a run still going makes the next one exit; after sleep, once on wake -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Minute</key>
