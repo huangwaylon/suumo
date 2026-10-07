@@ -656,6 +656,7 @@
       $("map").append(go);
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
+      drawRail();
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
         iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0), true) });
       map.addLayer(cluster);
@@ -685,6 +686,49 @@
       const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
       if (points.length) map.fitBounds(coreBounds(points), { padding: [30, 30], maxZoom: 15 });
     }
+  }
+
+  // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ, ODPT line colours) ----------
+  let railLines = null, railStations = null;
+  async function drawRail() {
+    let rail;
+    try { rail = await (await fetch("data/rail.json")).json(); } catch { return; }  // the map works without it
+    const canvas = L.canvas({ padding: 0.3 });
+    railLines = L.layerGroup(rail.lines.map(([, , colour, parts]) => L.polyline(parts.map((p) => p.map(([lng, lat]) => [lat, lng])),
+      { renderer: canvas, color: colour, weight: 3, opacity: 0.7, interactive: false })));
+    railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
+      L.circleMarker([lat, lng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
+        .bindTooltip(name, { direction: "top", offset: [0, -4] }).bindPopup(() => stationPopup(name, lines))));
+    map.attributionControl.addAttribution(esc(rail.attribution));
+    const toggle = document.createElement("button");
+    toggle.className = "rail-btn";
+    toggle.addEventListener("click", () => {
+      settings.rail = settings.rail === false;
+      localStorage.setItem("suumo.settings", JSON.stringify(settings));
+      showRail();
+    });
+    L.DomEvent.disableClickPropagation(toggle);
+    $("map").append(toggle);
+    map.on("zoomend", showRail);
+    showRail();
+  }
+  // Lines unless switched off; stations once there's room for them (zoom 12+).
+  function showRail() {
+    const on = settings.rail !== false, show = (layer, yes) => (yes ? layer.addTo(map) : layer.remove());
+    const z = map.getZoom();
+    show(railLines, on);
+    railLines.eachLayer((l) => l.setStyle({ weight: z < 11 ? 1.5 : z < 13 ? 2.5 : 4, opacity: z < 11 ? 0.5 : 0.75 }));  // thin when zoomed out
+    show(railStations, on && z >= 12);
+    const b = $("map").querySelector(".rail-btn");
+    b.textContent = t("railLayer");
+    b.setAttribute("aria-pressed", on);
+  }
+  // A station on the map: its lines, and its homes under the current conditions in one tap.
+  function stationPopup(name, lines) {
+    const s = db.index.stations.find((n) => n === name || n.startsWith(name + "（"));
+    const n = s ? Filter.count(db, { ...q, stations: [s] }) : 0;  // under the current conditions
+    return `<strong>${esc(t("station", stationName(s || name)))}</strong><div class="meta wrap">${esc(lines.join("・"))}</div>${
+      n ? `<button class="btn primary station-pick" data-station-pick="${esc(s)}">${esc(t("stationHomes", num(n)))}</button>` : ""}`;
   }
 
   // Where most results are: the 10th-90th percentile box (outskirts and islands don't shrink the view).
@@ -1028,7 +1072,11 @@
         else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
         update();
       }
-      else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
+      else if (b.dataset.stationPick) {  // from a station on the map
+        q.stations = [b.dataset.stationPick];
+        map?.closePopup();
+        update(false);
+      } else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search

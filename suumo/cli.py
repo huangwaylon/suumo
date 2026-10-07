@@ -3,6 +3,7 @@ import argparse
 import contextlib
 import fcntl
 import json
+import os
 import re
 import sys
 import time
@@ -11,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from . import rail as rail_mod
 from . import saved as saved_mod
 from . import scope as scope_mod
 from .archive import Archive
@@ -27,6 +29,7 @@ from .stations import update as update_stations
 JST = ZoneInfo("Asia/Tokyo")
 GEO_CACHE = "geo/towns.json"
 STATIONS_CACHE = "geo/stations.json"
+RAIL = "geo/rail.json"  # railway lines and stations for the map (`rail`)
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
 GEO_BUDGET = 600  # seconds a run spends geocoding new towns (a new prefecture fills over a few runs; or run `geocode`)
 ROOT = Path(__file__).resolve().parent.parent
@@ -166,6 +169,22 @@ def cmd_site(args):
                saved=saved_mod.load(ROOT / SAVED))
 
 
+def env(name):
+    """A setting from the environment, else from .env (KEY=value lines; never committed)."""
+    if os.environ.get(name):
+        return os.environ[name]
+    path = ROOT / ".env"
+    for line in path.read_text().splitlines() if path.exists() else []:
+        key, _, value = line.partition("=")
+        if key.strip() == name:
+            return value.strip()
+    return None
+
+
+def cmd_rail(args):
+    rail_mod.update(ROOT / RAIL, token=env("ODPT_TOKEN"))
+
+
 def cmd_saved(args):
     message = saved_mod.apply(ROOT / SAVED, args.title)
     if message is None:
@@ -209,6 +228,7 @@ def main():
     command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
     command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)")
     command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
+    command("rail", cmd_rail, "files", "rebuild geo/rail.json: railway lines and stations for the map (N02 + ODPT)")
     command("saved", cmd_saved, "files", "apply 'save <type>:<id>' / 'unsave <type>:<id>' to saved.json").add_argument(
         "title")
     args = ap.parse_args()

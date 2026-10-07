@@ -216,6 +216,9 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
+    rail = Path(geo_cache).with_name("rail.json")  # the map's railway lines and stations (suumo.rail)
+    if rail.exists():
+        shutil.copyfile(rail, out / "data" / "rail.json")
     for item, others in reps.items():
         path = out / "data" / "l" / item.type / f"{item.rec['id']}.json"
         path.parent.mkdir(parents=True, exist_ok=True)

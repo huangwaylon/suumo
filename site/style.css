@@ -321,6 +321,11 @@ details.group .opts { padding-bottom: 12px; }
   body.areamode .map { display: block; order: -1; position: sticky; top: var(--bar); z-index: 5; height: min(48vh, 40vh + 40px); }
   body.areamode .results { display: block; }
 }
+.rail-btn { position: absolute; z-index: 600; right: 12px; top: 92px; min-height: 36px; padding: 0 12px; border-radius: 8px;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line); font-size: 13px; font-weight: 600; box-shadow: var(--shadow); }
+.rail-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+@media (pointer: coarse) { .rail-btn { top: 12px; } }  /* no zoom buttons on touch screens */
+.station-pick { margin-top: 8px; min-height: 36px; font-size: 13px; }
 .area-btn { position: absolute; z-index: 600; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%);
   min-height: 40px; font-size: 14px; box-shadow: 0 4px 14px rgb(0 0 0 / .2); white-space: nowrap;
   background: var(--surface); color: var(--accent); border-color: var(--accent); }  /* not a second black pill over リスト */
