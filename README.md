@@ -31,9 +31,11 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
   A property another agent already listed doesn't count as new.
 - **Saved searches** (this browser): the star saves the current conditions; each shows how many listings are new
   or cheaper since it was last opened (+N), and opening it shows those first.
-- **Railway lines and stations** on the map (「路線」 toggles them): every operator's lines in their colours; from
-  zoom 12 the stations, each opening its lines and 「この駅の物件 N件」 (filters by it). Data: 国土数値情報
-  （鉄道データ）（国土交通省, CC BY 4.0）, line colours from 公共交通オープンデータセンター (ODPT).
+- **Railway lines and stations** on the maps, the whole country: every operator's lines in their colours; from
+  zoom 12 the stations, each opening its lines and 「この駅の物件 N件」 (filters by it). 「路線」 switches lines
+  off, or operator by operator. A chosen station's lines are highlighted. Each listing's map shows the lines and
+  stations around it. Data: 国土数値情報（鉄道データ）（国土交通省, CC BY 4.0）; line colours and English names from
+  公共交通オープンデータセンター (ODPT; the challenge datasets are licensed for the ODPT challenge only).
 - **Map area view**: 「この範囲の物件を見る」 on the map lists only what's visible (under the current conditions)
   and follows panning and zooming; desktop shows conditions | map | list, phones the map above the list.
 - **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
@@ -137,7 +139,7 @@ agent/Keychain); a failed push is logged and retried next run. To stop it:
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
 | `uv run python -m suumo reparse` | re-run the parsers over `archive/` and re-export (no requests) |
 | `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet, and station names (kana, English) for prefectures not in `geo/stations.json` |
-| `uv run python -m suumo rail` | rebuild `geo/rail.json` (railway lines and stations for the map) from MLIT N02 and ODPT colours; `ODPT_TOKEN` in `.env` (an ODPT developer key, never committed) |
+| `uv run python -m suumo rail` | rebuild `geo/rail.json` (railway lines and stations for the map) from MLIT N02 and ODPT colours; `ODPT_TOKEN` and `ODPT_CHALLENGE_TOKEN` in `.env` (ODPT keys, never committed) |
 | `uv run python -m suumo site [--out _site]` | build the site locally (`cd _site && python3 -m http.server` to view it) |
 
 Only one writing command runs at a time (`state.db.lock`); a second one exits with a message. `geocode`, `site`

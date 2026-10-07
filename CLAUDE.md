@@ -23,7 +23,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/gitdata.py` | `commit_data`: commit `data/` and `geo/` only, optionally push |
 | `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
-| `suumo/rail.py` | Railway lines and stations for the map: MLIT 国土数値情報 鉄道データ (N02, CC BY 4.0) cut to the region and simplified, line colours from ODPT; `rail` writes `geo/rail.json` (needs `ODPT_TOKEN` in `.env` for most colours) |
+| `suumo/rail.py` | Railway lines and stations for the maps, the whole country: MLIT 国土数値情報 鉄道データ (N02, CC BY 4.0), simplified; colours and English names from ODPT's open, basic (`ODPT_TOKEN`) and challenge (`ODPT_CHALLENGE_TOKEN`, challenge licence) APIs; `rail` writes `geo/rail.json`. Also decides which same-named stations are really two (`site.station_prefectures`) |
 | `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json`; the site searches and shows them |
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json`, one search index per prefecture `data/p/<pref>.json` loaded as chosen, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
