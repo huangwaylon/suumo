@@ -113,6 +113,10 @@ at a time without giving up on those listings.
 
 ### 5. Hourly schedule
 
+Without launchd (the repo still in `~/Documents`): `caffeinate -i ./local.hourly.sh &` runs the same schedule from
+a terminal; restart it after a reboot. Runs resume where an interrupted one stopped.
+
+
 ```sh
 sed "s#__SUUMO_DIR__#$PWD#g" local.suumo.plist > ~/Library/LaunchAgents/local.suumo.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.suumo.plist
