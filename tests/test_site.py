@@ -24,11 +24,14 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     geo = tmp_path / "towns.json"
     geo.write_text(json.dumps({"東京都狛江市岩戸北３": [35.63, 139.58]}, ensure_ascii=False))
     out = tmp_path / "site"
-    index = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
+    built = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
     assert {"index.html", "app.js", "filter.js", "i18n.js", "style.css", ".nojekyll"} <= {p.name for p in out.iterdir()}
+    manifest, index = json.loads((out / "data/index.json").read_text()), built["tokyo"]
+    assert manifest["prefs"] == [["tokyo", "東京都", len(index["columns"]["id"])]] and manifest["saved"] == {}
+    assert json.loads((out / "data/p/tokyo.json").read_text()) == index   # one index per prefecture
     cols = index["columns"]
     assert len(cols["id"]) < 46                               # 46 listings, duplicates folded
-    assert index["prefs"] == ["東京都"] and index["areas"] == [["13219", "狛江市", 0, "shi"]]
+    assert index["areas"] == [["13219", "狛江市", "東京都", "shi"]]
     assert {t: (lat, lng) for t, lat, lng in index["towns"]}["東京都狛江市岩戸北３"] == (35.63, 139.58)
     ids_ = [sum(cols["id"][:n + 1]) for n in range(len(cols["id"]))]   # stored as deltas
     row = ids_.index(20205670)
@@ -206,7 +209,7 @@ def test_bus_and_car_access_keep_their_minutes_and_km(tmp_path):
     process.stdout.write(JSON.stringify(db.items[0].stations));
     """
     site_queries(tmp_path, recs, [])
-    out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/index.json")],
+    out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json")],
                          capture_output=True, text=True, check=True)
     assert json.loads(out.stdout) == [["喜多見", None, 8, None], ["牛久", None, None, 2.4]]  # by bus; by car
 
@@ -256,6 +259,6 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     st = [{"line": "東武東上線", "name": "小川町", "walk": 5}]
     write(data, [rec(1, stations=[{"line": "都営新宿線", "name": "小川町", "walk": 3}])])
     write(data, [rec(2, area_code="11343", stations=st)], areas={"11343": "比企郡"}, pref="saitama")
-    index = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
-    assert sorted(index["stations"]) == ["小川町（埼玉）", "小川町（東京）"]
-    assert index["prefs"][0] == "東京都"          # Tokyo first
+    built = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
+    assert built["tokyo"]["stations"] == ["小川町（東京）"] and built["saitama"]["stations"] == ["小川町（埼玉）"]
+    assert [p for p, _, _ in built["manifest"]["prefs"]] == ["tokyo", "saitama"]          # Tokyo first

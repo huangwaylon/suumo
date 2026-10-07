@@ -24,7 +24,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
 | `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json`; the site searches and shows them |
-| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, `data/index.json`, one JSON per listing) |
+| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json`, one search index per prefecture `data/p/<pref>.json` loaded as chosen, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
 | `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests; compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |

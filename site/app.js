@@ -52,7 +52,7 @@
       `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${settings[name] === k}">${esc(label)}</button>`).join("")}</div>`;
     $("settings-body").innerHTML = `<section class="sec"><h3 id="set-lang">${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
       <section class="sec"><h3 id="set-theme">${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>
-      ${db?.index.updated ? `<p class="meta">${esc(t("updated", day(db.index.updated.slice(0, 10))))}</p>` : ""}`;
+      ${manifest?.updated ? `<p class="meta">${esc(t("updated", day(manifest.updated.slice(0, 10))))}</p>` : ""}`;
   }
 
   // ---------- choices ----------
@@ -80,7 +80,11 @@
 
   // ---------- state ----------
 
-  let db = null;
+  let db = null;                // the chosen prefectures' listings, searched as one
+  let manifest = null;          // data/index.json: the prefectures there are, the saved list, when updated
+  const loaded = new Map();     // prefecture slug -> its loaded index (Filter.load)
+  let chosen = [];              // the prefectures searched (URL p=, default: the first, Tokyo)
+  let allByKey = new Map();     // every loaded listing (favorites can be in prefectures not chosen)
   let q = Filter.emptyQuery();
   let mode = "search";          // search | favorites (the shared saved list)
   let hits = [], shown = 0;
@@ -208,6 +212,7 @@
 
   function hashFor(extra = {}) {
     const p = paramsFor(q);
+    if (chosen.join() !== manifest.prefs[0][0]) p.set("p", chosen.join(","));
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
     if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
@@ -220,7 +225,9 @@
 
   function compute() {
     if (mode === "search") return Filter.search(db, q);
-    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => db.byKey.get(k)).filter(Boolean));
+    const away = [...new Set([...favs].map((k) => manifest.saved[k]).filter((p) => p && !loaded.has(p)))];
+    if (away.length) loadPrefs(away).then(render);  // saved listings in prefectures not loaded yet
+    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => allByKey.get(k)).filter(Boolean));
   }
 
   function update(top = true) {
@@ -485,7 +492,7 @@
     if (key !== facetsFor) { facets = Filter.facets(db, q, CHOICES); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
-      body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
+      body.innerHTML = ["prefs", "text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
         <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
@@ -497,6 +504,8 @@
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
+    sec("prefs", manifest.prefs.length < 2 ? "" : `${h3("prefs")}<div class="opts">${manifest.prefs.map(([slug, name, n]) =>
+      chipBtn(`data-pref="${slug}"`, place(name), n, chosen.includes(slug))).join("")}</div>`);
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
     sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}<p id="price-max">${esc(t("max"))}</p><div class="opts">${
@@ -535,11 +544,12 @@
   function areaGroups() {
     const prefs = new Set(db.index.areas.map((a) => a[2])), kinds = t("kinds");
     const groups = new Map();
-    const order = (a) => [a[2], a[3] === "ku" ? 0 : a[3] === "shi" ? 2 : a[3] === "gun" ? 3 : 1, a[0]];
+    const rank = (pref) => manifest.prefs.findIndex(([, name]) => name === pref);
+    const order = (a) => [rank(a[2]), a[3] === "ku" ? 0 : a[3] === "shi" ? 2 : a[3] === "gun" ? 3 : 1, a[0]];
     const sorted = [...db.index.areas].sort((a, b) => { const x = order(a), y = order(b); return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]); });
     for (const [code, name, pref, group] of sorted) {
       const city = !kinds[group];  // a designated city: its wards without the city's name
-      const g = `${prefs.size > 1 ? place(db.index.prefs[pref]) + " " : ""}${city ? place(group) : kinds[group]}`;
+      const g = `${prefs.size > 1 ? place(pref) + " " : ""}${city ? place(group) : kinds[group]}`;
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push([code, many("areas", code, city ? place(name).replace(group, "") || place(name) : place(name), facets.areas[code] || 0)]);
     }
@@ -550,6 +560,17 @@
   }
 
   function onFilterClick(e) {
+    const pick = e.target.closest("button[data-pref]");
+    if (pick) {  // prefectures: at least one; the URL says which, route loads them
+      const s = pick.dataset.pref, next = chosen.includes(s) ? chosen.filter((x) => x !== s) : [...chosen, s];
+      if (!next.length) return;
+      const keep = chosen;
+      chosen = next;
+      history.replaceState(null, "", hashFor());
+      chosen = keep;
+      route();
+      return;
+    }
     const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
     if (!b) return;
     mode = "search";
@@ -825,7 +846,7 @@
   function refreshFavs() {
     const now = Date.now();
     favs.clear();
-    for (const it of db.byKey.values()) if (it.flags & db.flags.saved) favs.add(it.key);
+    for (const key of Object.keys(manifest.saved)) favs.add(key);
     for (const [key, [save, at]] of Object.entries(pending)) {
       if (favs.has(key) === save || now - at > PENDING_HOURS * 3600e3) delete pending[key];
       else if (save) favs.add(key); else favs.delete(key);
@@ -1043,7 +1064,41 @@
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
   }
 
+  // The prefectures the URL asks for (p=tokyo,kanagawa), else the first one.
+  function prefsFromHash() {
+    const p = (new URLSearchParams(location.hash.slice(1)).get("p") || "").split(",");
+    const known = p.filter((s) => manifest.prefs.some(([slug]) => slug === s));
+    return known.length ? known : [manifest.prefs[0][0]];
+  }
+
+  async function loadPrefs(slugs) {
+    await Promise.all(slugs.filter((s) => !loaded.has(s)).map(async (slug) => {
+      const part = Filter.load(await (await fetch(`data/p/${slug}.json`)).json());
+      for (const it of part.items) {
+        it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
+        for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
+      }
+      loaded.set(slug, part);
+    }));
+    allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
+  }
+
+  function choosePrefs(slugs) {
+    chosen = slugs;
+    db = Filter.combine(slugs.map((s) => loaded.get(s)));
+    areaNames = new Map(db.index.areas.map(([code, name]) => [code, name]));
+    facetsFor = null;
+    $("filters-body").innerHTML = "";  // the area lists change
+  }
+
   function route() {
+    const want = prefsFromHash(), missing = want.filter((s) => !loaded.has(s));
+    if (missing.length) {  // load them, then come back
+      $("count").textContent = t("loading");
+      loadPrefs(missing).then(route, () => toast(t("offline")));
+      return;
+    }
+    if (want.join() !== chosen.join()) choosePrefs(want);
     const key = readHash();
     if (hashFor() !== renderedFor) render();
     if (key) showDetail(key);
@@ -1055,19 +1110,16 @@
     applyLanguage();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);
     try {
-      const index = await (await fetch("data/index.json")).json();
-      db = Filter.load(index);
-      for (const it of db.items) {
-        it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
-        for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
-      }
+      manifest = await (await fetch("data/index.json")).json();
+      if (!location.hash && localStorage.getItem("suumo.last")) history.replaceState(null, "", localStorage.getItem("suumo.last"));
+      await loadPrefs(prefsFromHash());
+      choosePrefs(prefsFromHash());
       refreshFavs();
       // a visit = a new data version: the previous one is what "since your last visit" compares with
-      const visit = stored("suumo.visit", {}), now = +String(index.updated).replace(/\D/g, "").slice(0, 10) || null;
+      const visit = stored("suumo.visit", {}), now = +String(manifest.updated).replace(/\D/g, "").slice(0, 10) || null;
       if (now && visit.cur !== now) { visit.prev = visit.cur ?? null; visit.cur = now; localStorage.setItem("suumo.visit", JSON.stringify(visit)); }
       lastVisit = visit.prev ?? null;
       dataHour = visit.cur ?? null;
-      areaNames = new Map(index.areas.map(([code, name]) => [code, name]));
     } catch {
       const [title, hint] = t("loadFailed");
       $("list").innerHTML = `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
@@ -1075,7 +1127,6 @@
     }
     const early = $("q").value.trim();  // typed while the listings were loading
     wire();
-    if (!location.hash && localStorage.getItem("suumo.last")) history.replaceState(null, "", localStorage.getItem("suumo.last"));
     route();
     if (mode === "search") localStorage.setItem("suumo.last", location.hash);
     if (early && !q.text) { q.text = early; update(); }

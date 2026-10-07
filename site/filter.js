@@ -38,7 +38,7 @@
         stations, features: new Set(c.features[i].map((f) => index.features[f])), flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
-        town: town ? town[0].slice(index.prefs[area[2]].length) : null, lat: town ? town[1] : null,
+        town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null,
         lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: c.image[i],
       };
       items[i] = it;
@@ -49,6 +49,15 @@
     const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
     return { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
       byKey: new Map(items.map((it) => [it.key, it])) };
+  }
+
+  // Several prefectures' indexes (each loaded with `load`) searched as one.
+  function combine(dbs) {
+    const all = (f) => dbs.flatMap(f);
+    const index = { types: [...new Set(all((d) => d.index.types))], areas: all((d) => d.index.areas),
+      stations: [...new Set(all((d) => d.index.stations))], towns: all((d) => d.index.towns), flags: dbs[0].flags };
+    return { index, items: all((d) => d.items), flags: index.flags, stationNames: new Map(all((d) => [...d.stationNames])),
+      byKey: new Map(all((d) => [...d.byKey])) };
   }
 
   // The text a search word is looked for in, built the first time a text search runs: names, places and stations
@@ -182,5 +191,5 @@
     return best;
   }
 
-  return { emptyQuery, normalize, stationKey, load, matches, search, count, facets, stationMatch };
+  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, facets, stationMatch };
 });

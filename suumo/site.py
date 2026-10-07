@@ -1,7 +1,8 @@
 """Build the static search site (GitHub Pages) from data/ and geo/towns.json.
 
   <out>/index.html, app.js, filter.js, i18n.js, style.css   copied from site/
-  <out>/data/index.json                            every property, search fields only, stored by column
+  <out>/data/index.json                            manifest: the prefectures (slug, name, count), the saved list
+  <out>/data/p/<pref>.json                         one prefecture's properties, search fields only, stored by column
   <out>/data/l/<type>/<id>.json                    one listing's full record, price history, other agents
 
 The same property listed by several agents (same dup_key: same building/address, size and price) appears once,
@@ -13,7 +14,7 @@ import json
 import re
 import shutil
 import subprocess
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -111,17 +112,19 @@ def representatives(snap):
     return reps
 
 
-def build_index(snap, reps, towns_cache, updated, readings=None):
-    types, prefs, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table(), Table()
-    # Tokyo first, then the prefectures with most listings (the filter panel lists them in this order)
-    by_pref = Counter(i.pref for i in reps)
-    for p in sorted(by_pref, key=lambda p: (p != "tokyo", -by_pref[p])):
-        prefs(PREFS.get(p, p))
-    # A station name in two prefectures (小川町: 東京 and 埼玉) is two stations: "小川町（埼玉）"
-    station_prefs = defaultdict(set)
+def station_prefectures(reps):
+    """station name -> the prefectures it's in (a name in two is two stations: "小川町（埼玉）")."""
+    out = defaultdict(set)
     for i in reps:
         for name, _, _ in i.stations:
-            station_prefs[name].add(i.pref)
+            out[name].add(i.pref)
+    return out
+
+
+def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=None):
+    """The search index of these listings (one prefecture's, on the site)."""
+    types, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table()
+    station_prefs = station_prefs if station_prefs is not None else station_prefectures(reps)
 
     def station(name, pref):
         return name if len(station_prefs[name]) < 2 else f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）"
@@ -159,9 +162,9 @@ def build_index(snap, reps, towns_cache, updated, readings=None):
             cols[k].append(v)
     return {
         "updated": updated, "flags": FLAGS, "columns": cols, "types": types.values,
-        "areas": [[code, snap.areas.get(code, code), prefs(PREFS.get(pref, pref)),
-                   _area_group(code, snap.areas.get(code, ""))] for code, pref in areas.values],
-        "prefs": prefs.values, "stations": stations.values,
+        "areas": [[code, snap.areas.get(code, code), PREFS.get(pref, pref), _area_group(code, snap.areas.get(code, ""))]
+                  for code, pref in areas.values],
+        "stations": stations.values,
         # [kana, English] per station (null when unknown: bus stops), so either finds it
         "stationNames": [(readings or {}).get(station_key(s)) for s in stations.values],
         "features": features.values,
@@ -190,21 +193,33 @@ def _dump(obj):
 
 
 def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None, saved=()):
-    """saved: the shared saved list ("type:id" keys)."""
+    """saved: the shared saved list ("type:id" keys). Returns {"manifest": ..., <pref slug>: its index}."""
     snap = load(data_dir, today or datetime.now(JST).date(), saved)
     reps = representatives(snap)
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
     (out / ".nojekyll").write_text("")
-    readings = station_names(stations_cache) if stations_cache else {}
-    index = build_index(snap, reps, load_cache(geo_cache), _updated(Path(data_dir)), readings)
-    (out / "data").mkdir()
-    (out / "data" / "index.json").write_text(_dump(index), encoding="utf-8")
+    readings, towns, updated = station_names(stations_cache) if stations_cache else {}, load_cache(geo_cache), \
+        _updated(Path(data_dir))
+    (out / "data" / "p").mkdir(parents=True)
+    by_pref = defaultdict(dict)
+    for item, others in reps.items():
+        by_pref[item.pref][item] = others
+    station_prefs = station_prefectures(reps)
+    # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
+    built = {}
+    for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
+        built[pref] = build_index(snap, by_pref[pref], towns, updated, readings, station_prefs)
+        (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
+    manifest = {"updated": updated, "flags": FLAGS,
+                "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
+                "saved": {i.key: i.pref for i in reps if i.saved}}
+    (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
     for item, others in reps.items():
         path = out / "data" / "l" / item.type / f"{item.rec['id']}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(_dump(listing_record(snap, item, others)), encoding="utf-8")
-    log(f"site: {len(reps):,} properties ({len(snap.items):,} listings), "
-        f"index {(out / 'data/index.json').stat().st_size / 1e6:.1f} MB → {out}")
-    return index
+    sizes = ", ".join(f"{p} {(out / 'data' / 'p' / f'{p}.json').stat().st_size / 1e6:.1f} MB" for p in built)
+    log(f"site: {len(reps):,} properties ({len(snap.items):,} listings); indexes: {sizes} → {out}")
+    return {"manifest": manifest, **built}

@@ -45,8 +45,10 @@ def write(data, recs, areas=None, events=None, pref="tokyo"):
 
 RUNNER = """
 const Filter = require(process.argv[1]);
-const fs = require("fs");
-const db = Filter.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+const fs = require("fs"), path = require("path");
+const manifest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));  // every prefecture's index, as one
+const db = Filter.combine(manifest.prefs.map(([slug]) =>
+  Filter.load(JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[2]), "p", slug + ".json"), "utf8")))));
 const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved}) => {
   if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
