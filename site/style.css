@@ -178,6 +178,8 @@ body.show-map .results { display: none; }
 .pin.cluster { background: var(--accent); color: var(--on-accent); border-color: var(--surface); }  /* tap: zoom in */
 .leaflet-popup-content { margin: 10px 12px; font: 14px/1.5 -apple-system, "Hiragino Sans", sans-serif; }
 .popup-list b { font-size: 15px; }
+.leaflet-container .leaflet-control-attribution { font-size: 10px; line-height: 1.4; padding: 0 4px; white-space: nowrap;
+  background: rgb(255 255 255 / .6); }
 [data-theme="dark"] .leaflet-control-attribution { background: rgb(23 26 33 / .8); color: var(--muted); }
 #map .leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
 .popup-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 240px; overflow-y: auto; }

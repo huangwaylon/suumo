@@ -655,7 +655,8 @@
       L.DomEvent.disableClickPropagation(go);
       $("map").append(go);
       if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
-      L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(map);
+      map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
+      L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>' }).addTo(map);
       drawRail();
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
         iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0), true) });
@@ -712,7 +713,7 @@
     railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
       L.circleMarker([lat, lng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
         .bindTooltip(name, { direction: "top", offset: [0, -4] }).bindPopup(() => stationPopup(name, lines))));
-    map.attributionControl.addAttribution(esc(rail.attribution));
+    map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
     const open = document.createElement("button"), panel = document.createElement("div");
     open.className = "rail-btn";
     panel.className = "rail-panel";
