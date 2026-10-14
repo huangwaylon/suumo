@@ -254,6 +254,8 @@ def test_purge_drops_old_event_and_run_rows(env):
     p.purge()
     assert db.x("SELECT COUNT(*) FROM events WHERE run_id='20200101T000000'").fetchone()[0] == 0
 
+
+
 def test_area_crawl_requests_allowed_paths_and_archives_every_page(env, monkeypatch):
     db, archive, targets, _, _ = env
     page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")  # 67 hits, all on page 1
