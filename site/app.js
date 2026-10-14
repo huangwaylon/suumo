@@ -1,5 +1,6 @@
-// The search page. Conditions live in the URL (shareable); results show as a list, and as a map on wide screens
-// or on request; a listing opens over the page. The search rules are in filter.js, the strings in i18n.js.
+// The search page: a map and, beside it (a bottom sheet on phones and tablets), the list of the results in its view;
+// listings open as tabs in that panel. Conditions live in the URL (shareable). The search rules are in filter.js,
+// the strings in i18n.js.
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -196,6 +197,7 @@
     const out = rawQuery(p);
     out.types = out.types.filter((type) => db.index.types.includes(type));
     out.areas = out.areas.filter((a) => areaNames.has(a));
+    out.stations = out.stations.filter((s) => db.index.stations.includes(s));
     return out;
   }
   // ... of any prefecture (saved searches); an older link's conditions in today's terms (Filter.upgrade)
@@ -1292,7 +1294,7 @@
     if (S.lang !== "en" || !railLoaded || !plain) return S.lang === "en" ? plain : name;
     if (!lineNames.has(plain)) {
       const key = (n) => n.normalize("NFKC").replace(/本線$/, "線").replace(/[・\s]/g, "");
-      const short = (op) => (op[3] || op[0]).replace(/(電気鉄道|電鉄|鉄道|��式会社)$/, "");
+      const short = (op) => (op[3] || op[0]).replace(/(電気鉄道|電鉄|鉄道|株式会社)$/, "");
       let found = null;
       for (const line of railLoaded.lines) {
         const op = railLoaded.operators[line[0]], jr = /^JR/.test(op[3] || ""), prefix = jr ? "JR" : short(op);
