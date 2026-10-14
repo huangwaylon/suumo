@@ -517,3 +517,10 @@ details.group .opts { padding-bottom: 12px; }
 }
 @media (hover: hover) { .card:hover { border-color: var(--faint); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Station names on the map: dark text on a light halo (light text on a dark one in the dark theme) */
+.station-label { width: max-content; font-size: 12px; font-weight: 700; color: #1d2026; white-space: nowrap; pointer-events: none;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; }
+[data-theme="dark"] .station-label { color: #f2f4f7; text-shadow: 0 0 2px #0d0f13, 0 0 2px #0d0f13, 0 0 3px #0d0f13, 0 0 4px #0d0f13; }
+.leaflet-tooltip.station-tip { padding: 1px 5px; font-size: 11px; font-weight: 700; box-shadow: none; }
+.pref-all { width: 100%; margin: 4px 0 8px; justify-content: center; }

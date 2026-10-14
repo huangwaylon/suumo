@@ -32,6 +32,7 @@
     const dark = settings.theme === "dark" || (settings.theme === "auto" && DARK.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+    showRail();  // the lines' halos follow the theme
   }
 
   function applyLanguage() {
@@ -743,7 +744,11 @@
     chugoku: ["鳥取県", "島根県", "岡山県", "広島県", "山口県"], shikoku: ["徳島県", "香川県", "愛媛県", "高知県"],
     kyushu: ["福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
   };
-  const MAX_PREFS = 5;
+  // Every chosen prefecture is held in memory (all of Japan: ~11 MB to download, a few hundred MB loaded), so phones
+  // and small-memory devices take up to 5; others may choose all of Japan.
+  const BIG = matchMedia("(min-width: 700px)").matches && (navigator.deviceMemory ?? 8) >= 4;
+  const maxPrefs = () => (BIG ? manifest.prefs.length : 5);
+  const allPrefs = () => manifest.prefs.map(([slug]) => slug);
   const prefName = (slug) => place(manifest.prefs.find(([s]) => s === slug)?.[1] ?? slug);
   let prefsUrl = null;  // the URL the picker has chosen (kept when it closes, also by the back button)
 
@@ -751,8 +756,9 @@
   function renderPrefBar() {
     const off = mode !== "search" || !!area || manifest.prefs.length < 2;
     $("pref").hidden = off;
-    $("pref").innerHTML = `<span>${esc(t("prefButton", prefName(chosen[0]), chosen.length - 1))}</span>${icon("down")}`;
-    $("pref-chips").innerHTML = off || chosen.length < 2 ? "" : chosen.map((slug) =>
+    const everywhere = chosen.length > 1 && chosen.length === manifest.prefs.length;
+    $("pref").innerHTML = `<span>${esc(everywhere ? t("prefAll") : t("prefButton", prefName(chosen[0]), chosen.length - 1))}</span>${icon("down")}`;
+    $("pref-chips").innerHTML = off || chosen.length < 2 || everywhere ? "" : chosen.map((slug) =>
       `<span class="chip on"><button class="chip-label" data-pref-open="1">${esc(prefName(slug))}</button><button class="chip-x" data-pref-remove="${slug}" aria-label="${esc(t("remove", prefName(slug)))}">${icon("x")}</button></span>`).join("");
   }
 
@@ -762,7 +768,7 @@
     const groups = Object.keys(REGIONS).map((r) => [r, manifest.prefs.filter(([, name]) => REGIONS[r].includes(name))]);
     const other = manifest.prefs.filter(([, name]) => !Object.values(REGIONS).some((names) => names.includes(name)));
     if (other.length) groups.push(["other", other]);
-    const want = prefsFromHash(), full = want.length >= MAX_PREFS;  // (the URL's: some may still be loading)
+    const want = prefsFromHash(), full = want.length >= maxPrefs();  // (the URL's: some may still be loading)
     $("prefs-list").innerHTML = groups.map(([r, prefs]) => {
       const rows = prefs.filter(match).map(([slug, name, n]) => {
         const on = want.includes(slug), only = on && want.length === 1;
@@ -771,7 +777,12 @@
       }).join("");
       return rows && `<section class="pref-group"><h3>${esc(t("regions")[r])}</h3><ul>${rows}</ul></section>`;
     }).join("") || `<p class="meta">${esc(t("prefNone"))}</p>`;
-    $("prefs-note").textContent = full ? t("prefMax", MAX_PREFS) : "";
+    if (BIG && !typed) {  // all of Japan, with what it costs to load (~30 bytes per home, compressed)
+      const n = manifest.prefs.reduce((sum, [, , count]) => sum + count, 0), all = want.length === manifest.prefs.length;
+      $("prefs-list").insertAdjacentHTML("afterbegin", `<button class="btn pref-all" data-pref-all="1" aria-pressed="${all}"${all ? " disabled" : ""}>${
+        esc(t("prefAllPick", num(n), Math.max(1, Math.round(n * 30 / 1e6))))}</button>`);
+    }
+    $("prefs-note").textContent = full && !BIG ? t("prefMax", maxPrefs()) : "";
   }
 
   // Back closes the picker and keeps what it chose (as the filter sheet does).
@@ -802,7 +813,8 @@
 
   function setPrefs(next, now = true) {  // the URL says which; route loads and shows them
     const p = new URLSearchParams(location.hash.slice(1));
-    if (next.join() === manifest.prefs[0][0]) p.delete("p"); else p.set("p", next.join(","));
+    if (next.join() === manifest.prefs[0][0]) p.delete("p");
+    else p.set("p", next.length > 1 && next.length === manifest.prefs.length ? "all" : next.join(","));
     history.replaceState(history.state, "", "#" + p.toString());
     prefsUrl = location.href;
     if (now) route();
@@ -812,9 +824,10 @@
     if (e.target === $("prefs")) return openPrefs(false);  // outside the panel
     const go = e.target.closest("[data-pref-go]"), add = e.target.closest("[data-pref-add]");
     if (go) { setPrefs([go.dataset.prefGo], !history.state?.prefs); openPrefs(false); }  // (closing routes)
+    else if (e.target.closest("[data-pref-all]")) { setPrefs(allPrefs(), !history.state?.prefs); openPrefs(false); }
     else if (add) {
       const s = add.dataset.prefAdd, want = prefsFromHash();
-      setPrefs(want.includes(s) ? want.filter((x) => x !== s) : [...want, s].slice(0, MAX_PREFS));
+      setPrefs(want.includes(s) ? want.filter((x) => x !== s) : [...want, s].slice(0, maxPrefs()));
       renderPrefs();
       $("prefs-list").querySelector(`[data-pref-add="${s}"]`)?.focus();
     }
@@ -968,21 +981,26 @@
     }
     return d;
   }).catch(() => { railData = null; return null; }));
-  const stationDot = (latlng, name, renderer) => L.circleMarker(latlng, { renderer, radius: 3, color: "#fff", weight: 1,
-    fillColor: "#8a919c", fillOpacity: 1 }).bindTooltip(name, { direction: "top", offset: [0, -4] });
+  // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
+  const stationDot = (latlng, name, renderer, lines = 1) => L.circleMarker(latlng, { renderer, radius: 4, color: "#1d2026",
+    weight: 2, fillColor: "#fff", fillOpacity: 1, lines }).bindTooltip(name, { direction: "top", offset: [0, -5] });
+  const stationRadius = (z, lines) => (z < 13 ? 3 : z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
+  const halo = () => (document.documentElement.dataset.theme === "dark" ? "#0d0f13" : "#ffffff");  // under each line
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
   const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
-  let rail = null, railLines = [], railStations = null;
+  let rail = null, railLines = [], railHalos = [], railStations = null, railLabels = null;
   const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
 
   async function drawRail() {
     rail = await loadRail();
     if (!rail) return;  // the map works without it
     const canvas = L.canvas({ padding: 0.3 });
+    railHalos = rail.lines.map(([, , , , parts]) => L.polyline(latlngs(parts), { renderer: canvas, interactive: false }));
     railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
     railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
-      stationDot([lat, lng], name, canvas).bindPopup(() => stationPopup(name, lines))));
+      stationDot([lat, lng], name, canvas, lines.length).bindPopup(() => stationPopup(name, lines))));
+    railLabels = L.layerGroup();
     map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
     const open = document.createElement("button"), panel = document.createElement("div");
     open.className = "rail-btn";
@@ -1006,8 +1024,20 @@
     });
     for (const el of [open, panel]) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); $("map").append(el); }
     map.on("zoomend", showRail);
-    map.on("moveend", () => { if (!panel.hidden) railPanel(); });
+    map.on("moveend", () => { if (!panel.hidden) railPanel(); stationLabels(); });
     showRail();
+  }
+
+  // Station names on the map once zoomed in (14+): only those in view, so a few dozen labels at most.
+  function stationLabels() {
+    railLabels.clearLayers();
+    if (!map.hasLayer(railStations) || map.getZoom() < 14) return;
+    const b = map.getBounds().pad(0.1);
+    const shown = rail.stations.filter(([, lat, lng]) => b.contains([lat, lng])).slice(0, 200);
+    for (const [name, lat, lng] of shown) {
+      L.marker([lat, lng], { interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "station-label", html: esc(stationName(name)), iconSize: null, iconAnchor: [-9, 8] }) }).addTo(railLabels);
+    }
   }
 
   // The operators with lines in view, most lines first.
@@ -1033,19 +1063,27 @@
     return new Set(names.size ? rail.stations.filter(([n]) => names.has(n)).flatMap(([, , , lines]) => lines) : []);
   }
 
-  // Lines unless switched off (all, or by operator); stations once there's room for them (zoom 12+).
+  // Lines unless switched off (all, or by operator), each on a halo so it reads on any part of the map; stations once
+  // there's room for them (zoom 11+), their names from 14.
   function showRail() {
     if (!rail || !map) return;
-    const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines();
+    const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines(), colour = halo();
+    const base = z < 11 ? 2 : z < 13 ? 3 : z < 15 ? 4.5 : 6;
     railLines.forEach((l, i) => {
-      const visible = on && !hiddenOps.has(rail.operators[rail.lines[i][0]][0]);
-      if (visible !== map.hasLayer(l)) { if (visible) l.addTo(map); else l.remove(); }
+      const visible = on && !hiddenOps.has(rail.operators[rail.lines[i][0]][0]), h = railHalos[i];
+      if (visible !== map.hasLayer(l)) { if (visible) { h.addTo(map); l.addTo(map); } else { h.remove(); l.remove(); } }
       if (!visible) return;
-      const lit = focus.has(i);
-      l.setStyle({ weight: (z < 11 ? 1.5 : z < 13 ? 2.5 : 4) + (lit ? 3 : 0), opacity: lit ? 1 : focus.size ? 0.2 : z < 11 ? 0.4 : 0.6 });
-      if (lit) l.bringToFront();
+      const lit = focus.has(i), faded = focus.size && !lit, weight = base + (lit ? 3 : 0);
+      l.setStyle({ weight, opacity: faded ? 0.25 : z < 11 ? 0.75 : 0.95 });
+      h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
+      if (lit) { h.bringToFront(); l.bringToFront(); }
     });
-    if ((on && z >= 12) !== map.hasLayer(railStations)) { if (on && z >= 12) railStations.addTo(map); else railStations.remove(); }
+    const stations = on && z >= 11;
+    if (stations !== map.hasLayer(railStations)) {
+      if (stations) { railStations.addTo(map); railLabels.addTo(map); } else { railStations.remove(); railLabels.remove(); }
+    }
+    if (stations) railStations.eachLayer((m) => m.setStyle({ radius: stationRadius(z, m.options.lines) }));
+    stationLabels();
     const b = $("map").querySelector(".rail-btn");
     b.textContent = t("railLayer");
     b.setAttribute("aria-pressed", on);
@@ -1065,11 +1103,13 @@
     if (!data || !target.getContainer().isConnected) return;  // closed meanwhile
     const canvas = L.canvas({ padding: 0.3 }), r = 0.05;
     for (const [, , , colour, parts] of data.lines.filter((l) => l.box[0] <= lat + r && l.box[2] >= lat - r && l.box[1] <= lng + r && l.box[3] >= lng - r)) {
-      L.polyline(latlngs(parts), { renderer: canvas, color: colour, weight: 3.5, opacity: 0.8, interactive: false }).addTo(target);
+      L.polyline(latlngs(parts), { renderer: canvas, color: halo(), weight: 7, opacity: 0.85, interactive: false }).addTo(target);
+      L.polyline(latlngs(parts), { renderer: canvas, color: colour, weight: 4, opacity: 0.95, interactive: false }).addTo(target);
     }
     for (const [name, slat, slng] of data.stations) {
       if (Math.abs(slat - lat) < 0.03 && Math.abs(slng - lng) < 0.03) {
-        stationDot([slat, slng], name, canvas).addTo(target);
+        stationDot([slat, slng], name, canvas).setStyle({ radius: 5 }).addTo(target)
+          .unbindTooltip().bindTooltip(esc(stationName(name)), { permanent: true, direction: "right", offset: [6, 0], className: "station-tip" });
       }
     }
   }
@@ -1680,14 +1720,18 @@
 
   // The prefectures the URL asks for (p=tokyo,kanagawa), else the first one.
   function prefsFromHash() {
-    const p = (new URLSearchParams(location.hash.slice(1)).get("p") || "").split(",");
-    const known = p.filter((s) => manifest.prefs.some(([slug]) => slug === s));
+    const raw = new URLSearchParams(location.hash.slice(1)).get("p") || "";
+    const p = raw === "all" ? allPrefs() : raw.split(",");
+    const known = p.filter((s) => manifest.prefs.some(([slug]) => slug === s)).slice(0, maxPrefs());
     return known.length ? known : [manifest.prefs[0][0]];
   }
 
   async function loadPrefs(slugs) {
-    await Promise.all(slugs.filter((s) => !loaded.has(s)).map(async (slug) => {
+    const todo = slugs.filter((s) => !loaded.has(s));
+    let done = 0;
+    await Promise.all(todo.map(async (slug) => {
       const part = Filter.load(await (await fetch(`data/p/${slug}.json`)).json());
+      if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47 files
       for (const it of part.items) {
         it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
       }
