@@ -14,7 +14,7 @@ import json
 import re
 import shutil
 import subprocess
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote_plus
@@ -34,6 +34,7 @@ IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
          "relisted": 128}
 
+B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
 _ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agents' slogans and generated "town price" names
 
@@ -85,6 +86,15 @@ def _date_int(s):
     return int(s.replace("-", "")) if s else 0
 
 
+def _mask(numbers):
+    """A set of small numbers as a bit string, 6 bits per character, lowest first: {0, 7} -> 'BC'."""
+    bits, out = sum(1 << n for n in set(numbers)), ""
+    while bits:
+        out += B64[bits & 63]
+        bits >>= 6
+    return out
+
+
 class Table:
     """value -> small integer, so repeated strings are stored once."""
 
@@ -132,7 +142,10 @@ def station_prefectures(reps, rail_stations=()):
 
 def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=None):
     """The search index of these listings (one prefecture's, on the site)."""
-    types, areas, stations, features, towns = Table(TYPES), Table(), Table(), Table(), Table()
+    # tags numbered most common first, so each listing's tag set is a short bit string
+    tags = Counter(f for i in reps for f in i.features)
+    types, areas, stations, towns = Table(TYPES), Table(), Table(), Table()
+    features = Table(sorted(tags, key=lambda f: (-tags[f], f)))
     station_prefs = station_prefs if station_prefs is not None else station_prefectures(reps)
 
     def station(name, pref):
@@ -152,7 +165,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
             # pairs (station, access): minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
             "stations": [x for name, walk in i.stations for x in (
                 stations(station(name, i.pref)), _access(walk, i.bus.get(name), i.car.get(name)))],
-            "features": [features(f) for f in i.features],
+            "features": _mask(features(f) for f in i.features),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
                       | FLAGS["dropped"] * snap.is_dropped(i) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone

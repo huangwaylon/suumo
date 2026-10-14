@@ -20,6 +20,17 @@
   // A station name as typed: "Futako-Tamagawa", "futakotamagawa" and "ふたこたまがわ" are the same.
   const stationKey = (s) => normalize(s).replace(/[\s\-・]/g, "");
 
+  // A listing's tags: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
+  const B64 = Object.fromEntries([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"].map((ch, v) => [ch, v]));
+  function tags(mask, names) {
+    const out = new Set();
+    for (let k = 0; k < mask.length; k++) {
+      const v = B64[mask[k]];
+      for (let b = 0; b < 6; b++) if (v & (1 << b)) out.add(names[k * 6 + b]);
+    }
+    return out;
+  }
+
   function load(index) {
     const c = index.columns, n = c.id.length, items = new Array(n);
     let id = 0;
@@ -35,7 +46,7 @@
         id: String(id), idn: id, type, key: type + ":" + id, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
         land: c.land[i], age: c.age[i], built: c.built[i], builtInt: c.built[i] ? +c.built[i].replace("-", "") : 0,
-        stations, features: new Set(c.features[i].map((f) => index.features[f])), flags: c.flags[i],
+        stations, features: tags(c.features[i], index.features), flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null,
