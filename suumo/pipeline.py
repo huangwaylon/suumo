@@ -276,21 +276,30 @@ class Pipeline:
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
 
     def _queue_order(self, rows):
-        """One listing per property first: a listing whose property already has a page, or comes again in the
-        queue (another agent's listing of it: dup_key; land also listed under new_house: its /tochi/ path), waits
-        until every property has one. Priorities still come first."""
-        def keys(type_key, lid, rec):
-            k = {dup_key({**rec, "type": type_key})} - {None}
-            return k | {("tochi", lid)} if "/tochi/" in rec.get("path", "") else k
-        covered = set()
+        """The listings to fetch, in order: new ones first, then by prefecture, the one with the most listings first
+        (where most people look). Another agent's listing of a property that has (or will get) a page (dup_key)
+        isn't fetched: the site shows one listing per property; it's queued again by the next crawl if that
+        page's listing ends. Land also listed under new_house waits for its twin's page (/tochi/), then copies it."""
+        size = dict(self.db.x("SELECT pref, COUNT(*) FROM listings WHERE status='active' GROUP BY pref").fetchall())
+        def keys(type_key, rec):
+            return {dup_key({**rec, "type": type_key})} - {None}
+        covered, pages = set(), set()
         for r in self.db.x("SELECT type, id, list_json FROM listings WHERE detail_json IS NOT NULL"):
-            covered |= keys(r["type"], r["id"], json.loads(r["list_json"]))
+            covered |= keys(r["type"], rec := json.loads(r["list_json"]))
+            pages.add(rec.get("path"))
         ranked = []
         for n, r in enumerate(rows):
-            k = keys(r["type"], r["id"], json.loads(r["list_json"])) if r["list_json"] else set()
-            ranked.append((-r["priority"], bool(k & covered), n, r))
+            rec = json.loads(r["list_json"]) if r["list_json"] else {}
+            k = keys(r["type"], rec)
+            if k & covered:
+                self.db.dequeue(r["type"], r["id"])
+                continue
             covered |= k
-        return [r for *_, r in sorted(ranked, key=lambda x: x[:3])]
+            twin = "/tochi/" in rec.get("path", "") and rec["path"] in pages  # its twin's page comes first
+            pages.add(rec.get("path"))
+            ranked.append((-r["priority"], twin, -size.get(r["pref"], 0), n, r))
+        self.db.commit()
+        return [r for *_, r in sorted(ranked, key=lambda x: x[:4])]
 
     def _copy_twin(self, r):
         """Land sold with a build condition is listed under both new_house and land with one page (/tochi/): copy

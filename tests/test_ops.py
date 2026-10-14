@@ -309,7 +309,7 @@ def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, mo
     assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}
 
 
-def test_queue_fetches_one_listing_per_property_first_and_copies_land_twins(tmp_path):
+def test_queue_fetches_one_listing_per_property_and_copies_land_twins(tmp_path):
     db = DB(tmp_path / "s.db")
     archive = Archive(tmp_path / "a")
     condo = {"name": "狛江ハイツ", "floor_m2": 60.0, "layout": "3LDK", "built": "2000-01", "price": 30_000_000}
@@ -336,6 +336,21 @@ def test_queue_fetches_one_listing_per_property_first_and_copies_land_twins(tmp_
     targets = [Target("tokyo", t, None) for t in ("used_condo", "new_house", "land")]
     Pipeline(db, archive, Client(), targets, NOW, "r", log=QUIET).process_queue(3600)
     ids = [p.rstrip("/").split("nc_")[1] for p in fetched]
-    assert ids == ["3", "5", "6", "2", "4"]   # one per property first, then the copies; land 6 fetched once
+    assert ids == ["3", "5", "6"]   # one per property; other agents' copies (2, 4) not fetched; land 6 fetched once
     assert db.listing("land", "6")["detail_json"] == db.listing("new_house", "6")["detail_json"]
     assert archive.detail_path("tokyo", "land", "6").exists() and db.x("SELECT COUNT(*) FROM queue").fetchone()[0] == 0
+
+
+def test_queue_goes_by_prefecture_size_after_new_listings(tmp_path):
+    db = DB(tmp_path / "s.db")
+    for pref, lid, priority in [("tottori", "1", 0), ("osaka", "2", 0), ("osaka", "3", 0), ("tottori", "4", 1)]:
+        db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
+             "VALUES ('land', ?, ?, 'x', 'x', ?, '2026-10-05', 'x')", lid, pref,
+             json.dumps({"path": f"/tochi/{pref}/x/nc_{lid}/", "address": lid, "land_m2": 1.0, "price": 1}))
+        db.enqueue("land", lid, priority, "x", "x")
+    db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
+         "VALUES ('land', '9', 'osaka', 'x', 'x', '{}', '2026-10-05', 'x')")    # osaka has more listings
+    rows = db.x("SELECT q.type, q.id, q.priority, l.pref, l.area_code, l.list_json, l.status FROM queue q "
+                "JOIN listings l USING (type, id) ORDER BY q.id").fetchall()
+    order = [r["id"] for r in Pipeline(db, None, None, [], NOW, "r", log=QUIET)._queue_order(rows)]
+    assert order == ["4", "2", "3", "1"]   # new first, then the bigger prefecture

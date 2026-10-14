@@ -48,17 +48,22 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   `areas.last_crawled`.)
 - `runs`: one row per run with a JSON report (`progress` while running).
 - IDs are SUUMO `nc_` numbers, per agent listing. The same property listed by several agents has several IDs;
-  `dup_key` (type + building/address + size + price) groups them.
+  `dup_key` (type + building/address + size + price) groups them; only one listing per group gets its page fetched
+  (`Pipeline._queue_order`: new first, then the prefecture with the most listings).
 - `list_json`/`detail_json` are stored with `db.dumps` (sorted keys) so equal data is equal text.
 
 ## Invariants (keep these true)
 
 - **Only robots.txt-allowed paths.** Search results: `/{TYPES[type]}/{pref}/{slug}/?pc=100&page=N`; area pages:
   `/{type path}/{pref}/city/`; listing pages: the `path` from the search result. `/jj/bukken/ichiran/...` and any
-  `sort=` parameter are disallowed. One request at a time per crawler, `--delay` 1.5 s + up to 50% jitter (a
-  one-off backfill may use 1.0 s; never lower). At most two crawlers at once, by the owner's decision: the
-  hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml). `http.Client` slows itself down on 429/5xx/network
-  errors/slow responses (doubling, max 10 s, honours `Retry-After`) and eases back; keep that behaviour.
+  `sort=` parameter are disallowed (robots.txt has no crawl-delay for `*`; its `Crawl-delay: 30` is bingbot's).
+  Redirects aren't followed. One request at a time per crawler, `--delay` 1.5 s + up to 50% jitter for search
+  results. Listing pages during a backfill (or a one-off sweep of new prefectures) may go down to 0.5 s, by the
+  owner's decision (2026-10-14): the driver lowers it step by step while SUUMO answers without pushback and goes
+  back to 1.0 s on any; never lower than 0.5 s. At most two crawlers at once, by the owner's decision: the
+  hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml).
+  `http.Client` slows itself down on 429/5xx/network errors/slow responses (doubling, max 10 s, honours
+  `Retry-After`) and eases back; keep that behaviour.
   Geocoding is also one request at a time (`geo.GEO_DELAY`).
 - **Removal needs evidence.** A listing is removed only after `REMOVE_AFTER_MISSES` (2) consecutive *complete*
   crawls of its area miss it; then it's deleted, or kept as `removed` (ended) if it's in `saved.json`. Incomplete/error areas never count; `suspect` areas (lost >30% of ≥20) never remove.
