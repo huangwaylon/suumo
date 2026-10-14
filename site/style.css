@@ -154,6 +154,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .empty .chips { justify-content: center; margin: 16px 0; }
 
 /* Floating list/map switch (phones and tablets) */
+#area-go { display: none; }
 .fab { position: fixed; z-index: 20; left: 50%; bottom: calc(16px + var(--safe-b)); transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 999px;
   background: var(--text); color: var(--bg); font-weight: 600; box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
@@ -162,10 +163,18 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .map { display: none; }
 body.show-map .map { display: block; position: fixed; inset: var(--bar) 0 0 0; z-index: 10; }
 body.show-map .results { display: none; }
-.pin { display: grid; place-items: center; min-width: 30px; height: 26px; padding: 0 8px; border-radius: 13px;
-  background: var(--surface); color: var(--text); border: 2px solid var(--accent); font: 700 12px/1 -apple-system, sans-serif;
-  box-shadow: 0 2px 6px rgb(0 0 0 / .25); white-space: nowrap; }
-.pin.cluster { background: var(--accent); color: var(--on-accent); border-color: var(--surface); }  /* tap: zoom in */
+/* a town: an outlined pill (its count), zoomed in a price tag with a tail; a cluster: a filled circle (tap: zoom in) */
+.pin { display: grid; place-items: center; min-width: 28px; height: 24px; padding: 0 7px; border-radius: 12px;
+  background: var(--surface); color: var(--text); border: 1.5px solid var(--accent); font: 700 12px/1 -apple-system, sans-serif;
+  box-shadow: 0 1px 4px rgb(0 0 0 / .25); white-space: nowrap; }
+.pin.price { position: relative; display: flex; gap: 4px; justify-content: center; align-items: center; height: 26px; border-radius: 6px; font-size: 12.5px; }
+.pin.price::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 8px; height: 8px; margin-left: -4px; transform: rotate(45deg);
+  background: var(--surface); border: solid var(--accent); border-width: 0 1.5px 1.5px 0; }
+.pin.price i { font-style: normal; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-size: 10px; line-height: 16px; }
+.leaflet-marker-icon:hover .pin, .leaflet-marker-icon:focus-visible .pin { background: var(--accent); color: var(--on-accent); z-index: 1; }
+.leaflet-marker-icon:hover .pin.price::after { background: var(--accent); }
+.cl { display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 700 12px/1 -apple-system, sans-serif;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent), 0 2px 6px rgb(0 0 0 / .3); }
 .leaflet-popup-content { margin: 10px 12px; font: 14px/1.5 -apple-system, "Hiragino Sans", sans-serif; }
 .leaflet-container .leaflet-control-attribution { font-size: 10px; line-height: 1.4; padding: 0 4px; white-space: nowrap;
   background: rgb(255 255 255 / .6); }
@@ -374,6 +383,14 @@ details.group .opts { padding-bottom: 12px; }
 
 /* Phones -------------------------------------------------------------------------------------------- */
 @media (max-width: 699px) {
+  /* the map: one bottom bar, リスト on the left, この範囲で絞る on the right */
+  body.mapbar .mapbar-box { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px; height: calc(56px + var(--safe-b)); padding: 0 12px var(--safe-b);
+    background: var(--surface); border-top: 1px solid var(--line); }
+  body.mapbar .fab { position: static; transform: none; height: 44px; padding: 0 14px; background: none; color: var(--text); box-shadow: none; border: 1px solid var(--line); border-radius: 10px; }
+  body.mapbar #area-go:not([hidden]) { display: inline-flex; min-height: 44px; padding: 0 14px; white-space: nowrap; }
+  body.mapbar .map .area-btn { display: none; }
+  body.show-map .map { bottom: calc(56px + var(--safe-b)); }
   /* the conditions in one row that swipes, the list in sight */
   #chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px 10px; padding: 0 12px; }
   #chips > * { flex: none; }

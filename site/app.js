@@ -297,6 +297,8 @@
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
+    document.body.classList.toggle("mapbar", showMap && !area);
+    if (!showMap || area) $("area-go").hidden = true;  // (drawMap shows it once the map has its view)
     $("list").innerHTML = hits.length ? "" : emptyState(active);
     shown = 0;
     if (compare && hits.length) renderCompare(); else more();
@@ -719,12 +721,21 @@
 
   let leaflet = null, map = null, cluster = null, fittedFor = null;
   const mapVisible = () => (WIDE.matches ? !!area || (mapOn() && sideTab === "map") : showMap || !!area);
-  const inArea = (list) => list.filter((it) => it.lat != null && it.lat >= area[0] && it.lng >= area[1] && it.lat <= area[2] && it.lng <= area[3]);
+  const inArea = (list, b = area) => list.filter((it) => it.lat != null && it.lat >= b[0] && it.lng >= b[1] && it.lat <= b[2] && it.lng <= b[3]);
   const boundsOf = (m) => { const b = m.getBounds(); return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]; };
+
+  // Phones: the map's bottom bar says how many results are in view (この範囲で絞る (N件)).
+  const PHONE = matchMedia("(max-width: 699px)");
+  function mapBar() {
+    const on = !!map && showMap && !area && PHONE.matches;
+    $("area-go").hidden = !on;
+    if (on) $("area-go").textContent = t("areaFilter", num(inArea(mapHits, boundsOf(map)).length));
+  }
 
   // The map area view follows the map: after a pan or zoom, the list is what's visible (the pins stay as they are).
   let areaTimer = null;
   function onMapMove() {
+    mapBar();
     if (!area) return;
     clearTimeout(areaTimer);
     areaTimer = setTimeout(() => {
@@ -753,28 +764,50 @@
   // Leaflet loaded (true) or not available (false; retried next time).
   const mapReady = () => loadLeaflet().then(() => true, () => { leaflet = null; return false; });
 
-  const pins = new Map();  // one icon per count, reused across redraws
-  function pin(n, cluster = false) {  // a cluster (filled) zooms in; a town (outlined) opens its list
-    const key = `${n}${cluster ? "c" : ""}`;
-    if (!pins.has(key)) {
-      const label = num(n);
-      pins.set(key, L.divIcon({ className: "", html: `<div class="pin${cluster ? " cluster" : ""}">${label}</div>`,
-        iconSize: [Math.max(30, 16 + label.length * 8), 26] }));
+  // Markers: a town (丁目) is a pill with its count, or from PRICE_ZOOM a price tag (its lowest price, and how many);
+  // a cluster of towns is a filled circle sized by its count (a tap zooms in). Icons are reused across redraws.
+  const PRICE_ZOOM = 15;
+  const pins = new Map();
+  const cachedIcon = (key, make) => pins.get(key) || pins.set(key, make()).get(key);
+  function townIcon(list, priced) {
+    if (!priced) {
+      const label = num(list.length);
+      return cachedIcon(`t${label}`, () => L.divIcon({ className: "", html: `<div class="pin">${label}</div>`, iconSize: [Math.max(28, 14 + label.length * 8), 24] }));
     }
-    return pins.get(key);
+    const lo = list.reduce((m, it) => (it.price != null && (m == null || it.price < m) ? it.price : m), null);
+    const label = lo == null ? t("undecided") : t("pinPrice", lo), more = list.length > 1 ? list.length : 0;
+    return cachedIcon(`p${label}|${more}`, () => {
+      const w = 18 + label.length * (S.lang === "en" ? 7 : 10) + (more ? 10 + String(more).length * 7 : 0);
+      return L.divIcon({ className: "", html: `<div class="pin price">${esc(label)}${more ? `<i>${num(more)}</i>` : ""}</div>`,
+        iconSize: [w, 26], iconAnchor: [w / 2, 32] });
+    });
+  }
+  function clusterIcon(n) {
+    const size = n < 10 ? 30 : n < 100 ? 36 : n < 1000 ? 44 : 52;
+    return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl" style="width:${size}px;height:${size}px">${num(n)}</div>`, iconSize: [size, size] }));
+  }
+  let priced = false;  // the town markers show prices (zoomed in)
+  function onZoom() {
+    const now = map.getZoom() >= PRICE_ZOOM;
+    if (now === priced) return;
+    priced = now;
+    cluster.eachLayer((m) => m.setIcon(townIcon(m.options.list, priced)));
+    cluster.refreshClusters();
   }
 
   async function drawMap() {
     if (!(await mapReady()) || !mapVisible()) return;
     if (!map) {
       const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-      map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion });
+      map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion,
+        wheelPxPerZoomLevel: 120, wheelDebounceTime: 80 });  // a wheel notch: about one level
       // Leaflet measures its box only on window resizes; the layout also resizes it (the map area view, the filter rail,
       // the side panel), and a stale size leaves part of the map without tiles
       new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(map.getContainer());
       map.on("popupopen", (e) => e.popup.getElement()?.querySelector(".popup-list a")?.focus({ preventScroll: true }));
       map.on("popupopen popupclose", (e) => $("map").classList.toggle("popup-open", e.type === "popupopen"));
       map.on("moveend", onMapMove);
+      map.on("zoomend", onZoom);
       // the map area view: list what's in sight
       const go = document.createElement("button");
       go.className = "btn primary area-btn";
@@ -786,13 +819,14 @@
       L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>' }).addTo(map);
       drawRail();
       cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
-        iconCreateFunction: (c) => pin(c.getAllChildMarkers().reduce((n, m) => n + m.options.count, 0), true) });
+        iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)) });
       map.addLayer(cluster);
     }
     map.invalidateSize();
     const towns = new Map();
     let unplaced = 0;
-    $("map").querySelector(".area-btn").textContent = t(area ? "areaClose" : "areaOpen");
+    $("map").querySelector(".area-btn").textContent = t(area ? "areaClear" : "areaOpen");
+    priced = map.getZoom() >= PRICE_ZOOM;
     for (const it of mapHits) {
       if (it.lat == null) { unplaced++; continue; }
       if (!towns.has(it.town)) towns.set(it.town, [it.lat, it.lng, []]);
@@ -800,7 +834,7 @@
     }
     cluster.clearLayers();
     cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
-      L.marker([lat, lng], { icon: pin(list.length), count: list.length, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
+      L.marker([lat, lng], { icon: townIcon(list, priced), list, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     let note = $("map").querySelector(".map-note");
     if (!note) { note = document.createElement("div"); note.className = "map-note"; $("map").append(note); }
     note.textContent = area ? t("areaNote") : hits.length ? t("mapCount", num(hits.length), unplaced && num(unplaced)) : mode === "search" ? t("emptyTitle") : t("favEmpty")[0];
@@ -815,6 +849,7 @@
       const points = towns.size ? [...towns.values()] : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
       if (points.length) map.fitBounds(coreBounds(points), { padding: [30, 30], maxZoom: 15 });
     }
+    mapBar();
   }
 
   // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ; colours, English names from ODPT) ----------
@@ -828,8 +863,8 @@
     }
     return d;
   }).catch(() => { railData = null; return null; }));
-  const stationDot = (latlng, name, renderer) => L.circleMarker(latlng, { renderer, radius: 4, color: "#3a3f48", weight: 1.5,
-    fillColor: "#fff", fillOpacity: 1 }).bindTooltip(name, { direction: "top", offset: [0, -4] });
+  const stationDot = (latlng, name, renderer) => L.circleMarker(latlng, { renderer, radius: 3, color: "#fff", weight: 1,
+    fillColor: "#8a919c", fillOpacity: 1 }).bindTooltip(name, { direction: "top", offset: [0, -4] });
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
   const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
@@ -902,7 +937,7 @@
       if (visible !== map.hasLayer(l)) { if (visible) l.addTo(map); else l.remove(); }
       if (!visible) return;
       const lit = focus.has(i);
-      l.setStyle({ weight: (z < 11 ? 1.5 : z < 13 ? 2.5 : 4) + (lit ? 3 : 0), opacity: focus.size && !lit ? 0.2 : z < 11 ? 0.5 : 0.8 });
+      l.setStyle({ weight: (z < 11 ? 1.5 : z < 13 ? 2.5 : 4) + (lit ? 3 : 0), opacity: lit ? 1 : focus.size ? 0.2 : z < 11 ? 0.4 : 0.6 });
       if (lit) l.bringToFront();
     });
     if ((on && z >= 12) !== map.hasLayer(railStations)) { if (on && z >= 12) railStations.addTo(map); else railStations.remove(); }
@@ -934,11 +969,12 @@
     }
   }
 
-  // Where most results are: the 10th-90th percentile box (outskirts and islands don't shrink the view).
+  // Where the results are, without far outliers (islands, a stray geocode): the 2nd-98th percentile box; all of
+  // them when there are few.
   function coreBounds(points) {
-    const pick = (i) => points.map((p) => p[i]).sort((a, b) => a - b);
-    const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor(a.length * f))];
-    return [[at(lat, 0.1), at(lng, 0.1)], [at(lat, 0.9), at(lng, 0.9)]];
+    const pick = (i) => points.map((p) => p[i]).sort((a, b) => a - b), cut = points.length < 20 ? 0 : 0.02;
+    const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor((a.length - 1) * f + 0.5))];
+    return [[at(lat, cut), at(lng, cut)], [at(lat, 1 - cut), at(lng, 1 - cut)]];
   }
 
   function popup(town, list) {
@@ -1425,6 +1461,7 @@
     });
     $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
     $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
+    $("area-go").addEventListener("click", () => switchView("area", () => { area = boundsOf(map); showMap = false; }));
     $("detail-back").addEventListener("click", closeDetail);
     $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
     document.addEventListener("click", (e) => {
