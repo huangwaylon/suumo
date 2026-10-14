@@ -1818,7 +1818,7 @@
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
-      if (e.key !== "Escape" || e.target.matches("input:not([type=checkbox]), select, textarea")) return;
+      if (e.key !== "Escape" || e.target.matches("#q, select, textarea")) return;  // (the search box has its own)
       const railPanel = $("map").querySelector(".rail-panel:not([hidden])");
       if ($("map").contains(e.target) && (railPanel || $("map").querySelector(".leaflet-popup"))) {  // a popup, the lines panel
         if (railPanel) { railPanel.hidden = true; $("map").querySelector(".rail-btn").focus(); }
