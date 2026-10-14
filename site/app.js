@@ -294,6 +294,7 @@
     $("filters-n").textContent = set;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
+    document.body.classList.toggle("comparing", compare && mode !== "search");
     const offers = mode === "search" ? suggestions() : [];
     renderPrefBar();
     renderQuick();
@@ -408,10 +409,11 @@
       <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
 
-  function renderBanner() {  // favorites: the compare switch
-    const b = $("banner");
+  function renderBanner() {  // favorites: the compare switch (and the columns taken out of it)
+    const b = $("banner"), out = compare ? hits.filter((it) => cmpHidden.has(it.key)).length : 0;
     b.hidden = mode !== "favorites" || hits.length < 2;
-    if (!b.hidden) b.innerHTML = `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>`;
+    if (!b.hidden) b.innerHTML = `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>${
+      out ? `<button class="btn ghost" data-cmp-all="1">${esc(t("cmpShowAll", out))}</button>` : ""}`;
   }
 
   function applySuggestion(field, v) {  // the typed name becomes a condition
@@ -808,6 +810,7 @@
       const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
       map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion,
         wheelPxPerZoomLevel: 120, wheelDebounceTime: 80 });  // a wheel notch: about one level
+      map.setView([35.68, 139.76], 10);  // a view before the layers (the cluster layer needs one); fitted below
       // Leaflet measures its box only on window resizes; the layout also resizes it (the map area view, the filter rail,
       // the side panel), and a stale size leaves part of the map without tiles
       new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(map.getContainer());
@@ -1013,33 +1016,54 @@
 
   // ---------- compare ----------
 
+  const cmpHidden = new Set();  // columns taken out of the favorites' comparison (this view only; never unsaved)
   async function renderCompare() {
     const forKey = renderedFor;
     $("list").innerHTML = '<div class="skeleton"></div>';
-    const html = await compareHtml(hits.slice(0, 12));
+    const html = await compareHtml(hits.filter((it) => !cmpHidden.has(it.key)).slice(0, 12), true);
     if (renderedFor === forKey) $("list").innerHTML = html;
+    renderBanner();
   }
 
-  // Listings side by side: a row per fact, a column per listing (favorites, and the side panel's 比較).
-  async function compareHtml(list) {
+  // Listings side by side: a row per fact, a column per listing (favorites, and the side panel's 比較). A numeric
+  // row marks its best value (lowest price, largest area...); hideable: each column has an × (favorites).
+  async function compareHtml(list, hideable = false) {
     const recs = await Promise.all(list.map((it) => record(it.key).catch(() => null)));
     const cols = list.map((it, i) => [it, recs[i] || {}]);
     const yen = (v) => (v ? t("yen", num(v)) : "");
+    const monthly = ([it, r]) => (isCondo(it.type) ? it.fees ?? (r.mgmt_fee && r.repair_fee ? r.mgmt_fee + r.repair_fee + (r.other_monthly || 0) : null) : null);
+    const walk = ([it]) => it.stations.reduce((m, [, w]) => (w != null && (m == null || w < m) ? w : m), null);
+    const newBuild = (it) => it.type === "new_condo" || it.type === "new_house";
+    // [label, cell html, best: [value of a column, "min" | "max"]]
     const ROWS = [
-      ["", ([it]) => `<a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy">` : ""}</div></a>`],
+      ["", ([it]) => `<div class="cmp-top"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div></a>${
+        hideable ? `<button class="cmp-x" data-cmp-hide="${esc(it.key)}" aria-label="${esc(t("cmpHide", money(it.price)))}">${icon("x")}</button>` : ""}</div>`],
       ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
-      ["price", ([it]) => `<b class="num">${price(it, true)}</b>${usd(it)}`],
+      ["price", ([it]) => `<span class="num">${price(it, true)}</span>${usd(it)}`, [([it]) => it.price, "min"]],
+      ["unit", ([it]) => esc(it.unit ? t("perM2", it.unit) : ""), [([it]) => it.unit, "min"]],
+      ["feesMonthly", (c) => esc(monthly(c) ? t("perMonth", yen(monthly(c))) : ""), [monthly, "min"]],
       ["layout", ([it]) => esc(value(it.layout) || typeName(it.type))],
       [cols.every(([it]) => isCondo(it.type)) ? "floor" : cols.some(([it]) => isCondo(it.type)) ? "floorBoth" : "building",
-        ([it]) => esc(it.size ? m2(it.size) : "")], ["land", ([it]) => esc(it.land ? m2(it.land) : "")],
-      ["age", ([it]) => esc(age(it))], ["station", ([it]) => esc(station(it))],
-      ["monthly", ([, r]) => esc(r.mgmt_fee || r.repair_fee ? t("perMonth", yen((r.mgmt_fee || 0) + (r.repair_fee || 0))) : "")],
+        ([it]) => esc(it.size ? m2(it.size) : ""), [([it]) => it.size, "max"]],
+      ["land", ([it]) => esc(it.land ? m2(it.land) : ""), [([it]) => it.land, "max"]],
+      ["age", ([it]) => esc(age(it)), [([it]) => (newBuild(it) ? 0 : it.ageMonths), "min"]],
+      ["station", ([it]) => nowrapWalk(station(it)), [walk, "min"]],
       ["floors", ([, r]) => esc([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
+      ["structure", ([, r]) => esc(value(r.structure) || "")],
       ["units", ([, r]) => esc(r.units ? t("unitsN", r.units) : "")], ["rights", ([, r]) => esc(value(r.land_rights) || "")],
       ["place", ([it]) => esc(it.town || areaName(it.area))],
     ];
-    return `<div class="compare"><table><tbody>${ROWS.filter(([, f]) => cols.some((c) => f(c))).map(([k, f]) =>
-      `<tr><th scope="row">${k ? esc(t(`d.${k}`)) : ""}</th>${cols.map((c) => `<td>${f(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    const bestOf = (best) => {
+      if (!best) return null;
+      const vs = cols.map(best[0]).filter((v) => v != null);
+      if (vs.length < 2 || vs.every((v) => v === vs[0])) return null;
+      return best[1] === "min" ? Math.min(...vs) : Math.max(...vs);
+    };
+    return `<div class="compare"><table><tbody>${ROWS.filter(([, f]) => cols.some((c) => f(c))).map(([k, f, best]) => {
+      const top = bestOf(best);
+      return `<tr><th scope="row">${k ? esc(t(`d.${k}`)) : ""}</th>${cols.map((c) => (top != null && best[0](c) === top
+        ? `<td class="best"><b>${f(c)}</b></td>` : `<td>${f(c)}</td>`)).join("")}</tr>`;
+    }).join("")}</tbody></table></div>`;
   }
 
   async function showDetail(key) {
@@ -1514,7 +1538,9 @@
         q.stations = [b.dataset.stationPick];
         map?.closePopup();
         update(false);
-      } else if (b.dataset.compare) switchView("compare", () => { compare = !compare; });
+      } else if (b.dataset.compare) switchView("compare", () => { compare = !compare; cmpHidden.clear(); });
+      else if (b.dataset.cmpHide) { cmpHidden.add(b.dataset.cmpHide); renderCompare(); }
+      else if (b.dataset.cmpAll) { cmpHidden.clear(); renderCompare(); }
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
