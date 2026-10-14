@@ -263,7 +263,7 @@
     saveLast();
     if (top) listY[mode] = 0;
     render();
-    if (top && tab === "list") scroller().scrollTop = 0;
+    if (top) $("results").scrollTop = 0;
   }
 
   function render() {
@@ -312,21 +312,27 @@
     renderQuick();
     renderTabs();
     if (waiting) return;  // the skeleton stays until the map has its view
+    if (tab !== "list") { listStale = true; return; }  // (drawn when it's shown)
     // the same cards as already drawn (a sheet closed, a view switched back): kept as they are, with their place
     const sig = [S.lang, mode, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.map((it) => it.key)].join("|");
     if (sig === listSig && hits.length) return;
     listSig = sig;
+    const focused = $("list").contains(document.activeElement) && document.activeElement.closest("[data-key], [data-fav]");
     $("list").innerHTML = hits.length ? "" : mapHits.length ? `<div class="empty"><h3>${esc(t("viewEmpty"))}</h3>
       <button class="btn primary" data-fit="1">${esc(t("fitAllShow", num(mapHits.length)))}</button></div>` : emptyState(activeConditions());
     shown = 0;
     more();
-    if (moved && tab === "list") scroller().scrollTop = 0;
+    if (moved) $("results").scrollTop = 0;
+    if (focused) {  // the keyboard stays on the same card, if it's still listed
+      const key = focused.dataset.key || focused.dataset.fav;
+      ($("list").querySelector(`[data-key="${CSS.escape(key)}"]`) || $("count")).focus({ preventScroll: true });
+    }
   }
 
   // The favorites are a view of their own: a history entry (back returns to the search, its place and its map).
   function toggleFavorites() {
     if (history.state?.view) { history.back(); return; }  // undoing the switch: back to where it was
-    if (tab === "list") listY[mode] = scroller().scrollTop; else showTab("list");
+    if (tab === "list") listY[mode] = $("results").scrollTop; else showTab("list");
     const before = mode;
     mode = mode === "favorites" ? "search" : "favorites";
     modeChanged(before);
@@ -342,10 +348,9 @@
   }
   function restoreList() {
     const y = listY[mode] || 0;
-    while (shown < hits.length && $("list").offsetHeight < y + innerHeight) more();
-    scroller().scrollTop = y;
+    while (shown < hits.length && $("list").offsetHeight < y + $("results").clientHeight) more();
+    $("results").scrollTop = y;
   }
-  const scroller = () => document.scrollingElement;  // what scrolls the list
 
   function more() {
     if (shown >= hits.length) return;
@@ -857,8 +862,10 @@
     moveTimer = setTimeout(updateView, 150);
   }
   function updateView() {
-    const b = map.getBounds(), c = map.getCenter();
-    view = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
+    const size = map.getSize(), h = size.y - hidden();
+    if (h < 40) return;  // the sheet covers the map: the list stays as it was
+    const nw = map.containerPointToLatLng([0, 0]), se = map.containerPointToLatLng([size.x, h]), c = map.containerPointToLatLng([size.x / 2, h / 2]);
+    view = [se.lat, nw.lng, nw.lat, se.lng];
     mapAt = `${c.lat.toFixed(5)},${c.lng.toFixed(5)},${map.getZoom()}`;
     waiting = false;
     if (!railAsked) { railAsked = true; (window.requestIdleCallback || setTimeout)(drawRail); }  // the lines: once listed
@@ -866,21 +873,31 @@
     saveLast();
     if (autopan) { autopan = false; return; }
     if (document.body.classList.contains("resizing")) return;  // (the divider: once it's let go)
-    if (document.body.classList.contains("show-filters") && !WIDE.matches) listStale = true; else listResults(true);
+    if (document.body.classList.contains("show-filters") && !WIDE.matches) listStale = true;
+    else listResults(true);
   }
+
+  // The height of the map under the bottom sheet (phones; a full sheet counts as half: the map shows when it's back).
+  function hidden() {
+    if (SPLIT.matches) return 0;
+    const box = map.getContainer().getBoundingClientRect(), panel = $("panel");
+    return Math.max(0, box.bottom - (panel.dataset.sheet === "full" && !panel.classList.contains("dragging") ? innerHeight / 2 : panel.getBoundingClientRect().top));
+  }
+  // The map's centre that puts latlng in the middle of the visible part.
+  const centreFor = (latlng, z) => map.unproject(map.project(latlng, z).add([0, hidden() / 2]), z);
 
   // Moves the map as fitNext says, once it's there.
   function placeMap() {
-    const how = fitNext, it = how?.id && allByKey.get(how.id);
+    const how = fitNext, it = how?.id && allByKey.get(how.id), pad = { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()] };
     if (!map || !how) return;
     fitNext = null;
-    if (how.m) map.setView(how.m.split(",").slice(0, 2).map(Number), +how.m.split(",")[2]);
-    else if (how.b) map.fitBounds([[how.b[0], how.b[1]], [how.b[2], how.b[3]]]);
-    else if (it?.lat != null) map.setView([it.lat, it.lng], 15);
+    if (how.m) map.setView(centreFor(how.m.split(",").slice(0, 2).map(Number), +how.m.split(",")[2]), +how.m.split(",")[2]);
+    else if (how.b) map.fitBounds([[how.b[0], how.b[1]], [how.b[2], how.b[3]]], { paddingBottomRight: [0, hidden()] });
+    else if (it?.lat != null) map.setView(centreFor([it.lat, it.lng], 15), 15);
     else {  // the results (none: the prefectures)
       const placed = mapHits.filter((x) => x.lat != null).map((x) => [x.lat, x.lng]);
       const points = placed.length ? placed : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
-      if (points.length) map.fitBounds(coreBounds(points), { padding: [30, 30], maxZoom: 15 });
+      if (points.length) map.fitBounds(coreBounds(points), { ...pad, maxZoom: 15 });
     }
     onMapMove();  // (also when it was there already)
   }
@@ -942,6 +959,7 @@
     map.on("zoomend", onZoom);
     if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
     map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
+    map.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "topleft");  // (phones: the sheet is at the bottom)
     L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>' }).addTo(map);
     cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
       iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)) });
@@ -1386,8 +1404,11 @@
   function showTab(next) {
     if (next === "compare" && tabs.length < 2) next = "list";
     if (isListing(next) && !tabs.includes(next)) next = "list";
-    const was = tab, scroller = document.scrollingElement;
-    if (was === "list" && next !== "list") listY[mode] = scroller.scrollTop;
+    const was = tab;
+    if (was === "list" && next !== "list") listY[mode] = $("results").scrollTop;
+    // phones: a listing (or 比較) takes the whole sheet; the list gets its height back
+    if (was === "list" && next !== "list" && !SPLIT.matches) { sheetBefore = $("panel").dataset.sheet; setSheet("full", false); }
+    if (next === "list" && sheetBefore) { setSheet(sheetBefore, false); sheetBefore = null; }
     tab = next;
     $("panel").dataset.tab = isListing() ? "listing" : tab;
     $("results").hidden = tab !== "list";
@@ -1399,13 +1420,13 @@
       body.dataset.key = "";
       body.innerHTML = "";
       if (was === "list") return;
-      while (shown < hits.length && $("list").offsetHeight < (listY[mode] || 0) + innerHeight) more();
-      scroller.scrollTop = listY[mode] || 0;
+      if (listStale) render();  // the map moved meanwhile
+      restoreList();
       const from = openedFrom && $("list").querySelector(`[data-key="${CSS.escape(openedFrom)}"]`);
       (from || $("count")).focus({ preventScroll: true });
       return;
     }
-    if (was === "list") scroller.scrollTop = 0;
+    if (was === "list") body.scrollTop = 0;
     if (tab === "compare") {
       dropMap(body);
       body.dataset.key = "compare";
@@ -1433,13 +1454,64 @@
     const button = (id, label, x, cls = "") => `<span class="tab${tab === id ? " on" : ""}" role="presentation">
       <button role="tab"${cls} aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${esc(label)}</button>${
       x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
-    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "listTab")} ${num(hits.length)}`, false, ' class="tab-list"') +
+    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "listTab")} ${num(hits.length)}`, false, ' class="tab-list"')
+      .replace('data-tab-show="list">', `data-tab-show="list">${icon("back")}`) +
       tabs.map((key) => {
         const it = allByKey.get(key);
         return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key, true);
       }).join("") + (tabs.length > 1 ? button("compare", t("compareTab")) : "") +
       `<button class="tab-all" data-tab-close="all">${esc(t("closeAll"))}</button>`;
     strip.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
+  // ---------- the bottom sheet (below 1024 px): the panel over the map, at peek, half or full height ----------
+
+  const SPLIT = matchMedia("(min-width: 1024px)");  // map and panel side by side (style.css too)
+  const SHEETS = ["peek", "half", "full"];
+  let sheetBefore = null;   // the sheet's state before a listing took all of it
+  let dragEnd = 0;
+  function setSheet(state, save = true) {
+    $("panel").dataset.sheet = state;
+    sheetSemantics();
+    if (save) { settings.sheet = state; saveSettings(); }
+    if (map) setTimeout(onMapMove, 300);  // what's in view: what the sheet leaves visible (once it's there)
+  }
+  function wireSheet() {
+    const panel = $("panel"), head = panel.querySelector(".panel-head");
+    $("sheet-handle").addEventListener("click", () => setSheet(SHEETS[(SHEETS.indexOf(panel.dataset.sheet) + 1) % 3]));
+    head.addEventListener("click", (e) => { if (Date.now() - dragEnd < 300) { e.stopPropagation(); e.preventDefault(); } }, true);
+    // dragged by its head: it snaps to the nearest state
+    head.addEventListener("pointerdown", (e) => {
+      if (SPLIT.matches || e.button) return;
+      const y0 = e.clientY, from = panel.getBoundingClientRect().top - panel.offsetTop;  // (offsetTop: a full sheet's top)
+      let moved = false;
+      const move = (ev) => {
+        if (!moved && Math.abs(ev.clientY - y0) < 8) return;
+        if (!moved) { moved = true; head.setPointerCapture(e.pointerId); panel.classList.add("dragging"); }
+        panel.style.transform = `translateY(${Math.max(0, from + ev.clientY - y0)}px)`;
+      };
+      const end = () => {
+        head.removeEventListener("pointermove", move);
+        if (!moved) return;
+        const at = panel.getBoundingClientRect().top;
+        panel.style.transform = "";
+        const tops = SHEETS.map((s) => { panel.dataset.sheet = s; return Math.abs(panel.getBoundingClientRect().top - at); });
+        panel.classList.remove("dragging");
+        dragEnd = Date.now();
+        setSheet(SHEETS[tops.indexOf(Math.min(...tops))]);
+      };
+      head.addEventListener("pointermove", move);
+      head.addEventListener("pointerup", end, { once: true });
+      head.addEventListener("pointercancel", end, { once: true });
+    });
+    panel.addEventListener("focusin", (e) => { if (panel.dataset.sheet === "peek" && !head.contains(e.target)) setSheet("half"); });
+    SPLIT.addEventListener("change", () => {  // one layout to the other: the sheet back as it was, the map resized
+      sheetBefore = null;
+      setSheet(SPLIT.matches || tab === "list" ? settings.sheet || "half" : "full", false);
+      map?.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "topleft");
+      if (document.activeElement?.closest("[inert]")) $("count").focus();
+    });
+    setSheet(settings.sheet || "half", false);
   }
 
   // ---------- the divider between the map and the list (wide screens): drag, arrow keys, double click ----------
@@ -1549,7 +1621,12 @@
       sheet.setAttribute("aria-modal", "true");
     }
     $("filters-open").setAttribute("aria-expanded", WIDE.matches ? railOn() : open);
-    for (const el of [document.querySelector(".bar"), $("panel"), $("map")]) el.inert = open;
+    for (const el of [document.querySelector(".bar"), $("panel")]) el.inert = open;
+    $("map").inert = open || (!SPLIT.matches && $("panel").dataset.sheet === "full");
+    const full = $("panel").dataset.sheet === "full";
+    $("panel").style.setProperty("--peek", `${$("panel").querySelector(".panel-head").offsetHeight}px`);  // peek: its head
+    $("sheet-handle").setAttribute("aria-expanded", full);
+    $("sheet-handle").setAttribute("aria-label", t(full ? "sheetCollapse" : "sheetExpand"));
     // desktop: the rail can be hidden, giving its width to the results
     document.body.classList.toggle("rail-off", WIDE.matches && !railOn());
     setPanel(settings.panel ?? PANEL);
@@ -1602,6 +1679,7 @@
   function wire() {
     wireSearch();
     wireSplit();
+    wireSheet();
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(!railOn()));
     $("filters-close").addEventListener("click", () => openFilters(false));
@@ -1712,7 +1790,11 @@
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
       const id = a.getAttribute("href").slice(1);
-      if (id === "filters") openFilters(true); else $(id)?.focus();
+      if (id === "filters") openFilters(true);
+      else {
+        if (!SPLIT.matches && $("panel").dataset.sheet !== "half") setSheet("half");  // the map and the list both in sight
+        $(id)?.focus();
+      }
     }));
     window.addEventListener("popstate", () => {
       if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
@@ -1728,7 +1810,7 @@
         return;
       }
       const before = mode;
-      if (tab === "list") listY[mode] = scroller().scrollTop;
+      if (tab === "list") listY[mode] = $("results").scrollTop;
       route();
       if (mode !== before && tab === "list") restoreList();
     });
@@ -1744,7 +1826,7 @@
       else if (tab !== "list" && (e.target === document.body || $("panel").contains(e.target))) toList();
     });
     WIDE.addEventListener("change", () => { sheetSemantics(); render(); });
-    new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
+    new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { root: $("results"), rootMargin: "800px" }).observe($("sentinel"));
   }
 
   // The prefectures the URL asks for (p=tokyo,kanagawa), else the first one.

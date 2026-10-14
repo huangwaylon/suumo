@@ -18,8 +18,10 @@
 /* Base ---------------------------------------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; overflow: hidden; }
+/* an app shell: the bar, then the map and the panel (each scrolling on its own); the page itself never scrolls */
 body {
+  display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none;
   margin: 0; background: var(--bg); color: var(--text);
   font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
   font-feature-settings: "palt"; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
@@ -82,7 +84,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .chip.saved .chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* Top bar ------------------------------------------------------------------------------------------- */
-.bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 4px; height: var(--bar);
+.bar { position: relative; z-index: 30; flex: none; display: flex; align-items: center; gap: 4px; height: var(--bar);
   padding: 0 8px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .brand { display: none; padding: 10px 0; font-weight: 700; letter-spacing: .02em; margin-right: 12px; }
 .search-wrap { position: relative; flex: 1; min-width: 0; margin-right: auto; }
@@ -105,8 +107,16 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .sg[aria-selected="true"], .sg:hover { background: var(--accent-soft); }
 
 /* Results ------------------------------------------------------------------------------------------- */
-.results { min-width: 0; padding: 12px 12px calc(24px + var(--safe-b)); }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; margin-bottom: 8px; }  /* the end wraps on very small screens */
+/* the panel: its head (tabs, the count) stays, the list or a listing scrolls under it */
+.layout { flex: 1; min-height: 0; position: relative; }
+.panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.panel-head { flex: none; background: var(--surface); border-bottom: 1px solid var(--line); }
+.results, .panel-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.results { padding: 12px 12px calc(24px + var(--safe-b) + var(--sheet-y, 0px)); }
+.results:focus { outline: none; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; padding: 4px 12px; }  /* the end wraps on very small screens */
+#panel:not([data-tab="list"]) .toolbar { display: none; }
+.sheet-handle { display: none; }
 .toolbar-end { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: auto; }
 #count { margin: 0; font-size: 15px; white-space: nowrap; }
 #count:focus { outline: none; }
@@ -175,6 +185,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .empty .chips { justify-content: center; margin: 16px 0; }
 
 /* Map ----------------------------------------------------------------------------------------------- */
+.map { isolation: isolate; }  /* Leaflet's panes stay under the sheets */
 .map-failed { margin: 0; padding: 24px; color: var(--muted); text-align: center; }
 /* a town: an outlined pill (its count), zoomed in a price tag with a tail; a cluster: a filled circle (tap: zoom in) */
 .pin { display: grid; place-items: center; min-width: 28px; height: 24px; padding: 0 7px; border-radius: 12px;
@@ -344,7 +355,7 @@ details.group .opts { padding-bottom: 12px; }
 .d-sec dd small { display: block; color: var(--muted); font-size: 12px; }
 .d-map { height: 220px; margin: 8px 16px 24px; border-radius: var(--radius); }
 /* the listing's actions, at the bottom of its tab */
-.actions { position: sticky; bottom: 0; z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 8px;
+.actions { position: sticky; bottom: var(--sheet-y, 0px); z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 8px;
   padding: 8px 16px calc(8px + var(--safe-b)); background: var(--surface); border-top: 1px solid var(--line); }
 .actions .btn { white-space: nowrap; }
 .fav-btn[aria-pressed="true"] .i { color: var(--fav); fill: currentColor; }  /* the heart red, the text readable */
@@ -357,7 +368,7 @@ details.group .opts { padding-bottom: 12px; }
   font: inherit; font-weight: 600; cursor: pointer; }
 
 /* The panel's tabs: the list, the listings opened from it, 比較 */
-.tabs { position: sticky; top: var(--bar); z-index: 6; display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+.tabs { display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   overflow-x: auto; scrollbar-width: none; background: var(--surface); border-bottom: 1px solid var(--line); }
 .tab { flex: none; display: inline-flex; align-items: center; max-width: 170px; border-radius: 8px; color: var(--muted); }
 .tab > button:first-child { min-height: 36px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -366,7 +377,7 @@ details.group .opts { padding-bottom: 12px; }
 .tab-x { display: grid; place-items: center; width: 30px; height: 36px; margin-left: -6px; color: inherit; }
 .tab-x .i { width: 14px; height: 14px; }
 .tab-all { flex: none; margin-left: auto; padding: 0 8px; min-height: 36px; color: var(--muted); font-size: 12px; font-weight: 600; }
-.panel-body { background: var(--surface); min-height: calc(100vh - var(--bar) - 49px); }
+.panel-body { background: var(--surface); padding-bottom: var(--sheet-y, 0px); }
 .panel-body:focus { outline: none; }
 .panel-body .compare { margin: 12px; max-width: calc(100% - 24px); }
 .d-head h2:focus { outline: none; }
@@ -388,7 +399,8 @@ details.group .opts { padding-bottom: 12px; }
   .chip-row .chip { flex: none; }
 }
 @container (min-width: 600px) {
-  .results { padding: 16px 20px calc(24px + var(--safe-b)); }
+  .results { padding: 16px 20px calc(24px + var(--safe-b) + var(--sheet-y, 0px)); }
+  .toolbar { padding: 4px 20px; }
   .chips { margin: 0 0 12px; }
   .searches { margin: 0 -20px 12px; padding: 0 20px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -428,24 +440,31 @@ body.resizing { user-select: none; cursor: col-resize; }
 
 /* Phones and tablets: the map on top, the list under it ------------------------------------------- */
 @media (max-width: 1023px) {
-  .layout { display: flex; flex-direction: column; }
-  .map { order: -1; position: sticky; top: var(--bar); z-index: 5; height: min(48vh, 40vh + 40px); }
-  .tabs { position: static; }
+  .map { position: absolute; inset: 0; }
+  /* the panel is a sheet over the map: peek (its head), half, full; it moves (the map never resizes) */
+  .panel { position: fixed; z-index: 20; inset: var(--bar) 0 0; transform: translateY(var(--sheet-y)); transition: transform .25s ease;
+    border-radius: 16px 16px 0 0; overflow: hidden; box-shadow: 0 -2px 16px rgb(0 0 0 / .18); }
+  .panel[data-sheet="peek"] { --sheet-y: calc(100dvh - var(--bar) - var(--peek, 112px) - var(--safe-b)); }
+  .panel[data-sheet="half"] { --sheet-y: calc(50dvh - var(--bar)); }
+  .panel[data-sheet="full"] { --sheet-y: 0px; border-radius: 0; }
+  .panel.dragging { transition: none; }
+  .panel-head { touch-action: none; }  /* dragged by its head; the tabs still swipe sideways */
+  .tabs { touch-action: pan-x; }
+  .sheet-handle { display: block; width: 100%; height: 20px; }
+  .sheet-handle::before { content: ""; display: block; width: 36px; height: 4px; margin: 8px auto; border-radius: 2px; background: var(--faint); opacity: .6; }
+  .tab-list .i { width: 16px; height: 16px; margin: 0 2px -3px -4px; }  /* ‹ この範囲: back to the list */
 }
+@media (min-width: 1024px) { .tab-list .i { display: none; } }
 
 /* Wide: the map, the list of what's in view beside it --------------------------------------------- */
 @media (min-width: 1024px) {
   /* --panel: the list's width, set by the divider (#split) */
-  .layout { --rail: 0px; --panel: 440px; display: grid; grid-template-columns: var(--rail) minmax(360px, 1fr) 8px var(--panel); }
+  .layout { --rail: 0px; --panel: 440px; display: grid; grid-template-columns: var(--rail) minmax(360px, 1fr) 8px var(--panel);
+    grid-template-rows: minmax(0, 1fr); }
   .filters { grid-area: 1 / 1; } .map { grid-area: 1 / 2; } .split { grid-area: 1 / 3; } .panel { grid-area: 1 / 4; }  /* results come first in the page */
-  .map, .split { position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); }
-  .panel { min-width: 0; }
-  .split { display: block; cursor: col-resize; touch-action: none; background: var(--surface); border-left: 1px solid var(--line); }
+  .split { display: block; position: relative; cursor: col-resize; touch-action: none; background: var(--surface); border-left: 1px solid var(--line); }
   .split::after { content: ""; position: absolute; top: 50%; left: 1px; width: 4px; height: 40px; margin-top: -20px; border-radius: 2px; background: var(--faint); opacity: .5; }
   .split:hover::after, .split:focus-visible::after, body.resizing .split::after { background: var(--accent); opacity: 1; }
-  /* 比較 takes the room it can, for now */
-  .layout:has(#panel[data-tab="compare"]) { grid-template-columns: var(--rail) 360px 0 minmax(0, 1fr); }
-  .layout:has(#panel[data-tab="compare"]) .split { visibility: hidden; }
 }
 
 /* Desktop: the filter rail ------------------------------------------------------------------------- */
@@ -457,7 +476,7 @@ body.resizing { user-select: none; cursor: col-resize; }
   body.rail-off .layout { --rail: 0px; }
   body.rail-off .filters { visibility: hidden; overflow: hidden; border-right: 0; }
   #filters-close .i { display: none; } #filters-close .rail-hide { display: block; }
-  .filters { position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); transform: none; visibility: visible;
+  .filters { position: relative; inset: auto; height: auto; min-height: 0; transform: none; visibility: visible;
     width: auto; min-width: 0; box-shadow: none; border-right: 1px solid var(--line); z-index: 1; }
   .filters-foot { grid-template-columns: 1fr; }
   /* favorites: no filter rail */
