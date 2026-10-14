@@ -97,7 +97,7 @@
   let area = null;              // [south, west, north, east]: the map view, listing what's in the visible area
   let mapHits = [];             // what the map shows: the results (in the map area view, before the area cut)
   let byDay = false;            // the list has a heading per day (what's new, newest first)
-  let openKey = null, pushed = false, lastFocus = null;
+  let lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
   let listStale = false;
@@ -240,13 +240,14 @@
     return p.get("id");
   }
 
-  function hashFor(extra = {}) {
+  function hashFor(extra = {}, full = true) {  // full: with the open listing
     const p = paramsFor(q);
     if (chosen.join() !== manifest.prefs[0][0]) p.set("p", chosen.join(","));
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
     if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
     if (compare && mode !== "search") p.set("cmp", "1");
+    if (full && isListing()) p.set("id", tab);
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
@@ -264,7 +265,7 @@
     // the phone sheet's entry stays one (closing it goes back to the page, keeping the changes); a view's doesn't
     // (switching back would undo the changes)
     history.replaceState(history.state?.sheet ? history.state : null, "", hashFor());
-    if (mode === "search") localStorage.setItem("suumo.last", location.hash);  // reopened later: the same search
+    if (mode === "search") localStorage.setItem("suumo.last", hashFor({}, false));  // reopened later: the same search
     render();
     if (top && !WIDE.matches) window.scrollTo({ top: 0 });
     else if (top) document.querySelector(".results").scrollIntoView({ block: "start" });
@@ -272,7 +273,7 @@
 
   function render() {
     if (mode === "search") compare = false;  // compare is for the saved list only
-    renderedFor = hashFor();
+    renderedFor = hashFor({}, false);
     if (document.body.classList.contains("show-filters") && !WIDE.matches) {
       listStale = true;  // only the sheet is visible: its counts are enough until it closes
       renderFilters();
@@ -282,7 +283,6 @@
     hits = mapHits = compute();
     if (area) hits = inArea(mapHits);
     document.body.classList.toggle("areamode", !!area);
-    sideLayout();
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
     if ($("q").value.trim() !== q.text && document.activeElement !== $("q")) $("q").value = q.text;  // (not while typing)
     $("sort").value = q.sort;
@@ -311,7 +311,7 @@
     document.body.classList.toggle("mapbar", showMap && !area);
     if (!showMap || area) $("area-go").hidden = true;  // (drawMap shows it once the map has its view)
     // the same cards as already drawn (a sheet closed, a view switched back): kept as they are, with their place
-    const sig = [S.lang, mode, compare, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), sideTabs, hits.map((it) => it.key)].join("|");
+    const sig = [S.lang, mode, compare, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.map((it) => it.key)].join("|");
     if (sig !== listSig || compare || !hits.length) {
       listSig = sig;
       $("list").innerHTML = hits.length ? "" : emptyState(active);
@@ -320,6 +320,7 @@
     }
     if (mapVisible()) drawMap();
     if (filtersVisible()) renderFilters();
+    renderTabs();
   }
 
   const scrollFor = {};
@@ -391,7 +392,7 @@
 
   function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
-    return `<article class="card${sideTabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
+    return `<article class="card${tabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
       <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}${usd(it)}</div>
@@ -836,7 +837,7 @@
   // ---------- map ----------
 
   let leaflet = null, map = null, cluster = null, fittedFor = null;
-  const mapVisible = () => (WIDE.matches ? !!area || (mapOn() && sideTab === "map") : showMap || !!area);
+  const mapVisible = () => WIDE.matches || showMap || !!area;
   const inArea = (list, b = area) => list.filter((it) => it.lat != null && it.lat >= b[0] && it.lng >= b[1] && it.lat <= b[2] && it.lng <= b[3]);
   const boundsOf = (m) => { const b = m.getBounds(); return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]; };
 
@@ -858,7 +859,7 @@
       $("map").classList.add("moved");  // the hint has done its job
       area = boundsOf(map);
       history.replaceState(history.state, "", hashFor());
-      renderedFor = hashFor();
+      renderedFor = hashFor({}, false);
       fittedFor = renderedFor;
       hits = inArea(mapHits);
       $("count").textContent = t("areaCount", num(hits.length));
@@ -1130,14 +1131,6 @@
 
   // ---------- listing ----------
 
-  function openDetail(key) {
-    if (openKey === key && !$("detail").hidden) return;
-    lastFocus = document.activeElement;
-    history.pushState(null, "", hashFor({ id: key }));
-    pushed = true;
-    showDetail(key);
-  }
-
   // A listing's full record (data/l/<type>/<id>.json); rejects with the HTTP status (404: ended) or a network error.
   const records = new Map();
   function record(key) {
@@ -1201,22 +1194,8 @@
     }).join("")}</tbody></table></div>`;
   }
 
-  async function showDetail(key) {
-    openKey = key;
-    const it = db.byKey.get(key);
-    $("detail").hidden = false;
-    document.body.style.overflow = "hidden";
-    $("detail-back").focus();
-    setFavButtons(key);
-    $("detail-link").removeAttribute("href");
-    const r = await renderListing($("detail-body"), key);
-    if (openKey !== key) return;
-    $("detail-link").href = r ? safeUrl(r.url) : "";
-    $("detail-link").hidden = !r || !!(it && it.flags & db.flags.gone);  // ended: SUUMO's page is gone too
-  }
-
   const dropMap = (box) => { box.leaflet?.remove(); box.leaflet = null; };  // a listing's small map, when it goes
-  // A listing's page into box (the full-page view, or a tab of the side panel), with its small map.
+  // A listing's page into box (its tab), with its small map.
   // Resolves to the record, or null when it couldn't be loaded (ended, offline) or box moved on to another.
   async function renderListing(box, key) {
     const it = allByKey.get(key);
@@ -1249,7 +1228,7 @@
   function detailHtml(r, it) {
     const type = r.type, L_ = (k) => t(`d.${k}`);
     const rows = (pairs) => pairs.filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${esc(L_(k))}</dt><dd>${v}</dd>`).join("");
-    const sec = (k, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h2>${esc(L_(k))}</h2><dl>${html}</dl></section>` : ""; };
+    const sec = (k, pairs) => { const html = rows(pairs); return html ? `<section class="d-sec"><h3>${esc(L_(k))}</h3><dl>${html}</dl></section>` : ""; };
     const yen = (v) => (v ? esc(t("yen", num(v))) : null);
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
     const second = (main, sub) => esc(main) + (sub ? `<small>${esc(sub)}</small>` : "");  // 坪 on a line of its own
@@ -1268,15 +1247,15 @@
     return `
       ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="" onerror="this.remove()">` : ""}
       <div class="d-head">
-        <h1 id="detail-title">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h1>
+        <h2 tabindex="-1">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h2>
         <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
         <div class="d-price num">${it ? price(it, true) + usd(it) : money(r.price, true) + usd({ price: r.price })}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${v}</b></div>`).join("")}</div>
-      ${changes ? `<section class="d-sec"><h2>${esc(L_("history"))}</h2>${historyChart(r, it)}<dl>${rows([["price", changes]])}</dl></section>` : ""}
+      ${changes ? `<section class="d-sec"><h3>${esc(L_("history"))}</h3>${historyChart(r, it)}<dl>${rows([["price", changes]])}</dl></section>` : ""}
       ${it ? market(it) : ""}
-      ${access ? `<section class="d-sec"><h2>${esc(L_("access"))}</h2><dl><dt>${esc(L_("nearest"))}</dt><dd class="d-access">${access}</dd></dl></section>` : ""}
+      ${access ? `<section class="d-sec"><h3>${esc(L_("access"))}</h3><dl><dt>${esc(L_("nearest"))}</dt><dd class="d-access">${access}</dd></dl></section>` : ""}
       ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
         ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))],
         ["otherMonthly", yen(r.other_monthly) && t("perMonth", yen(r.other_monthly)) + (r.other_fees ? `<small>${esc(r.other_fees)}</small>` : "")],
@@ -1290,11 +1269,11 @@
         ["zoning", txt(r.zoning)], ["ratios", r.coverage_pct || r.far_pct ? esc(`${r.coverage_pct ?? "-"}% / ${r.far_pct ?? "-"}%`) : null],
         ["road", txt(road)], ["category", txt(r.land_category)], ["landStatus", txt(r.land_status)], ["condition", r.build_condition ? t("yes") : null],
         ["utilities", txt(r.utilities)], ["restrictions", txt(r.restrictions)]])}
-      ${r.features?.length ? `<section class="d-sec"><h2>${esc(L_("features"))}</h2><div class="opts">${r.features.map((f) => `<span class="tag">${esc(feature(f))}</span>`).join("")}</div></section>` : ""}
+      ${r.features?.length ? `<section class="d-sec"><h3>${esc(L_("features"))}</h3><div class="opts">${r.features.map((f) => `<span class="tag">${esc(feature(f))}</span>`).join("")}</div></section>` : ""}
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
         ["seen", day(r.new_date || r.first_seen)]])}
-      ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div class="d-map"></div>` : ""}`;
+      ${it?.lat != null ? `<section class="d-sec"><h3>${esc(L_("map"))}</h3><p class="meta">${esc(L_("mapNote"))}</p></section><div class="d-map"></div>` : ""}`;
   }
 
   // The stations of a listing: line, station, how far.
@@ -1360,88 +1339,110 @@
     const at = (f) => units[Math.round(f * (units.length - 1))], lo = at(0.05), hi = at(0.95), mid = at(0.5);
     const pos = (v) => Math.max(0, Math.min(100, hi > lo ? ((v - lo) / (hi - lo)) * 100 : 50)).toFixed(1);
     const diff = Math.round((it.unit / mid - 1) * 100), where = place(it.areaName), kind = typeName(it.type);
-    return `<section class="d-sec market"><h2>${esc(t("market"))}</h2>
+    return `<section class="d-sec market"><h3>${esc(t("market"))}</h3>
       <div class="mbar" aria-hidden="true"><i style="left:${pos(at(0.25))}%"></i><i class="mid" style="left:${pos(mid)}%"></i><i style="left:${pos(at(0.75))}%"></i><b style="left:${pos(it.unit)}%"></b></div>
       <div class="mscale" aria-hidden="true"><span>${esc(t("perM2", lo))}</span><span>${esc(t("perM2", hi))}</span></div>
       <p>${esc(Math.abs(diff) < 3 ? t("marketSame", where, kind) : t("marketDiff", where, kind, Math.abs(diff), diff < 0))}</p>
       <p class="meta">${esc(t("marketN", num(units.length), band))}</p></section>`;
   }
 
-  function hideDetail() {
-    openKey = null;
-    dropMap($("detail-body"));
-    $("detail").hidden = true;
-    document.body.style.overflow = "";
-    lastFocus?.focus();
+  // ---------- the panel's tabs: the list, the listings opened from it, 比較 ----------
+  // Opening a listing from the list is a history entry (back returns to the list); switching and closing tabs aren't.
+  const MAX_TABS = 12;
+  const tabs = [];          // listing keys, in the order opened
+  let tab = "list";         // "list", a listing key or "compare"
+  let openedFrom = null;    // the card whose listing is open (focus returns to it)
+  const listY = {};         // the list's scroll position per mode (search, favorites)
+  const isListing = (k = tab) => k !== "list" && k !== "compare";
+
+  // A listing (from a card, the map, the strip) or 比較.
+  function openTab(key) {
+    if (key === "list") return toList();
+    if (isListing(key) && !tabs.includes(key)) tabs.push(key);
+    if (tabs.length > MAX_TABS) tabs.shift();
+    const from = tab;
+    if (from === "list") openedFrom = key;
+    showTab(key);
+    if (from === "list") history.pushState({ tab: 1 }, "", hashFor()); else history.replaceState(history.state, "", hashFor());
   }
-
-  function closeDetail() {
-    if (pushed) { pushed = false; history.back(); return; }  // popstate hides it
-    history.replaceState(null, "", hashFor());              // opened from a link: stay on the site
-    hideDetail();
-  }
-
-  // ---------- side panel (desktop): the map, and the listings opened from the list, as tabs ----------
-  // Opened listings stay open for comparing until closed; the map can be hidden (then the list takes the room,
-  // unless listings are open).
-  const MAX_TABS = 8;
-  const sideTabs = [];      // listing keys, in the order opened
-  let sideTab = "map";      // "map", a listing key, or "compare"
-  const mapOn = () => settings.map !== false;
-  const sideMode = () => WIDE.matches && !area;  // (the map area view keeps its own layout)
-
-  function openListing(key) {
-    if (!sideMode()) return openDetail(key);
-    if (!sideTabs.includes(key)) sideTabs.push(key);
-    if (sideTabs.length > MAX_TABS) sideTabs.shift();
-    showSide(key);
+  // drawn again (another language, USD on or off)
+  function rerenderTab() {
+    $("panel-body").dataset.key = "";
+    showTab(tab);
   }
 
   function closeTab(key) {
-    if (key === "all") sideTabs.length = 0; else sideTabs.splice(sideTabs.indexOf(key), 1);
-    showSide(sideTabs.includes(sideTab) || sideTab === "compare" ? sideTab : sideTabs.at(-1) ?? "map");
+    if (key === "all") tabs.length = 0; else if (tabs.includes(key)) tabs.splice(tabs.indexOf(key), 1);
+    if (tab !== "list" && (key === "all" || key === tab || (tab === "compare" && tabs.length < 2))) toList();
+    else if (tab === "compare") rerenderTab(); else renderTabs();
+    if (!tabs.length) $("count").focus({ preventScroll: true });  // (its button is gone)
   }
 
-  // The page's layout for the panel: hidden (no map, no listings open), or showing the map / a listing / 比較.
-  function sideLayout() {
-    const wide = sideMode();
-    document.body.classList.toggle("side-off", wide && !mapOn() && !sideTabs.length);
-    $("map-toggle").setAttribute("aria-pressed", mapOn());
-    $("side").dataset.tab = wide ? (sideTab === "map" || sideTab === "compare" ? sideTab : "listing") : "map";
+  // Back to the list: the listing's history entry goes (a shared link to a listing stays on the site).
+  function toList() {
+    if (tab === "list") return;
+    if (history.state?.tab) { history.back(); return; }  // popstate shows the list
+    showTab("list");
+    history.replaceState(null, "", hashFor());
   }
 
-  // Shows a tab (and draws the panel's tab bar).
-  function showSide(tab = sideTab) {
-    const wide = sideMode();
-    if (tab === "map" && !mapOn()) tab = sideTabs.at(-1) ?? "map";
-    if (tab === "compare" && sideTabs.length < 2) tab = sideTabs.at(-1) ?? "map";
-    sideTab = tab;
-    sideLayout();
-    if (!wide) return;
-    const button = (id, label, extra = "") => `<span class="side-tab${sideTab === id ? " on" : ""}" role="presentation">
-      <button role="tab" aria-selected="${sideTab === id}" data-tab-show="${esc(id)}">${extra}${esc(label)}</button>${
-      id !== "map" && id !== "compare" ? `<button class="side-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
-    $("side-tabs").innerHTML = (mapOn() ? button("map", t("map"), icon("map")) : "") + sideTabs.map((key) => {
-      const it = allByKey.get(key);
-      return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key);
-    }).join("") + (sideTabs.length > 1 ? button("compare", t("compareTab")) : "") +
-      (sideTabs.length ? `<button class="side-all" data-tab-close="all">${esc(t("closeAll"))}</button>` : "");
-    $("side-tabs").querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", sideTabs.includes(c.querySelector("[data-key]")?.dataset.key)));
-    const body = $("side-body");
-    if (tab === "map") { dropMap(body); body.dataset.key = ""; drawMap(); }
-    else if (tab === "compare") {
+  function showTab(next) {
+    if (next === "compare" && tabs.length < 2) next = "list";
+    if (isListing(next) && !tabs.includes(next)) next = "list";
+    const was = tab, scroller = document.scrollingElement;
+    if (was === "list" && next !== "list") listY[mode] = scroller.scrollTop;
+    tab = next;
+    $("panel").dataset.tab = isListing() ? "listing" : tab;
+    $("results").hidden = tab !== "list";
+    $("panel-body").hidden = tab === "list";
+    renderTabs();
+    const body = $("panel-body");
+    if (tab === "list") {
+      dropMap(body);
+      body.dataset.key = "";
+      body.innerHTML = "";
+      if (was === "list") return;
+      while (shown < hits.length && $("list").offsetHeight < (listY[mode] || 0) + innerHeight) more();
+      scroller.scrollTop = listY[mode] || 0;
+      const from = openedFrom && $("list").querySelector(`[data-key="${CSS.escape(openedFrom)}"]`);
+      (from || $("count")).focus({ preventScroll: true });
+      return;
+    }
+    if (was === "list") scroller.scrollTop = 0;
+    if (tab === "compare") {
+      dropMap(body);
       body.dataset.key = "compare";
-      compareHtml(sideTabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
+      body.innerHTML = '<div class="skeleton"></div>';
+      compareHtml(tabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
     } else if (body.dataset.key !== tab) {
-      renderListing(body, tab).then((r) => {
-        if (!r || body.dataset.key !== tab) return;
-        body.insertAdjacentHTML("afterbegin", `<div class="side-actions">
-          <button class="btn fav-btn" data-fav="${esc(tab)}" aria-pressed="${favs.has(tab)}">${icon("heart")}<span>${esc(t(favs.has(tab) ? "saved" : "save"))}</span></button>
-          ${r.url && !(allByKey.get(tab)?.flags & db.flags.gone) ? `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>` : ""}</div>`);
-        body.scrollTop = 0;
+      const key = tab;
+      renderListing(body, key).then((r) => {
+        if (body.dataset.key !== key) return;
+        const ended = !r || allByKey.get(key)?.flags & db.flags.gone;  // ended: SUUMO's page is gone too
+        body.insertAdjacentHTML("beforeend", `<div class="actions">
+          <button class="btn fav-btn" data-fav="${esc(key)}" aria-pressed="${favs.has(key)}">${icon("heart")}<span>${esc(t(favs.has(key) ? "saved" : "save"))}</span></button>
+          ${ended ? "" : `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>`}</div>`);
+        body.querySelector("h2")?.focus({ preventScroll: true });
       });
     }
+  }
+
+  // The tab strip, shown once a listing is open: the list, each listing (×), 比較 with two or more, すべて閉じる.
+  function renderTabs() {
+    const strip = $("tabs");
+    document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", tabs.includes(c.querySelector("[data-key]")?.dataset.key)));
+    strip.hidden = !tabs.length;
+    if (strip.hidden) return;
+    const button = (id, label, x, cls = "") => `<span class="tab${tab === id ? " on" : ""}" role="presentation">
+      <button role="tab"${cls} aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${esc(label)}</button>${
+      x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
+    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "list")} ${num(hits.length)}`, false, ' class="tab-list"') +
+      tabs.map((key) => {
+        const it = allByKey.get(key);
+        return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key, true);
+      }).join("") + (tabs.length > 1 ? button("compare", t("compareTab")) : "") +
+      `<button class="tab-all" data-tab-close="all">${esc(t("closeAll"))}</button>`;
+    strip.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
   // ---------- favorites ----------
@@ -1475,7 +1476,7 @@
   // Every heart for the listing (cards, the listing view's, the side panel's) says whether it's saved.
   function setFavButtons(key) {
     for (const b of document.querySelectorAll("[data-fav]")) {
-      if ((b.dataset.fav || openKey) !== key) continue;  // the listing view's button is for the open listing
+      if (b.dataset.fav !== key) continue;
       b.setAttribute("aria-pressed", favs.has(key));
       const label = b.querySelector("span");
       if (label) label.textContent = t(favs.has(key) ? "saved" : "save");
@@ -1513,7 +1514,7 @@
       sheet.setAttribute("aria-modal", "true");
     }
     $("filters-open").setAttribute("aria-expanded", WIDE.matches ? railOn() : open);
-    for (const el of [document.querySelector(".bar"), document.querySelector(".results")]) el.inert = open;
+    for (const el of [document.querySelector(".bar"), $("panel"), $("map")]) el.inert = open;
     // desktop: the rail can be hidden, giving its width to the results
     document.body.classList.toggle("rail-off", WIDE.matches && !railOn());
     $("filters-open").setAttribute("aria-label", t(WIDE.matches ? (railOn() ? "filtersHide" : "filtersShow") : "filtersOpen"));
@@ -1600,8 +1601,8 @@
       settings[b.dataset.setting] = b.dataset.value;
       saveSettings();
       if (b.dataset.setting === "theme") applyTheme();
-      else if (b.dataset.setting === "usd") { render(); if (openKey) showDetail(openKey); }
-      else { applyLanguage(); render(); if (openKey) showDetail(openKey); }
+      else if (b.dataset.setting === "usd") { render(); rerenderTab(); }
+      else { applyLanguage(); render(); rerenderTab(); }
       renderSettings();
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
     });
@@ -1616,14 +1617,12 @@
     $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
     $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
     $("area-go").addEventListener("click", () => switchView("area", () => { area = boundsOf(map); showMap = false; }));
-    $("detail-back").addEventListener("click", closeDetail);
-    $("detail").addEventListener("click", (e) => { if (e.target === $("detail")) closeDetail(); });
     document.addEventListener("click", (e) => {
       if (e.target === document.body && document.body.classList.contains("show-filters")) return openFilters(false);  // backdrop
       const fav = e.target.closest("[data-fav]");
-      if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav || openKey); return; }
+      if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav); return; }
       const link = e.target.closest("a[data-key]");
-      if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openListing(link.dataset.key); return; }
+      if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openTab(link.dataset.key); return; }
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.remove != null) {
@@ -1661,7 +1660,7 @@
         else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
         update();
       }
-      else if (b.dataset.tabShow) showSide(b.dataset.tabShow);
+      else if (b.dataset.tabShow) openTab(b.dataset.tabShow);
       else if (b.dataset.tabClose) closeTab(b.dataset.tabClose);
       else if (b.dataset.stationPick) {  // from a station on the map
         q.stations = [b.dataset.stationPick];
@@ -1696,25 +1695,20 @@
       const before = renderedFor;
       scrollFor[before] = window.scrollY;
       route();
-      if (renderedFor !== before && $("detail").hidden) restoreScroll();
+      if (renderedFor !== before && tab === "list") restoreScroll();
     });
     document.addEventListener("keydown", (e) => {
-      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings") : !$("prefs").hidden ? $("prefs")
+      const dialog = !$("settings").hidden ? $("settings") : !$("prefs").hidden ? $("prefs")
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
       if (!$("settings").hidden) openSettings(false);
       else if (!$("prefs").hidden) openPrefs(false);
-      else if (!$("detail").hidden) closeDetail();
       else if (document.body.classList.contains("show-filters")) openFilters(false);
+      else if (tab !== "list" && (e.target === document.body || $("panel").contains(e.target))) toList();
     });
-    WIDE.addEventListener("change", () => { sheetSemantics(); render(); showSide(); });
-    $("map-toggle").addEventListener("click", () => {  // desktop: the map in the side panel, or more room for the list
-      settings.map = !mapOn();
-      saveSettings();
-      showSide(mapOn() ? "map" : sideTab);
-    });
+    WIDE.addEventListener("change", () => { sheetSemantics(); render(); });
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
   }
 
@@ -1785,13 +1779,16 @@
     }
     if (want.join() !== chosen.join()) choosePrefs(want);
     const key = readHash();
-    if (hashFor() !== renderedFor) render();
-    if (key && sideMode()) { history.replaceState(null, "", hashFor()); openListing(key); }  // a link to a listing
-    else if (key) showDetail(key);
-    else if (!$("detail").hidden) { pushed = false; hideDetail(); }
+    if (hashFor({}, false) !== renderedFor) render();
+    if (key) {  // a listing: the tab (opened when it isn't, as from a link)
+      if (!tabs.includes(key)) tabs.push(key);
+      if (tabs.length > MAX_TABS) tabs.shift();
+      showTab(key);
+    } else if (tab !== "list") showTab("list");
   }
 
   async function start() {
+    history.scrollRestoration = "manual";  // the list keeps its place itself (per tab and view)
     watchUpdates();
     applyTheme();
     applyLanguage();
@@ -1816,8 +1813,7 @@
     const early = $("q").value.trim();  // typed while the listings were loading
     wire();
     route();
-    showSide();
-    if (mode === "search") localStorage.setItem("suumo.last", location.hash);
+    if (mode === "search") localStorage.setItem("suumo.last", hashFor({}, false));
     if (early && !q.text) applyText(early);
     (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
   }

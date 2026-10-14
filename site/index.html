@@ -60,25 +60,28 @@
 
   <div class="layout">
 
-    <main class="results" id="results" tabindex="-1">
-      <div id="searches" class="searches" hidden></div>
-      <div class="toolbar">
-        <span class="toolbar-start">
-          <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
-          <h2 id="count" aria-live="polite" tabindex="-1"></h2>
-        </span>
-        <span class="toolbar-end">
-          <button id="map-toggle" class="btn ghost map-toggle" aria-pressed="true"><svg class="i"><use href="#i-map"/></svg><span data-t="map"></span></button>
-          <button id="keep" class="icon-btn" data-t-label="keepSearch" aria-pressed="false"><svg class="i"><use href="#i-star"/></svg></button>
-          <select id="sort" class="select" data-t-label="sort"></select>
-        </span>
+    <main class="panel" id="panel" data-tab="list">
+      <div id="tabs" class="tabs" role="tablist" hidden></div>
+      <div class="results" id="results" role="tabpanel" tabindex="-1">
+        <div id="searches" class="searches" hidden></div>
+        <div class="toolbar">
+          <span class="toolbar-start">
+            <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
+            <h2 id="count" aria-live="polite" tabindex="-1"></h2>
+          </span>
+          <span class="toolbar-end">
+            <button id="keep" class="icon-btn" data-t-label="keepSearch" aria-pressed="false"><svg class="i"><use href="#i-star"/></svg></button>
+            <select id="sort" class="select" data-t-label="sort"></select>
+          </span>
+        </div>
+        <div id="pref-chips" class="chips"></div>
+        <div id="quick" class="chips quick"></div>
+        <div id="chips" class="chips"></div>
+        <div id="banner" class="banner" hidden></div>
+        <div id="list" class="grid"></div>
+        <div id="sentinel"></div>
       </div>
-      <div id="pref-chips" class="chips"></div>
-      <div id="quick" class="chips quick"></div>
-      <div id="chips" class="chips"></div>
-      <div id="banner" class="banner" hidden></div>
-      <div id="list" class="grid"></div>
-      <div id="sentinel"></div>
+      <div id="panel-body" class="panel-body" role="tabpanel" tabindex="-1" hidden></div>
     </main>
 
     <aside id="filters" class="filters" data-t-label="filters">
@@ -93,29 +96,12 @@
       </div>
     </aside>
 
-    <aside id="side" class="side" data-tab="map">
-      <div id="side-tabs" class="side-tabs" role="tablist"></div>
-      <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
-      <div id="side-body" class="side-body" role="tabpanel"></div>
-    </aside>
+    <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
   </div>
 
   <div class="mapbar-box">
     <button id="view" class="fab"></button>
     <button id="area-go" class="btn primary" hidden></button>
-  </div>
-
-  <div id="detail" class="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
-    <div class="detail-panel">
-      <div class="detail-top">
-        <button id="detail-back" class="btn ghost"><svg class="i"><use href="#i-back"/></svg><span data-t="back"></span></button>
-      </div>
-      <div id="detail-body" class="detail-body"></div>
-      <div class="detail-actions">
-        <button id="detail-fav" class="btn" data-fav="" aria-pressed="false"><svg class="i"><use href="#i-heart"/></svg><span></span></button>
-        <a id="detail-link" class="btn primary" target="_blank" rel="noopener"><span data-t="openSuumo"></span><svg class="i"><use href="#i-external"/></svg></a>
-      </div>
-    </div>
   </div>
 
   <div id="settings" class="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
