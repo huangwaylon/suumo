@@ -27,11 +27,11 @@
 
   // A listing's tags: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
   const B64 = Object.fromEntries([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"].map((ch, v) => [ch, v]));
-  function tags(mask, names) {
-    const out = new Set();
+  function tagIds(mask) {
+    const out = [];
     for (let k = 0; k < mask.length; k++) {
       const v = B64[mask[k]];
-      for (let b = 0; b < 6; b++) if (v & (1 << b)) out.add(names[k * 6 + b]);
+      for (let b = 0; b < 6; b++) if (v & (1 << b)) out.push(k * 6 + b);
     }
     return out;
   }
@@ -54,21 +54,27 @@
         id: sid, idn: id, type, key: type + ":" + sid, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
         land: c.land[i], age: c.age[i] == null ? null : Math.floor(c.age[i] / 12), ageMonths: c.age[i],
-        stations, stop: c.stop?.[i] ?? null, features: tags(c.features[i], index.features), flags: c.flags[i],
+        stations, stop: c.stop?.[i] ?? null, flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
         name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], sid),
         fees: c.fees?.[i] != null ? c.fees[i] * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
+        // positions in this prefecture's tables (index.areas, .stations, .features), for counting
+        areaId: c.area[i], stationIds: st, tagIds: tagIds(c.features[i]), part: null,
       };
+      it.features = new Set(it.tagIds.map((k) => index.features[k]));
       items[i] = it;
     }
     index.columns = null;  // the items hold everything now; free the raw columns
     const gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
     // station -> [kana, English] (null for bus stops: kanji only)
     const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
-    return { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
+    const db = { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
       byKey: new Map(items.map((it) => [it.key, it])) };
+    db.parts = [db];  // the prefectures searched: one here, several after combine
+    for (const it of items) it.part = db;
+    return db;
   }
 
   // Several prefectures' indexes (each loaded with `load`) searched as one.
@@ -77,7 +83,7 @@
     const index = { types: [...new Set(all((d) => d.index.types))], areas: all((d) => d.index.areas),
       stations: [...new Set(all((d) => d.index.stations))], towns: all((d) => d.index.towns), flags: dbs[0].flags };
     return { index, items: all((d) => d.items), flags: index.flags, stationNames: new Map(all((d) => [...d.stationNames])),
-      byKey: new Map(all((d) => [...d.byKey])) };
+      byKey: new Map(all((d) => [...d.byKey])), parts: all((d) => d.parts) };
   }
 
   // The text a search word is looked for in, built the first time a text search runs: names, places and stations
@@ -132,6 +138,11 @@
     post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
+  // The FLAGS conditions as bits of the index: [flag name, passes when set (true) or when not set (false)]
+  const FLAG_BITS = { freehold: ["leasehold", false], noCondition: ["conditional", false], newOnly: ["new", true],
+    dropsOnly: ["dropped", true], post1981: ["post1981", true], south: ["south", true], top: ["top", true],
+    upper: ["upper", true], nofee: ["nofee", true], ready: ["ready", true], tower: ["tower", true],
+    parking: ["parking", true] };
   const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981", "south", "top", "upper", "nofee",
     "ready", "tower", "parking"];
   const ALL = [...Object.entries(CHECKS).map(([d, check]) => [d, check, false]),
@@ -156,7 +167,13 @@
     return out;
   }
 
-  const matches = (db, it, q, conds = conditions(q)) => failing(db, it, q, conds).length === 0;
+  // Whether an item passes the given conditions (stops at the first failure).
+  function passes(db, it, q, conds) {
+    const exempt = it.type === "land" && q.types.includes("land");
+    for (const [d, check, building] of conds) if (!(building && exempt) && !check(it, q[d], q, db)) return false;
+    return true;
+  }
+  const matches = (db, it, q, conds = conditions(q)) => passes(db, it, q, conds);
 
   const newest = (d) => (d ? -d : Infinity);  // newest first, missing last
   const onlyLand = (q) => q.types.length > 0 && q.types.every((t) => t === "land");
@@ -197,35 +214,141 @@
     return n;
   }
 
+  // Threshold conditions as (value of an item, comparison): "max" choices pass items whose value is at most the
+  // choice, "min" ones items whose value is at least it; null: the item passes no choice, true: every choice.
+  const THRESHOLDS = {
+    priceMax: ["max", (it) => it.price], priceMin: ["min", (it) => it.priceHi], plan: ["min", (it) => it.plan],
+    sizeMin: ["min", (it) => it.size], landMin: ["min", (it) => it.land], ageMax: ["max", (it) => it.age],
+    walk: ["max", (it, q) => walkTo(it, q.stations)],
+    feesMax: ["max", (it) => (isCondo(it.type) ? it.fees : true)],
+  };
+  const sortedChoices = new WeakMap();  // choice list -> its distinct values ascending
+  function ascending(values) {
+    let s = sortedChoices.get(values);
+    if (!s) sortedChoices.set(values, s = [...new Set(values)].sort((a, b) => a - b));
+    return s;
+  }
+  // Position of the first value >= x (max) or the last value <= x (min) in ascending values (-1 / length: none).
+  function bucket(values, x, kind) {
+    let lo = 0, hi = values.length;
+    if (kind === "max") {  // first values[i] >= x
+      while (lo < hi) { const m = (lo + hi) >> 1; if (values[m] >= x) hi = m; else lo = m + 1; }
+      return lo;
+    }
+    while (lo < hi) { const m = (lo + hi) >> 1; if (values[m] <= x) lo = m + 1; else hi = m; }
+    return lo - 1;  // last values[i] <= x
+  }
+
+  // Counts per position of a table (Int32Array) plus the order positions were first counted in, so the result keeps
+  // the order a plain object filled item by item would have.
+  class Tally {
+    constructor(n) { this.n = new Int32Array(n); this.order = []; }
+    add(k) { if (this.n[k]++ === 0) this.order.push(k); }
+    into(out, name) { for (const k of this.order) out[name(k)] = (out[name(k)] || 0) + this.n[k]; }
+  }
+
   // Counts for every choice of every condition, in one pass: an item that fails no condition counts for
   // all choices it satisfies; one that fails exactly one condition counts for that condition's choices.
   // choices: {condition: [values]} for thresholds (priceMax, plan, walk...); sets are counted by value.
   function facets(db, q, choices) {
     const out = { total: 0, types: {}, areas: {}, stations: {}, features: {} };
-    const n = {};  // threshold choices counted in arrays (much faster than objects keyed by large numbers)
-    for (const d in choices) n[d] = new Array(choices[d].length).fill(0);
-    for (const flag of FLAGS) out[flag] = 0;
-    const tally = (o, k) => { o[k] = (o[k] || 0) + 1; };
-    const conds = conditions(q);
-    for (const it of db.items) {
-      const f = failing(db, it, q, conds);
-      if (f.length > 1) continue;
-      const only = f[0], free = only === undefined, on = (d) => free || only === d;
-      if (free) out.total++;
-      if (on("types")) tally(out.types, it.type);
-      if (on("areas")) tally(out.areas, it.area);
-      if (on("stations")) {
-        for (const [s, w] of it.stations) if (q.walk == null || (w != null && w <= q.walk)) tally(out.stations, s);
-      }
-      if (on("features")) for (const t of it.features) if (q.features.every((x) => x === t || it.features.has(x))) tally(out.features, t);
-      for (const d in choices) {
-        if (!on(GROUP[d] || d)) continue;
-        const check = CHECKS[d] || BUILDING[d], values = choices[d], counts = n[d];
-        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) counts[i]++;
-      }
-      for (const flag of FLAGS) if (on(flag) && (CHECKS[flag] || BUILDING[flag])(it, true, q, db)) out[flag]++;
+    const dims = [];  // {d, group, kind, value, values, hist}
+    for (const d in choices) {
+      const t = THRESHOLDS[d], values = ascending(choices[d]);
+      dims.push({ d, group: GROUP[d] || d, kind: t ? t[0] : null, value: t ? t[1] : null, values,
+        hist: new Int32Array(values.length) });
     }
-    for (const d in choices) out[d] = Object.fromEntries(choices[d].map((v, i) => [v, n[d][i]]));
+    // flags as bit tests: [name, bit, passes when the bit is set (or when it isn't: freehold, noCondition)]
+    const flagBits = FLAGS.map((f) => [f, ...(FLAG_BITS[f] ? [bit(db, FLAG_BITS[f][0]), FLAG_BITS[f][1]] : [0, true])]);
+    const flagN = new Int32Array(FLAGS.length);
+    const tallies = new Map();  // prefecture -> its area, station and tag tallies
+    const tallyOf = (part) => {
+      let t = tallies.get(part);
+      if (!t) tallies.set(part, t = { areas: new Tally(part.index.areas.length), stations: new Tally(part.index.stations.length),
+        tags: new Tally(part.index.features.length) });
+      return t;
+    };
+    const conds = conditions(q), walk = q.walk, types = out.types, none = [];
+    let part = null, tally = null;
+    for (const it of db.items) {
+      const f = conds.length ? failing(db, it, q, conds) : none;
+      if (f.length > 1) continue;
+      if (it.part !== part) { part = it.part; tally = tallyOf(part); }
+      const only = f.length ? f[0] : null, free = only === null;
+      if (free) {
+        out.total++;
+        // a tag counts when the item has all chosen tags but it, i.e. (it is in it.features) all of them
+        const ids = it.tagIds;
+        for (let k = 0; k < ids.length; k++) tally.tags.add(ids[k]);
+      }
+      if (free || only === "types") types[it.type] = (types[it.type] || 0) + 1;
+      if (free || only === "areas") tally.areas.add(it.areaId);
+      if (free || only === "stations") {
+        const sts = it.stations;
+        for (let j = 0; j < sts.length; j++) {
+          const w = sts[j][1];
+          if (walk == null || (w != null && w <= walk)) tally.stations.add(it.stationIds[j]);
+        }
+      }
+      for (let k = 0; k < dims.length; k++) {
+        const dim = dims[k];
+        if (!free && only !== dim.group) continue;
+        const values = dim.values, hist = dim.hist;
+        if (!dim.kind) {  // a condition without a known shape: check every choice
+          const check = CHECKS[dim.d] || BUILDING[dim.d];
+          for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) hist[i]++;
+          continue;
+        }
+        const x = dim.value(it, q);
+        if (x == null) continue;
+        if (x === true) hist[dim.kind === "max" ? 0 : values.length - 1]++;
+        else {
+          const b = bucket(values, x, dim.kind);
+          if (b >= 0 && b < values.length) hist[b]++;
+        }
+      }
+      const flags = it.flags;
+      for (let k = 0; k < flagBits.length; k++) {
+        const fb = flagBits[k];
+        if ((free || only === fb[0]) && ((flags & fb[1]) !== 0) === fb[2]) flagN[k]++;
+      }
+    }
+    for (let k = 0; k < FLAGS.length; k++) out[FLAGS[k]] = flagN[k];
+    for (const [p, t] of tallies) {
+      t.areas.into(out.areas, (k) => p.index.areas[k][0]);
+      t.stations.into(out.stations, (k) => p.index.stations[k]);
+      t.tags.into(out.features, (k) => p.index.features[k]);
+    }
+    for (const { d, kind, values, hist } of dims) {
+      const n = new Array(values.length);
+      if (kind === "max") for (let i = 0, sum = 0; i < values.length; i++) n[i] = sum += hist[i];
+      else if (kind === "min") for (let i = values.length - 1, sum = 0; i >= 0; i--) n[i] = sum += hist[i];
+      else for (let i = 0; i < values.length; i++) n[i] = hist[i];
+      const byValue = new Map(values.map((v, i) => [v, n[i]]));
+      out[d] = Object.fromEntries(choices[d].map((v) => [v, byValue.get(v)]));
+    }
+    return out;
+  }
+
+  // The number of items matching q, and q changed by each patch ({name: {condition: value}}), in one pass:
+  // counts(db, q, {fresh: {newOnly: true}, cheaper: {dropsOnly: true}}) -> {total, fresh, cheaper}.
+  function counts(db, q, patches = {}) {
+    const names = Object.keys(patches), touched = new Set();
+    for (const n of names) for (const d in patches[n]) touched.add(d);
+    if (touched.has("stations")) touched.add("walk");             // walk is measured to the chosen stations
+    if (touched.has("types")) for (const d in BUILDING) touched.add(d);  // land is exempt when 土地 is chosen
+    const conds = conditions(q), shared = conds.filter(([d]) => !touched.has(d)), own = conds.filter(([d]) => touched.has(d));
+    const variants = names.map((n) => {
+      const qq = { ...q, ...patches[n] };
+      return [n, qq, conditions(qq).filter(([d]) => touched.has(d))];
+    });
+    const out = { total: 0 };
+    for (const n of names) out[n] = 0;
+    for (const it of db.items) {
+      if (!passes(db, it, q, shared)) continue;
+      if (passes(db, it, q, own)) out.total++;
+      for (const [n, qq, cs] of variants) if (passes(db, it, qq, cs)) out[n]++;
+    }
     return out;
   }
 
@@ -241,5 +364,5 @@
     return best;
   }
 
-  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, facets, stationMatch };
+  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch };
 });

@@ -375,3 +375,17 @@ def test_unit_and_size_sorts_keep_kinds_apart(tmp_path):
         ["2", "4", "5", "1", "3"],           # buildings by floor area, land last
         ["3"],
     ]
+
+
+@needs_node
+def test_counts_of_variants_in_one_pass(tmp_path):
+    events = {"20261015T100000": [{"kind": "new", "type": "used_condo", "id": "1", "payload": {}},
+                                  {"kind": "price_changed", "type": "used_condo", "id": "2",
+                                   "payload": {"price": 40_000_000, "old_price": 50_000_000}}]}
+    recs = [rec(1), rec(2, price=40_000_000), rec(3, layout="1K"), rec(4, "land", land_m2=90.0, **LAND),
+            rec(5, stations=[{"line": "小田急線", "name": "喜多見", "walk": 12}])]
+    patches = {"fresh": {"newOnly": True}, "cheaper": {"dropsOnly": True}, "land": {"types": ["land"]},
+               "kitami": {"stations": ["喜多見"]}, "none": {}}
+    [c] = site_queries(tmp_path, recs, [{"query": {"plan": 8, "walk": 10}, "counts": patches}], events=events)
+    # plan 2LDK+ and 10 min: 1, 2 (3 is a 1K, 4 land, 5 is 12 min away); 土地 lets 4 through, 喜多見 none
+    assert c == {"total": 2, "fresh": 1, "cheaper": 1, "land": 1, "kitami": 0, "none": 2}
