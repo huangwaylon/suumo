@@ -236,7 +236,7 @@
   // The page's URL: the conditions; with tab, the open listing (or the favorites' 比較); with at, where the map is.
   function hashFor(extra = {}, { tab: withTab = true, at = true } = {}) {
     const p = paramsFor(q);
-    if (chosen.join() !== manifest.prefs[0][0]) p.set("p", chosen.join(","));
+    if (chosen.join() !== manifest.prefs[0][0]) p.set("p", prefParam(chosen));
     if (mode === "favorites") p.set("fav", "1");
     if (withTab && isListing()) p.set("id", tab);
     if (withTab && tab === "compare" && mode === "favorites") p.set("cmp", "1");  // (the open tabs: not in a link)
@@ -770,6 +770,7 @@
   const BIG = matchMedia("(min-width: 700px)").matches && (navigator.deviceMemory ?? 8) >= 4;
   const maxPrefs = () => (BIG ? manifest.prefs.length : 5);
   const allPrefs = () => manifest.prefs.map(([slug]) => slug);
+  const prefParam = (list) => (list.length > 1 && list.length === manifest.prefs.length ? "all" : list.join(","));  // p=
   const prefName = (slug) => place(manifest.prefs.find(([s]) => s === slug)?.[1] ?? slug);
   let prefsUrl = null;  // the URL the picker has chosen (kept when it closes, also by the back button)
 
@@ -835,7 +836,7 @@
   function setPrefs(next, now = true) {  // the URL says which; route loads and shows them
     const p = new URLSearchParams(location.hash.slice(1));
     if (next.join() === manifest.prefs[0][0]) p.delete("p");
-    else p.set("p", next.length > 1 && next.length === manifest.prefs.length ? "all" : next.join(","));
+    else p.set("p", prefParam(next));
     history.replaceState(history.state, "", "#" + p.toString());
     prefsUrl = location.href;
     if (now) route();
@@ -883,6 +884,7 @@
     waiting = false;
     if (!railAsked) { railAsked = true; (window.requestIdleCallback || setTimeout)(drawRail); }  // the lines: once listed
     history.replaceState(history.state, "", hashFor());
+    if (history.state?.prefs) prefsUrl = location.href;  // (the picker's choice moved the map: back keeps where it is)
     saveLast();
     if (autopan) { autopan = false; return; }
     if (document.body.classList.contains("resizing")) return;  // (the divider: once it's let go)
