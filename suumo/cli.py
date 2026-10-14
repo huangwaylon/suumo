@@ -21,7 +21,7 @@ from .export import export
 from .geo import geocode
 from .gitdata import commit_data, pull
 from .http import Client
-from .maintenance import out_of_scope, prune, reparse
+from .maintenance import out_of_scope, prune, reparse, seed
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
 from .site import build as build_site
 from .stations import update as update_stations
@@ -209,6 +209,10 @@ def cmd_reparse(c: Ctx):
     export(c.db, c.targets, c.data)
 
 
+def cmd_seed(c: Ctx):
+    seed(c.db, c.targets, c.data, datetime.now(JST).isoformat(timespec="seconds"))
+
+
 def main():
     sys.stdout.reconfigure(line_buffering=True)  # progress shows up at once in `tee` / `tail -f`
     ap = argparse.ArgumentParser(prog="suumo")
@@ -240,6 +244,7 @@ def main():
     command("prune", cmd_prune, "write", "delete data no longer in scope.toml (dry run without --yes)").add_argument(
         "--yes", action="store_true")
     command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
+    command("seed", cmd_seed, "write", "rebuild state.db for prefectures it doesn't hold from data/ (no requests)")
     command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)")
     command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
     command("rail", cmd_rail, "files", "rebuild geo/rail.json: railway lines and stations for the map (N02 + ODPT)")

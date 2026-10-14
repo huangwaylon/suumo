@@ -254,23 +254,6 @@ def test_purge_drops_old_event_and_run_rows(env):
     p.purge()
     assert db.x("SELECT COUNT(*) FROM events WHERE run_id='20200101T000000'").fetchone()[0] == 0
 
-
-def test_rotating_prefectures_are_crawled_in_turn(tmp_path):
-    db = DB(tmp_path / "state.db")
-    targets = [Target("tokyo", "land", None), Target("chiba", "land", None, True),
-               Target("saitama", "land", None, True), Target("saitama", "used_house", None, True)]
-    seen = []
-    for hour in range(4):
-        now = T0 + timedelta(hours=hour)
-        p = Pipeline(db, Archive(tmp_path / "a"), EmptyAreaPage(), targets, now, f"r{hour}", log=QUIET)
-        seen.append(sorted({(t.pref, t.type) for t in p.due()}))
-        p.crawl_lists()
-    assert seen == [[("chiba", "land"), ("tokyo", "land")],
-                    [("saitama", "land"), ("saitama", "used_house"), ("tokyo", "land")],
-                    [("chiba", "land"), ("tokyo", "land")],
-                    [("saitama", "land"), ("saitama", "used_house"), ("tokyo", "land")]]
-
-
 def test_area_crawl_requests_allowed_paths_and_archives_every_page(env, monkeypatch):
     db, archive, targets, _, _ = env
     page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")  # 67 hits, all on page 1

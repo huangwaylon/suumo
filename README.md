@@ -87,7 +87,8 @@ All later commands run from `~/suumo`.
 
 `state.db` (listing history, queue) and `archive/` (raw pages, ~3 GB for Tokyo) are not in git. Without them the
 first run starts over: every area is baselined again and every listing page is fetched again (about a day for
-all of Tokyo). To carry them over, stop the scheduled job on the old Mac
+all of Tokyo). Without them but with `data/`, `seed` rebuilds the listings (and their listing-page fields) from
+the export, so the next crawl records only what changed since. To carry them over, stop the scheduled job on the old Mac
 (`launchctl bootout gui/$(id -u)/local.suumo`), then:
 
 ```sh
@@ -144,6 +145,7 @@ agent/Keychain); a failed push is logged and retried next run. To stop it:
 | `uv run python -m suumo status` | per pref/type: active listings, % with listing-page details, queue, area states, the current run's progress |
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
 | `uv run python -m suumo reparse` | re-run the parsers over `archive/` and re-export (no requests) |
+| `uv run python -m suumo seed` | rebuild `state.db` for in-scope prefectures it holds nothing of from `data/` (no requests) |
 | `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet, and station names (kana, English) for prefectures not in `geo/stations.json` |
 | `uv run python -m suumo rail` | rebuild `geo/rail.json` (railway lines and stations for the map) from MLIT N02 and ODPT colours; `ODPT_TOKEN` and `ODPT_CHALLENGE_TOKEN` in `.env` (ODPT keys, never committed) |
 | `uv run python -m suumo site [--out _site]` | build the site locally (`cd _site && python3 -m http.server` to view it) |

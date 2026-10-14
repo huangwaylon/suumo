@@ -11,12 +11,13 @@ from suumo import http, pipeline, saved
 from suumo.archive import Archive
 from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
+from suumo.export import export
 from suumo.geo import _municipality, _same_spelling, town_of
 from suumo.gitdata import commit_data
-from suumo.maintenance import prune, reparse
+from suumo.maintenance import prune, reparse, seed
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
-from tests.helpers import FIXTURES, QUIET
+from tests.helpers import FIXTURES, QUIET, rec, write
 
 NOW = datetime(2026, 10, 6, 4, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
 
@@ -50,6 +51,33 @@ def test_prune_removes_out_of_scope_prefecture(tmp_path):
     assert db.listing("used_condo", "20205670") is None
     assert not (tmp_path / "archive/chiba").exists() and not (tmp_path / "data/chiba").exists()
     assert db.x("SELECT COUNT(*) FROM queue").fetchone()[0] == 0
+
+
+def test_seed_rebuilds_state_from_data_and_round_trips(tmp_path):
+    data = tmp_path / "data"
+    write(data, [rec(1, land_rights="所有権", has_detail=True), rec(2), rec(3, removed_at="2026-10-02")],
+          areas={"13219": "狛江市", "13218": "福生市"})
+    db = DB(tmp_path / "state.db")
+    targets = [Target("tokyo", t, None) for t in ("used_condo", "land")]
+    assert seed(db, targets, data, "2026-10-14T10:00:00+09:00", log=QUIET) == 3
+    assert seed(db, targets, data, "2026-10-14T10:00:00+09:00", log=QUIET) == 0  # holds tokyo now: no-op
+    out = tmp_path / "out"
+    export(db, targets, out)
+    lines = lambda d: {f.relative_to(d): [json.loads(x) for x in f.read_text().splitlines()]  # noqa: E731
+                       for f in d.rglob("*.jsonl")}
+    assert lines(out) == lines(data) and json.loads((out / "tokyo/areas.json").read_text()) == {
+        "13218": "福生市", "13219": "狛江市"}
+    area = db.area("tokyo", "used_condo", "13219")
+    assert (area["baselined"], area["last_hits"], area["last_status"]) == (1, 2, "complete")
+    assert not db.area("tokyo", "used_condo", "13218")["baselined"]  # no listings: its first crawl is the baseline
+    assert db.listing("used_condo", "3")["status"] == "removed"
+    # the next crawl records changes since the export: listing 2 is gone (a miss), 4 is new and its page queued
+    p = Pipeline(db, None, None, targets, NOW, "r1", log=QUIET)
+    a = {"code": "13219", "name": "狛江市", "slug": "sc_komae", "expected": 2}
+    p.reconcile("tokyo", "used_condo", a, 2, {"1": rec(1), "4": rec(4)}, True)
+    assert db.listing("used_condo", "2")["missed"] == 1
+    assert [r["kind"] for r in db.x("SELECT kind FROM events")] == ["new"]
+    assert {r["id"] for r in db.x("SELECT id FROM queue")} == {"4"}
 
 
 def test_reparse_rebuilds_from_archive(tmp_path):

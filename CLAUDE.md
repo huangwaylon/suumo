@@ -16,7 +16,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail`) |
 | `suumo/db.py` | SQLite schema, small query helpers, `dumps` (canonical JSON), `exclusive` (flock) |
 | `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
-| `suumo/maintenance.py` | `prune` (out-of-scope data) and `reparse` (rebuild parsed fields from `archive/`) |
+| `suumo/maintenance.py` | `prune` (out-of-scope data), `reparse` (rebuild parsed fields from `archive/`), `seed` (rebuild `state.db` from `data/`) |
 | `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page; `write_atomic` (used by all file writers) |
 | `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `in_scope` |
 | `suumo/http.py` | `Client`: one request at a time, delay + jitter, retries, automatic slow-down; 404/410 → `FileNotFoundError` |
@@ -125,7 +125,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - `uv sync`, then `uv run pytest -q` (offline, ~2 s; the site tests need `node`) and `uv run ruff check suumo tests`
   (line length 120).
 - Tests: `test_lifecycle.py` (reconcile/purge/export with synthetic records), `test_parsers.py` (value parsers),
-  `test_pages.py` (real pages in `tests/fixtures/`), `test_ops.py` (prune, reparse, lock, git commit, slow-down,
+  `test_pages.py` (real pages in `tests/fixtures/`), `test_ops.py` (prune, reparse, seed, lock, git commit, slow-down,
   outage pause, progress, town names), `test_catalog.py` (derived fields), `test_site.py` (build output on real
   listings in `tests/fixtures/data/`, every search rule through filter.js). Shared helpers: `tests/helpers.py`
   (`rec`, `write`, `site_queries`, `QUIET`). Tests never touch the network.

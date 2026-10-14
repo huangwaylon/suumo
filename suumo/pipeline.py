@@ -51,16 +51,8 @@ class Pipeline:
         self.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(self.report, ensure_ascii=False), self.run_id)
         self.db.commit()
 
-    def due(self):
-        """The targets this run crawls: all that don't rotate, plus the most overdue rotating prefecture's."""
-        crawled = dict(self.db.x("SELECT pref, crawled_at FROM prefs").fetchall())
-        rotating = list(dict.fromkeys(t.pref for t in self.targets if t.rotate))  # in scope.toml order
-        turn = min(rotating, key=lambda p: crawled.get(p, ""), default=None)     # never crawled = most overdue
-        return [t for t in self.targets if not t.rotate or t.pref == turn]
-
     def crawl_lists(self):
-        due = self.due()
-        for t in due:
+        for t in self.targets:
             self.log(f"\n=== {t.pref} / {t.type} ===")
             try:
                 rep = self._crawl_target(t)
@@ -69,7 +61,7 @@ class Pipeline:
                 rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
             self.report["targets"].append(rep)
             self.db.commit()
-        for pref in dict.fromkeys(t.pref for t in due):
+        for pref in dict.fromkeys(t.pref for t in self.targets):
             self.db.x("INSERT OR REPLACE INTO prefs (pref, crawled_at) VALUES (?, ?)", pref, self.ts)
         self.db.commit()
 
