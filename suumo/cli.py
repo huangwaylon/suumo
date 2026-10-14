@@ -104,7 +104,7 @@ def cmd_run(c: Ctx):
     try:  # towns of new listings, for the site's map; never stops the commit below
         if not a.no_geocode:
             geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
-            update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in c.targets}, c.data)
+            update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, {t.pref for t in c.targets}, c.data)
     except Exception as e:
         print(f"geocoding failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
@@ -173,8 +173,8 @@ def cmd_prune(c: Ctx):
 
 def cmd_geocode(args):
     geocode(ROOT / args.data, ROOT / GEO_CACHE)
-    update_stations(ROOT / STATIONS_CACHE, ROOT / GEO_CACHE, {t.pref for t in scope_mod.load(ROOT / args.scope)},
-                    ROOT / args.data)
+    prefs = {t.pref for t in scope_mod.load(ROOT / args.scope)}
+    update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, prefs, ROOT / args.data)
 
 
 def cmd_site(args):

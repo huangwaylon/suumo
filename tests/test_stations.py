@@ -2,6 +2,7 @@
 import json
 
 from suumo import stations
+from suumo.catalog import station_area
 from tests.helpers import rec, write
 
 
@@ -14,15 +15,14 @@ def test_keys_match_the_ways_names_are_written():
     assert stations._english("Shin‐Yokohama Station") == "Shin-Yokohama"   # U+2010: typed as '-'
     assert stations._english("Zushi·Hayama Station") == "Zushi·Hayama"
     assert stations._english("閻魔大王") is None and stations._english("Category:Kinuta-hommura") is None
-    assert stations.key("江曾島") == stations.key("江曽島")
+    assert stations.key("江曾島") == stations.key("江曽島") and stations.key("江の島") == stations.key("江ノ島")
 
 
-def test_box_leaves_out_far_islands():
-    towns = {"東京都狛江市岩戸北３": [35.63, 139.58], "東京都新宿区西新宿２": [35.69, 139.69],
-             "東京都八丈島八丈町大賀郷": [33.11, 139.79], "東京都青梅市": None, "神奈川県川崎市": [35.5, 139.7]}
-    west, south, east, north = stations.box(towns, "tokyo")
-    assert (round(west, 2), round(south, 2), round(east, 2), round(north, 2)) == (139.43, 35.48, 139.84, 35.84)
-    assert stations.box(towns, "osaka") is None
+def test_area_leaves_out_far_places():
+    points = [(35.63, 139.58), (35.69, 139.69), (33.11, 139.79), (35.5, 139.7)]  # 八丈島 is over 1° away
+    west, south, east, north = station_area(points)
+    assert (round(west, 2), round(south, 2), round(east, 2), round(north, 2)) == (139.43, 35.35, 139.85, 35.84)
+    assert station_area([]) is None
 
 
 class FakeSession:
@@ -50,13 +50,13 @@ def test_update_fills_the_cache_once_per_prefecture(tmp_path, monkeypatch):
             {"ja": "練馬駅", "en": "Nerima Station"}]
     session = FakeSession(rows)
     monkeypatch.setattr(stations.requests, "Session", lambda: session)
-    towns = tmp_path / "towns.json"
-    towns.write_text(json.dumps({"東京都江東区大島３": [35.69, 139.83]}, ensure_ascii=False))
+    rail = tmp_path / "rail.json"
+    rail.write_text(json.dumps({"stations": [["大島", 35.69, 139.83, []]]}, ensure_ascii=False))
     cache = tmp_path / "stations.json"
     data = tmp_path / "data"
-    write(data, [rec(1, address="東京都江東区大島３")])
-    write(data, [rec(2, address="千葉県浦安市舞浜１", area_code="12227")], pref="chiba")  # not geocoded yet
+    write(data, [rec(1, stations=[{"line": "都営新宿線", "name": "大島", "walk": 5}])])
+    write(data, [rec(2, area_code="12227", stations=[{"line": "バス", "name": "どこか", "walk": 5}])], pref="chiba")
     for _ in range(2):
-        stations.update(cache, towns, ["tokyo", "chiba"], data, log=lambda *a: None)
-    assert session.calls == 1 and json.loads(cache.read_text())["_prefs"] == ["tokyo"]  # chiba waits for its towns
+        stations.update(cache, rail, ["tokyo", "chiba"], data, log=lambda *a: None)
+    assert session.calls == 1 and json.loads(cache.read_text())["_prefs"] == ["tokyo"]  # chiba: no known station
     assert stations.names(cache) == {"大島": ["おおじま", "Ojima"], "練馬": [None, "Nerima"]}

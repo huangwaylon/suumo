@@ -24,7 +24,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/geo.py` | Town (丁目) coordinates from 国土地理院's address search, cached in `geo/towns.json` |
 | `suumo/rail.py` | Railway lines and stations for the maps, the whole country: MLIT 国土数値情報 鉄道データ (N02, CC BY 4.0), simplified; colours and English names from ODPT's open, basic (`ODPT_TOKEN`) and challenge (`ODPT_CHALLENGE_TOKEN`, challenge licence) APIs, else carried over from the previous file; `rail` writes `geo/rail.json`. Also decides which same-named stations are really two (`site.station_prefectures`) |
-| `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json` (once a prefecture's towns are all geocoded); the site searches and shows them. `site.listing_spelling` renames rail stations to the listings' spelling (阿佐ケ谷, not 阿佐ヶ谷) |
+| `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json`, per prefecture over the area its listings' stations span (`catalog.station_area`, places from rail.json); the site searches and shows them. `site.listing_spelling` renames rail stations to the listings' spelling (阿佐ケ谷, not 阿佐ヶ谷) |
 | `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json`, one search index per prefecture `data/p/<pref>.json` loaded as chosen, one JSON per listing) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
@@ -94,7 +94,10 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   (so `url` is stored, not derived) and their price excludes the building.
 - `-` means "not stated" everywhere; `clean()` drops it. Prices: `8702万8000円`, ranges `A～B` or `A・B`, footnotes after `※`.
 - Search results show one station; listing pages show up to 3 (each in its own `<div>`), sometimes including a bus
-  stop (`line` containing バス → `bus_stop: true`).
+  stop (`line` containing バス → `bus_stop: true`). Often SUUMO gives only the bus company or a route number
+  (`しずてつジャストライン「丸子橋入口」`): the site build counts a name as a station only when rail.json has one of that
+  name in the prefecture's area (`catalog.is_bus`, `railway_near`); the rest are bus stops, shown as バス停 and not
+  offered as stations.
 - Listing-page labels end in `ヒント` (a help link) and the summary and full spec tables repeat labels; `spec_table`
   strips the suffix and keeps the first value. Deal type is `取引態様：＜…＞` in the agent block.
 - `land_rights` text can be a paragraph; `_tenure` maps it to a category and keeps the text in `land_rights_note`.

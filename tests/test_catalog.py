@@ -61,3 +61,16 @@ def test_land_listed_as_new_house_is_kept_once(tmp_path):
 def test_duplicate_groups_need_two_listings(tmp_path):
     s = snap(tmp_path, rec(1, dup_key="aa"), rec(2, dup_key="aa"), rec(3, dup_key="bb"))
     assert list(s.groups) == ["aa"] and [i.rec["id"] for i in s.groups["aa"]] == ["1", "2"]
+
+
+def test_bus_stops_are_told_from_stations_by_the_railway_nearby(tmp_path):
+    bus = {"line": "しずてつジャストライン", "name": "丸子橋入口", "walk": 7}         # SUUMO gives only the bus company
+    far = {"line": "20", "name": "体育館前", "walk": 3}  # a tram stop of that name is far away
+    write(tmp_path, [rec(1, stations=[bus, {"line": "静岡鉄道", "name": "新静岡", "walk": 9}, far]),
+                     rec(2, stations=[{"line": "静岡鉄道", "name": "日吉町", "walk": 4}]),
+                     rec(3, stations=[{"line": "ＪＲ東海道本線", "name": "静岡", "walk": 6}])])
+    rail = [["新静岡", 34.97, 138.39, []], ["日吉町", 34.97, 138.38, []], ["静岡", 34.97, 138.39, []],
+            ["体育館前", 35.0, 135.0, []]]
+    item = load(tmp_path, TODAY, rail_stations=rail).items[0]
+    assert item.stations == [("新静岡", 9)] and item.stops == [("丸子橋入口", 7), ("体育館前", 3)]
+    assert load(tmp_path, TODAY).items[0].stops == []  # no railway data: only SUUMO's own バス marks count

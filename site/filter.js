@@ -49,7 +49,7 @@
         id: sid, idn: id, type, key: type + ":" + sid, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
         land: c.land[i], age: c.age[i] == null ? null : Math.floor(c.age[i] / 12), ageMonths: c.age[i],
-        stations, features: tags(c.features[i], index.features), flags: c.flags[i],
+        stations, stop: c.stop?.[i] ?? null, features: tags(c.features[i], index.features), flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
@@ -77,7 +77,7 @@
   // The text a search word is looked for in, built the first time a text search runs: names, places and stations
   // in kanji, kana and English (it.alias: the English area name, set by the page).
   const haystack = (it, db) => (it.haystack ??= normalize([it.name, it.town, it.areaName, it.alias, it.layout,
-    ...it.stations.flatMap(([s]) => [s + "駅", ...(db.stationNames.get(s) || [])])].filter(Boolean).join(" ")));
+    ...it.stations.flatMap(([s]) => [s + "駅", ...(db.stationNames.get(s) || [])]), it.stop?.[0]].filter(Boolean).join(" ")));
 
   function walkTo(it, chosen) {
     let best = null;

@@ -1,13 +1,13 @@
 """data/ -> listings with the derived fields the site searches on (rooms, sizes, age, walk times, flags,
-duplicate groups, 新着 and 値下げ from data/events). Pure: reads files only. The search rules themselves live in
-site/filter.js.
+duplicate groups, 新着 and 値下げ from data/events). Pure: reads files only (the railway stations are passed in).
+The search rules themselves live in site/filter.js.
 
 Listing keys are "type:id" strings (e.g. "used_condo:20205670").
 """
 import json
 import re
 import unicodedata
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -36,8 +36,51 @@ def plan_rank(layout):
     return max(ranks) if ranks else None
 
 
-def is_bus(st):
-    return bool(st.get("bus_stop") or (st.get("line") and "バス" in st["line"]))
+def station_key(name):
+    """The form station names are matched in: '市ヶ谷', '市ケ谷駅', '市が谷' -> '市ケ谷'; '浦安駅 (千葉県)' -> '浦安';
+    '江曾島' -> '江曽島'; '江の島' -> '江ノ島'."""
+    name = unicodedata.normalize("NFKC", name)
+    for a, b in (("ヶ", "ケ"), ("ヵ", "ケ"), ("が", "ケ"), ("澤", "沢"), ("曾", "曽"), ("の", "ノ")):
+        name = name.replace(a, b)
+    return re.sub(r"\s*\(.*\)$", "", name).removesuffix("駅").removesuffix("停留場").strip()
+
+
+AREA_MARGIN = 0.15  # degrees: stations just over a prefecture's border are named in its listings too
+
+
+def station_area(points):
+    """[west, south, east, north] around (lat, lng) points, leaving out those over 1° from the median (a same-named
+    station far away, a far island); None without points. A point listed n times weighs n times."""
+    if not points:
+        return None
+    mid = (sorted(p[0] for p in points)[len(points) // 2], sorted(p[1] for p in points)[len(points) // 2])
+    near = [p for p in points if abs(p[0] - mid[0]) < 1 and abs(p[1] - mid[1]) < 1]
+    lats, lngs = [p[0] for p in near], [p[1] for p in near]
+    return [min(lngs) - AREA_MARGIN, min(lats) - AREA_MARGIN, max(lngs) + AREA_MARGIN, max(lats) + AREA_MARGIN]
+
+
+def listing_station_keys(recs):
+    """Counter of the station keys the listings mention (a bus stop is mentioned by a few, a station by many)."""
+    return Counter(station_key(s["name"]) for r in recs for s in r.get("stations") or [] if s.get("name"))
+
+
+def railway_near(keys, rail_stations):
+    """The keys of the railway stations in the area the listings' stations (a Counter of keys) span, weighed by
+    mentions so bus stops named like stations elsewhere don't move it: what counts as a station there.
+    rail_stations: rail.json's [[name, lat, lng, lines], ...]."""
+    area = station_area([(lat, lng) for name, lat, lng, _ in rail_stations for _ in range(keys[station_key(name)])])
+    if not area:
+        return set()
+    west, south, east, north = area
+    return {station_key(name) for name, lat, lng, _ in rail_stations if west <= lng <= east and south <= lat <= north}
+
+
+def is_bus(st, railway=None):
+    """A bus stop: SUUMO says so (a バス line), or, with the railway near the listing known, no station has its name
+    there (SUUMO often gives only the bus company or a route number: 'しずてつジャストライン「丸子橋入口」')."""
+    if st.get("bus_stop") or (st.get("line") and "バス" in st["line"]):
+        return True
+    return railway is not None and station_key(st["name"]) not in railway
 
 
 def _age_months(rec, today):
@@ -55,7 +98,7 @@ class Item:
     """One listing: its record plus the values the site filters and sorts on. `gone`: ended on SUUMO but kept
     because it's saved; `saved`: on the shared saved list."""
 
-    def __init__(self, rec, today, pref):
+    def __init__(self, rec, today, pref, railway=None):
         self.rec = rec
         self.pref = pref
         self.type = rec["type"]
@@ -73,10 +116,12 @@ class Item:
         self.age_months = _age_months(rec, today)
         built = rec.get("built")
         # (name, minutes on foot or None when the access is by bus); bus stops aren't stations
-        self.stations = [(s["name"], None if s.get("bus") else s.get("walk"))
-                         for s in rec.get("stations") or [] if s.get("name") and not is_bus(s)]
-        self.bus = {s["name"]: s["bus"] for s in rec.get("stations") or [] if s.get("bus") and not is_bus(s)}  # minutes
-        self.car = {s["name"]: s["car_km"] for s in rec.get("stations") or [] if s.get("car_km") and not is_bus(s)}
+        named = [s for s in rec.get("stations") or [] if s.get("name")]
+        rail = [s for s in named if not is_bus(s, railway)]
+        self.stations = [(s["name"], None if s.get("bus") else s.get("walk")) for s in rail]
+        self.bus = {s["name"]: s["bus"] for s in rail if s.get("bus")}  # minutes
+        self.car = {s["name"]: s["car_km"] for s in rail if s.get("car_km")}
+        self.stops = [(s["name"], s.get("walk")) for s in named if s not in rail]  # bus stops (name, minutes on foot)
         self.features = sorted(rec.get("features") or ())
         self.leasehold = rec.get("land_rights") in LEASEHOLD
         self.first_seen = rec.get("first_seen") or ""
@@ -145,7 +190,8 @@ def hour(day):
     return int(day.strftime("%Y%m%d")) * 100
 
 
-def load(data_dir, today: date, saved=()):
+def load(data_dir, today: date, saved=(), rail_stations=()):
+    """rail_stations (rail.json's): tell bus stops from stations by the railway near each prefecture."""
     data_dir = Path(data_dir)
     items, areas = [], {}
     for pref_dir in sorted(p for p in data_dir.iterdir() if p.is_dir() and p.name != "events"):
@@ -153,9 +199,11 @@ def load(data_dir, today: date, saved=()):
         for path in sorted((pref_dir / "removed").glob("*.jsonl")):  # ended, kept because saved
             recs[path.stem] += _read_jsonl(path)
         land_ids = {r["id"] for r in recs["land"]}
+        railway = railway_near(listing_station_keys(r for rs in recs.values() for r in rs),
+                               rail_stations) if rail_stations else None
         for type_key, rs in recs.items():
             # land with a build condition is listed under both new_house and land: keep the land listing
-            items += [Item(r, today, pref_dir.name) for r in rs
+            items += [Item(r, today, pref_dir.name, railway) for r in rs
                       if not (type_key == "new_house" and r["id"] in land_ids and "/tochi/" in r.get("url", ""))]
         areas_file = pref_dir / "areas.json"
         if areas_file.exists():

@@ -20,11 +20,10 @@ from pathlib import Path
 from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
-from .catalog import load
+from .catalog import load, station_key
 from .geo import load_cache, town_of
 from .parse import TYPES
 from .scope import PREFS
-from .stations import key as station_key
 from .stations import names as station_names
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -180,8 +179,8 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
     names = Table.by_count(_name(i.rec) for i in reps)
     layouts = Table.by_count(i.rec.get("layout") for i in reps)
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
-                            "access", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
-                            "name", "layout", "image")}
+                            "access", "stop", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit",
+                            "town", "name", "layout", "image")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         r, new, drop = i.rec, snap.new(i), snap.drop(i)
@@ -193,6 +192,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             # access to each station: minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
             "stations": [stations(station(name, i.pref)) for name, _ in i.stations],
             "access": [_access(walk, i.bus.get(name), i.car.get(name)) for name, walk in i.stations],
+            "stop": list(min(i.stops, key=lambda s: s[1] if s[1] is not None else 999)) if i.stops else None,
             "features": _mask(features(f) for f in i.features),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
@@ -222,7 +222,10 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
 
 
 def listing_record(snap, item, others):
-    return {**item.rec, "history": snap.history.get(item.key, []), "new_date": _new_date(snap.new(item)),
+    stops = {name for name, _ in item.stops}
+    stations = [{**s, "bus_stop": True} if s.get("name") in stops else s for s in item.rec.get("stations") or []]
+    return {**item.rec, "stations": stations or None, "history": snap.history.get(item.key, []),
+            "new_date": _new_date(snap.new(item)),
             "name": _name(item.rec),
             "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url")} for o in others]}
 
@@ -243,7 +246,9 @@ def _dump(obj):
 
 def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None, saved=()):
     """saved: the shared saved list ("type:id" keys). Returns {"manifest": ..., <pref slug>: its index}."""
-    snap = load(data_dir, today or datetime.now(JST).date(), saved)
+    rail_path = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
+    rail = json.loads(rail_path.read_text()) if rail_path.exists() else None
+    snap = load(data_dir, today or datetime.now(JST).date(), saved, rail["stations"] if rail else ())
     reps = representatives(snap)
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
@@ -255,8 +260,7 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     by_pref = defaultdict(dict)
     for item, others in reps.items():
         by_pref[item.pref][item] = others
-    rail_path = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
-    rail = listing_spelling(json.loads(rail_path.read_text()), reps) if rail_path.exists() else None
+    rail = rail and listing_spelling(rail, reps)
     station_prefs = station_prefectures(reps, rail["stations"] if rail else ())
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = {}

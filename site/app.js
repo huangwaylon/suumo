@@ -145,7 +145,7 @@
     const best = closest(chosen);  // a chosen station when there are any: that's why it's listed
     if (best) return t("walk", stationName(best[0]), best[1]);
     const [s, , bus, car] = (chosen && it.stations.find(([n]) => q.stations.includes(n))) || it.stations[0] || [];
-    if (!s) return "";
+    if (!s) return it.stop ? t("stopWalkTo", it.stop[0], it.stop[1]) : "";
     return car ? t("car", stationName(s), car) : t("bus", stationName(s), bus);
   }
   function image(it, w, h) {
@@ -921,11 +921,11 @@
     const unit = it?.unit ? second(t("perM2", it.unit), !isCondo(type) && t("perTsubo", Math.round(it.unit * TSUBO))) : "";
     const facts = [["layout", esc(value(r.layout) || "")], [isCondo(type) ? "floor" : "building", esc(m2(r.floor_m2 || r.building_m2))],
       [isCondo(type) ? "balcony" : "land", isCondo(type) ? esc(m2(r.balcony_m2)) : m2(r.land_m2) && second(m2(r.land_m2), tsubo(r.land_m2))],
-      ["age", it ? esc(age(it)) : ""], ["station", it ? esc(station(it)) : ""], ["unit", unit]].filter(([, v]) => v);
+      ["age", it ? esc(age(it)) : ""], [it && !it.stations.length && it.stop ? "stop" : "station", it ? esc(station(it)) : ""], ["unit", unit]].filter(([, v]) => v);
     const changes = r.history?.length && r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>");
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
-    const access = (r.stations || []).map((s) => esc([s.line, t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
+    const access = (r.stations || []).map((s) => esc([s.line, s.bus_stop ? t("busStop", s.name) : t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
       : s.walk != null ? t("walkMin", s.walk) : s.car_km ? t("carKm", s.car_km_max ? `${s.car_km}–${s.car_km_max}` : s.car_km) : ""].filter(Boolean).join(" "))).join("<br>");
     return `
       ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="">` : ""}
