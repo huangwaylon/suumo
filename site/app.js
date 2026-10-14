@@ -282,6 +282,7 @@
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
     const offers = mode === "search" ? suggestions() : [];
+    renderPrefBar();
     renderQuick();
     renderSearches();
     $("chips").innerHTML = mode !== "search" ? "" : offers.map(([f, v, label]) =>
@@ -512,7 +513,7 @@
     if (key !== facetsFor) { facets = Filter.facets(db, q, CHOICES); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
-      body.innerHTML = ["prefs", "text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
+      body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
         <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
@@ -524,8 +525,6 @@
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
-    sec("prefs", manifest.prefs.length < 2 ? "" : `${h3("prefs")}<div class="opts">${manifest.prefs.map(([slug, name, n]) =>
-      chipBtn(`data-pref="${slug}"`, place(name), n, chosen.includes(slug))).join("")}</div>`);
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
     sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}<p id="price-max">${esc(t("max"))}</p><div class="opts">${
@@ -580,17 +579,6 @@
   }
 
   function onFilterClick(e) {
-    const pick = e.target.closest("button[data-pref]");
-    if (pick) {  // prefectures: at least one; the URL says which, route loads them
-      const s = pick.dataset.pref, next = chosen.includes(s) ? chosen.filter((x) => x !== s) : [...chosen, s];
-      if (!next.length) return;
-      const keep = chosen;
-      chosen = next;
-      history.replaceState(null, "", hashFor());
-      chosen = keep;
-      route();
-      return;
-    }
     const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
     if (!b) return;
     mode = "search";
@@ -609,6 +597,93 @@
     const focus = [...b.attributes].filter((a) => a.name.startsWith("data-")).map((a) => `[${a.name}="${CSS.escape(a.value)}"]`).join("");
     update(false);
     $("filters-body").querySelector(`button${focus}`)?.focus();
+  }
+
+  // ---------- prefectures: the button before the count opens a picker (a sheet; a popover on desktop) ----------
+
+  const REGIONS = {  // the usual 8 regions, by the prefecture names the manifest uses
+    hokkaido: ["北海道"], tohoku: ["青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県"],
+    kanto: ["茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県"],
+    chubu: ["新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県"],
+    kinki: ["三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県"],
+    chugoku: ["鳥取県", "島根県", "岡山県", "広島県", "山口県"], shikoku: ["徳島県", "香川県", "愛媛県", "高知県"],
+    kyushu: ["福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
+  };
+  const MAX_PREFS = 5;
+  const prefName = (slug) => place(manifest.prefs.find(([s]) => s === slug)?.[1] ?? slug);
+  let prefsUrl = null;  // the URL the picker has chosen (kept when it closes, also by the back button)
+
+  // The button ("東京都 ▾", "東京都 ほか1 ▾") and, with several prefectures, one removable chip each.
+  function renderPrefBar() {
+    const off = mode !== "search" || !!area || manifest.prefs.length < 2;
+    $("pref").hidden = off;
+    $("pref").innerHTML = `<span>${esc(t("prefButton", prefName(chosen[0]), chosen.length - 1))}</span>${icon("down")}`;
+    $("pref-chips").innerHTML = off || chosen.length < 2 ? "" : chosen.map((slug) =>
+      `<span class="chip on"><button class="chip-label" data-pref-open="1">${esc(prefName(slug))}</button><button class="chip-x" data-pref-remove="${slug}" aria-label="${esc(t("remove", prefName(slug)))}">${icon("x")}</button></span>`).join("");
+  }
+
+  function renderPrefs() {
+    const typed = Filter.normalize($("prefs-q").value.trim());
+    const match = ([slug, name]) => !typed || [name, I18N.en.places[name], slug].some((n) => n && Filter.normalize(n).includes(typed));
+    const groups = Object.keys(REGIONS).map((r) => [r, manifest.prefs.filter(([, name]) => REGIONS[r].includes(name))]);
+    const other = manifest.prefs.filter(([, name]) => !Object.values(REGIONS).some((names) => names.includes(name)));
+    if (other.length) groups.push(["other", other]);
+    const want = prefsFromHash(), full = want.length >= MAX_PREFS;  // (the URL's: some may still be loading)
+    $("prefs-list").innerHTML = groups.map(([r, prefs]) => {
+      const rows = prefs.filter(match).map(([slug, name, n]) => {
+        const on = want.includes(slug), only = on && want.length === 1;
+        return `<li class="pref-row${on ? " on" : ""}"><button class="pref-go" data-pref-go="${slug}"${on ? ' aria-current="true"' : ""}>${esc(place(name))}<span class="n">${num(n)}</span></button>
+          <button class="pref-add" data-pref-add="${slug}" aria-pressed="${on}"${only || (!on && full) ? " disabled" : ""} aria-label="${esc(t(on ? "remove" : "prefAddTo", place(name)))}">${esc(t(on ? "prefAdded" : "prefAdd"))}</button></li>`;
+      }).join("");
+      return rows && `<section class="pref-group"><h3>${esc(t("regions")[r])}</h3><ul>${rows}</ul></section>`;
+    }).join("") || `<p class="meta">${esc(t("prefNone"))}</p>`;
+    $("prefs-note").textContent = full ? t("prefMax", MAX_PREFS) : "";
+  }
+
+  // Back closes the picker and keeps what it chose (as the filter sheet does).
+  function openPrefs(open, popped) {
+    const box = $("prefs");
+    if (open === !box.hidden) return;
+    if (!open && !popped && history.state?.prefs) { history.back(); return; }  // popstate closes it
+    if (open) {
+      lastFocus = document.activeElement;
+      history.pushState({ prefs: true }, "", location.href);
+      prefsUrl = location.href;
+      $("prefs-q").value = "";
+      renderPrefs();
+    }
+    box.hidden = !open;
+    $("pref").setAttribute("aria-expanded", open);
+    const modal = open && !WIDE.matches;
+    for (const el of [document.querySelector(".bar"), document.querySelector(".layout")]) el.inert = modal;
+    if (!open) { lastFocus?.focus(); return; }
+    if (WIDE.matches) {  // a popover under the button
+      const r = $("pref").getBoundingClientRect(), panel = box.firstElementChild;
+      panel.style.top = `${r.bottom + 6}px`;
+      panel.style.left = `${Math.max(8, Math.min(r.left, innerWidth - panel.offsetWidth - 8))}px`;
+    } else box.firstElementChild.style.top = box.firstElementChild.style.left = "";
+    $("prefs-list").querySelector('[aria-current="true"]')?.scrollIntoView({ block: "center" });
+    (WIDE.matches || !COARSE.matches ? $("prefs-q") : $("prefs-close")).focus();
+  }
+
+  function setPrefs(next, now = true) {  // the URL says which; route loads and shows them
+    const p = new URLSearchParams(location.hash.slice(1));
+    if (next.join() === manifest.prefs[0][0]) p.delete("p"); else p.set("p", next.join(","));
+    history.replaceState(history.state, "", "#" + p.toString());
+    prefsUrl = location.href;
+    if (now) route();
+  }
+
+  function onPrefsClick(e) {
+    if (e.target === $("prefs")) return openPrefs(false);  // outside the panel
+    const go = e.target.closest("[data-pref-go]"), add = e.target.closest("[data-pref-add]");
+    if (go) { setPrefs([go.dataset.prefGo], !history.state?.prefs); openPrefs(false); }  // (closing routes)
+    else if (add) {
+      const s = add.dataset.prefAdd, want = prefsFromHash();
+      setPrefs(want.includes(s) ? want.filter((x) => x !== s) : [...want, s].slice(0, MAX_PREFS));
+      renderPrefs();
+      $("prefs-list").querySelector(`[data-pref-add="${s}"]`)?.focus();
+    }
   }
 
   // ---------- map ----------
@@ -1206,6 +1281,11 @@
     $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
       if (e.target.id === "station-q" && e.key === "Enter") $("station-list").querySelector('button[aria-pressed="false"]')?.click();
     });
+    $("pref").addEventListener("click", () => openPrefs(true));
+    $("prefs-close").addEventListener("click", () => openPrefs(false));
+    $("prefs").addEventListener("click", onPrefsClick);
+    $("prefs-q").addEventListener("input", renderPrefs);
+    $("prefs-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("prefs-list").querySelector(".pref-go")?.click(); });
     $("settings-open").addEventListener("click", () => openSettings(true));
     $("settings-close").addEventListener("click", () => openSettings(false));
     $("settings").addEventListener("click", (e) => {
@@ -1247,6 +1327,8 @@
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
       else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
+      else if (b.dataset.prefOpen) openPrefs(true);
+      else if (b.dataset.prefRemove) setPrefs(prefsFromHash().filter((s) => s !== b.dataset.prefRemove));
       else if (b.dataset.unsaveSearch != null) {
         searches.splice(+b.dataset.unsaveSearch, 1);
         saveSearches();
@@ -1290,18 +1372,25 @@
         return;
       }
       if (!$("settings").hidden) { openSettings(false, true); return; }
+      if (!$("prefs").hidden) {  // back from the picker: keep what it chose
+        history.replaceState(null, "", prefsUrl);
+        openPrefs(false, true);
+        route();
+        return;
+      }
       const before = renderedFor;
       scrollFor[before] = window.scrollY;
       route();
       if (renderedFor !== before && $("detail").hidden) restoreScroll();
     });
     document.addEventListener("keydown", (e) => {
-      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings")
+      const dialog = !$("detail").hidden ? $("detail") : !$("settings").hidden ? $("settings") : !$("prefs").hidden ? $("prefs")
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
       if (e.key !== "Escape") return;
       if (!$("settings").hidden) openSettings(false);
+      else if (!$("prefs").hidden) openPrefs(false);
       else if (!$("detail").hidden) closeDetail();
       else if (document.body.classList.contains("show-filters")) openFilters(false);
     });

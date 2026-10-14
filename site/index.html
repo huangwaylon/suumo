@@ -55,13 +55,17 @@
     <main class="results" id="results" tabindex="-1">
       <div id="searches" class="searches" hidden></div>
       <div class="toolbar">
-        <h2 id="count" aria-live="polite" tabindex="-1"></h2>
+        <span class="toolbar-start">
+          <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
+          <h2 id="count" aria-live="polite" tabindex="-1"></h2>
+        </span>
         <span class="toolbar-end">
           <button id="map-toggle" class="btn ghost map-toggle" aria-pressed="true"><svg class="i"><use href="#i-map"/></svg><span data-t="map"></span></button>
           <button id="keep" class="icon-btn" data-t-label="keepSearch" aria-pressed="false"><svg class="i"><use href="#i-star"/></svg></button>
           <select id="sort" class="select" data-t-label="sort"></select>
         </span>
       </div>
+      <div id="pref-chips" class="chips"></div>
       <div id="quick" class="chips quick"></div>
       <div id="chips" class="chips"></div>
       <div id="banner" class="banner" hidden></div>
@@ -113,6 +117,20 @@
     </div>
   </div>
 
+  <div id="prefs" class="prefs" role="dialog" aria-modal="true" aria-labelledby="prefs-title" hidden>
+    <div class="prefs-panel">
+      <div class="sheet-head">
+        <h2 id="prefs-title" data-t="prefPick"></h2>
+        <button id="prefs-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="prefs-search">
+        <input id="prefs-q" class="text-input" type="search" data-t-placeholder="prefFilter" data-t-label="prefFilter" autocomplete="off" enterkeyhint="go">
+        <p id="prefs-note" class="hint" aria-live="polite"></p>
+      </div>
+      <div id="prefs-list" class="sheet-body"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status"></div>
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -125,6 +143,7 @@
       <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2-6-2zM9 4v14M15 6v14"/></symbol>
       <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
       <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
     </defs>
