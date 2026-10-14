@@ -49,6 +49,7 @@ OPERATOR_COLOURS = {  # brand colours, for lines ODPT has none for
     "横浜市": "#00a95f", "首都圏新都市鉄道": "#d71920",
 }
 OTHER = "#7d8693"
+FALLBACK = {*OPERATOR_COLOURS.values(), OTHER}  # colours that aren't a line's own
 SHORT = {"九州旅客鉄道": "JR九州", "北海道旅客鉄道": "JR北海道", "四国旅客鉄道": "JR四国", "東京都": "都営",
          "東京地下鉄": "東京メトロ", "横浜市": "横浜市営地下鉄", "近畿日本鉄道": "近鉄", "名古屋鉄道": "名鉄",
          "大阪市高速電気軌道": "Osaka Metro"}  # names people use, where ODPT gives none
@@ -156,8 +157,7 @@ def carry_over(rail, previous):
         prev = old_lines.get((op, line[1]))
         if prev:
             line[2] = line[2] or prev[2]
-            fallback = {*OPERATOR_COLOURS.values(), OTHER}
-            if line[3] in fallback and prev[3] not in fallback:  # the line's own colour, never a fallback
+            if line[3] in FALLBACK and prev[3] not in FALLBACK:  # the line's own colour, never a fallback
                 line[3] = prev[3]
     return rail
 
@@ -176,7 +176,7 @@ def update(path, keys, log=print):
     if Path(path).exists():
         rail = carry_over(rail, json.loads(Path(path).read_text()))
     write_atomic(path, (json.dumps(rail, ensure_ascii=False, separators=(",", ":")) + "\n").encode())
-    own = sum(1 for line in rail["lines"] if line[3] not in OPERATOR_COLOURS.values() and line[3] != OTHER)
+    own = sum(1 for line in rail["lines"] if line[3] not in FALLBACK)
     log(f"rail: {len(rail['operators'])} operators, {len(rail['lines'])} lines ({own} in their own colour), "
         f"{len(rail['stations'])} stations → {path}")
     return rail

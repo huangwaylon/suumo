@@ -43,14 +43,14 @@ class Pipeline:
         self.day = now.strftime("%Y%m%d")
         self.report = {"targets": [], "detail": {}}
 
-    # ---------- search results ----------
-
     def save_progress(self, phase, text):
         """Put progress in the run's report so `status` (another process) can show it while the run goes on."""
         at = datetime.now(self.now.tzinfo).isoformat(timespec="seconds")
         self.report["progress"] = {"phase": phase, "text": text, "at": at}
         self.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(self.report, ensure_ascii=False), self.run_id)
         self.db.commit()
+
+    # ---------- search results ----------
 
     def crawl_lists(self):
         for t in self.targets:
@@ -306,7 +306,7 @@ class Pipeline:
         the other listing's fetched fields and archived page instead of fetching it again."""
         twin_type = {"land": "new_house", "new_house": "land"}.get(r["type"])
         twin = twin_type and self.db.listing(twin_type, r["id"])
-        if not (twin and twin["detail_json"] and r["list_json"]
+        if not (twin and twin["detail_json"]
                 and json.loads(twin["list_json"]).get("path") == json.loads(r["list_json"]).get("path")):
             return False
         self.db.x("UPDATE listings SET detail_json=? WHERE type=? AND id=?", twin["detail_json"], r["type"], r["id"])

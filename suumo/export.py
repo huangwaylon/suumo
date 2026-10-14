@@ -77,10 +77,6 @@ def _write(path, text):
         write_atomic(path, data)
 
 
-def _write_jsonl(path, records):
-    _write(path, "".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n" for r in records))
-
-
 def _write_json(path, obj):
     _write(path, json.dumps(obj, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
 
@@ -88,7 +84,8 @@ def _write_json(path, obj):
 def _sync_dir(directory, files):
     """Write {name: records} as directory/<name>.jsonl and delete the directory's other .jsonl files."""
     for name, records in files.items():
-        _write_jsonl(directory / f"{name}.jsonl", records)
+        _write(directory / f"{name}.jsonl",
+               "".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n" for r in records))
     if directory.exists():
         for p in directory.glob("*.jsonl"):
             if p.stem not in files:

@@ -104,8 +104,7 @@ def cmd_run(c: Ctx):
     c.db.commit()
     try:  # towns of new listings, for the site's map; never stops the commit below
         if not a.no_geocode:
-            geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
-            update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, {t.pref for t in c.targets}, c.data)
+            update_geo(c.data, c.targets, budget=GEO_BUDGET)
             update_fx(c.data / "fx.json")  # the day's yen-dollar rate, for the site's USD prices
     except Exception as e:
         print(f"geocoding failed (retried next run): {e!r}")
@@ -173,10 +172,14 @@ def cmd_prune(c: Ctx):
         export(c.db, c.targets, c.data)
 
 
+def update_geo(data, targets, budget=None):
+    """Coordinates of new towns and names of the scope's stations (geo/)."""
+    geocode(data, ROOT / GEO_CACHE, budget_seconds=budget)
+    update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, {t.pref for t in targets}, data)
+
+
 def cmd_geocode(args):
-    geocode(ROOT / args.data, ROOT / GEO_CACHE)
-    prefs = {t.pref for t in scope_mod.load(ROOT / args.scope)}
-    update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, prefs, ROOT / args.data)
+    update_geo(ROOT / args.data, scope_mod.load(ROOT / args.scope))
 
 
 def cmd_site(args):
