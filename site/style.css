@@ -353,7 +353,8 @@ details.group .opts { padding-bottom: 12px; }
 .market p { margin: 6px 0 0; font-size: 14px; }
 .market p.meta { white-space: normal; font-size: 12px; margin-top: 2px; }
 .d-sec dd small { display: block; color: var(--muted); font-size: 12px; }
-.d-map { height: 220px; margin: 8px 16px 24px; border-radius: var(--radius); }
+.on-map { min-height: 36px; margin: 6px 0 0 -10px; padding: 0 10px; color: var(--accent); font-size: 14px; }
+.on-map .i { width: 18px; height: 18px; }
 /* the listing's actions, at the bottom of its tab */
 .actions { position: sticky; bottom: var(--sheet-y, 0px); z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 8px;
   padding: 8px 16px calc(8px + var(--safe-b)); background: var(--surface); border-top: 1px solid var(--line); }
@@ -377,7 +378,8 @@ details.group .opts { padding-bottom: 12px; }
 .tab-x { display: grid; place-items: center; width: 30px; height: 36px; margin-left: -6px; color: inherit; }
 .tab-x .i { width: 14px; height: 14px; }
 .tab-all { flex: none; margin-left: auto; padding: 0 8px; min-height: 36px; color: var(--muted); font-size: 12px; font-weight: 600; }
-.panel-body { background: var(--surface); padding-bottom: var(--sheet-y, 0px); }
+.panel-body { background: var(--surface); }
+.panel-body::after { content: ""; display: block; height: var(--sheet-y, 0px); }  /* (phones: the end above the screen's) */
 .panel-body:focus { outline: none; }
 .panel-body .compare { margin: 12px; max-width: calc(100% - 24px); }
 .d-head h2:focus { outline: none; }
@@ -503,5 +505,9 @@ body.resizing { user-select: none; cursor: col-resize; }
 .station-label { width: max-content; font-size: 12px; font-weight: 700; color: #1d2026; white-space: nowrap; pointer-events: none;
   text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; }
 [data-theme="dark"] .station-label { color: #f2f4f7; text-shadow: 0 0 2px #0d0f13, 0 0 2px #0d0f13, 0 0 3px #0d0f13, 0 0 4px #0d0f13; }
-.leaflet-tooltip.station-tip { padding: 1px 5px; font-size: 11px; font-weight: 700; box-shadow: none; }
+/* the open listing: a ring at its town */
+.open-pin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--fav); background: color-mix(in srgb, var(--fav) 20%, transparent);
+  box-shadow: 0 0 0 3px var(--surface); }
+.unplaced { margin-top: 16px; }
+.unplaced > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; }
 .pref-all { width: 100%; margin: 4px 0 8px; justify-content: center; }

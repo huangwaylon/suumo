@@ -68,7 +68,8 @@
         <div class="toolbar">
           <span class="toolbar-start">
             <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
-            <h2 id="count" aria-live="polite" tabindex="-1"></h2>
+            <h2 id="count" tabindex="-1"></h2>
+            <span id="count-live" class="sr" aria-live="polite"></span>
             <button id="fit" class="fit-btn" hidden></button>
           </span>
           <span class="toolbar-end">
@@ -84,6 +85,7 @@
         <div class="chip-row"><div id="quick" class="chips quick"></div><div id="chips" class="chips"></div></div>
         <div id="list" class="grid"></div>
         <div id="sentinel"></div>
+        <details id="unplaced" class="unplaced" hidden><summary></summary><div class="grid"></div></details>
       </div>
       <div id="panel-body" class="panel-body" role="tabpanel" tabindex="-1" hidden></div>
     </main>

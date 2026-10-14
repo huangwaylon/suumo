@@ -98,6 +98,7 @@
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
   let listStale = false;
+  let sayTimer = null;          // the count is said aloud shortly after the conditions change
   let listSig = null;           // what the drawn cards show (render skips redrawing the same)        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
@@ -305,6 +306,8 @@
     const here = mode === "search" && !!view;
     hits = here ? inArea(mapHits, view) : mapHits;
     $("count").textContent = mode === "favorites" ? t("favBanner", num(hits.length)) : t(here ? "inView" : "count", num(hits.length));
+    // said aloud once the conditions changed (and the map followed them), not on every pan
+    if (!moved && !sayTimer) sayTimer = setTimeout(() => { $("count-live").textContent = $("count").textContent; sayTimer = null; }, 700);
     $("fit").hidden = !here;
     $("fit").textContent = t("fitAll", num(mapHits.length));
     $("sort").hidden = hits.length < 2;
@@ -322,11 +325,20 @@
       <button class="btn primary" data-fit="1">${esc(t("fitAllShow", num(mapHits.length)))}</button></div>` : emptyState(activeConditions());
     shown = 0;
     more();
+    renderUnplaced();
     if (moved) $("results").scrollTop = 0;
     if (focused) {  // the keyboard stays on the same card, if it's still listed
       const key = focused.dataset.key || focused.dataset.fav;
       ($("list").querySelector(`[data-key="${CSS.escape(key)}"]`) || $("count")).focus({ preventScroll: true });
     }
+  }
+
+  // The results the map can't show (no coordinates): in every view, folded at the end of the list.
+  function renderUnplaced() {
+    const box = $("unplaced"), list = mode === "search" && view ? mapHits.filter((it) => it.lat == null) : [];
+    box.hidden = !list.length;
+    box.querySelector("summary").textContent = t("unplaced", num(list.length));
+    box.querySelector(".grid").innerHTML = box.open ? list.map((it) => card(it)).join("") : "";
   }
 
   // The favorites are a view of their own: a history entry (back returns to the search, its place and its map).
@@ -886,6 +898,15 @@
   // The map's centre that puts latlng in the middle of the visible part.
   const centreFor = (latlng, z) => map.unproject(map.project(latlng, z).add([0, hidden() / 2]), z);
 
+  // The open listing on the map: a ring at its town, outside the clusters (also when the conditions leave it out).
+  let openMarker = null;
+  function markOpen() {
+    const it = isListing() && allByKey.get(tab);
+    openMarker?.remove();
+    openMarker = it?.lat != null && map ? L.marker([it.lat, it.lng], { icon: L.divIcon({ className: "", html: '<div class="open-pin"></div>', iconSize: [30, 30] }),
+      interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map) : null;
+  }
+
   // Moves the map as fitNext says, once it's there.
   function placeMap() {
     const how = fitNext, it = how?.id && allByKey.get(how.id), pad = { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()] };
@@ -985,6 +1006,7 @@
     cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
       L.marker([lat, lng], { icon: townIcon(list, priced), list, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
     showRail();  // the chosen stations' lines stand out
+    markOpen();
     placeMap();
   }
 
@@ -1000,7 +1022,7 @@
     return d;
   }).catch(() => { railData = null; return null; }));
   // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
-  const stationDot = (latlng, name, renderer, lines = 1) => L.circleMarker(latlng, { renderer, radius: 4, color: "#1d2026",
+  const stationDot = (latlng, name, renderer, lines) => L.circleMarker(latlng, { renderer, radius: 4, color: "#1d2026",
     weight: 2, fillColor: "#fff", fillOpacity: 1, lines }).bindTooltip(name, { direction: "top", offset: [0, -5] });
   const stationRadius = (z, lines) => (z < 13 ? 3 : z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
   const halo = () => (document.documentElement.dataset.theme === "dark" ? "#0d0f13" : "#ffffff");  // under each line
@@ -1116,23 +1138,6 @@
       n ? `<button class="btn primary station-pick" data-station-pick="${esc(s)}">${esc(t("stationHomes", num(n)))}</button>` : ""}`;
   }
 
-  // The listing's map: the lines and stations around it.
-  async function railNear(target, lat, lng) {
-    const data = await loadRail();
-    if (!data || !target.getContainer().isConnected) return;  // closed meanwhile
-    const canvas = L.canvas({ padding: 0.3 }), r = 0.05;
-    for (const [, , , colour, parts] of data.lines.filter((l) => l.box[0] <= lat + r && l.box[2] >= lat - r && l.box[1] <= lng + r && l.box[3] >= lng - r)) {
-      L.polyline(latlngs(parts), { renderer: canvas, color: halo(), weight: 7, opacity: 0.85, interactive: false }).addTo(target);
-      L.polyline(latlngs(parts), { renderer: canvas, color: colour, weight: 4, opacity: 0.95, interactive: false }).addTo(target);
-    }
-    for (const [name, slat, slng] of data.stations) {
-      if (Math.abs(slat - lat) < 0.03 && Math.abs(slng - lng) < 0.03) {
-        stationDot([slat, slng], name, canvas).setStyle({ radius: 5 }).addTo(target)
-          .unbindTooltip().bindTooltip(esc(stationName(name)), { permanent: true, direction: "right", offset: [6, 0], className: "station-tip" });
-      }
-    }
-  }
-
   // Where the results are, without far outliers (islands, a stray geocode): the 2nd-98th percentile box; all of
   // them when there are few.
   function coreBounds(points) {
@@ -1203,13 +1208,11 @@
     }).join("")}</tbody></table></div>`;
   }
 
-  const dropMap = (box) => { box.leaflet?.remove(); box.leaflet = null; };  // a listing's small map, when it goes
-  // A listing's page into box (its tab), with its small map.
+  // A listing's page into box (its tab).
   // Resolves to the record, or null when it couldn't be loaded (ended, offline) or box moved on to another.
   async function renderListing(box, key) {
     const it = allByKey.get(key);
     box.dataset.key = key;
-    dropMap(box);
     box.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
     try {
@@ -1222,14 +1225,6 @@
     box.innerHTML = detailHtml(r, it);
     if (S.lang === "en" && r.stations?.length && !railLoaded) {  // line names in English once the rail data is in
       loadRail().then(() => { const dd = box.querySelector(".d-access"); if (dd && box.dataset.key === key) dd.innerHTML = accessHtml(r); });
-    }
-    const el = box.querySelector(".d-map");
-    if (el && (await mapReady()) && box.dataset.key === key) {
-      const m = (box.leaflet = L.map(el, { zoomControl: false, attributionControl: false, dragging: !L.Browser.mobile })
-        .setView([it.lat, it.lng], 15));
-      L.tileLayer(TILES).addTo(m);
-      L.circle([it.lat, it.lng], { radius: 180, color: getComputedStyle(document.body).getPropertyValue("--accent") }).addTo(m);
-      railNear(m, it.lat, it.lng);
     }
     return r;
   }
@@ -1258,6 +1253,7 @@
       <div class="d-head">
         <h2 tabindex="-1">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h2>
         <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
+        ${it?.lat != null && map ? `<button class="btn ghost on-map" data-on-map="${esc(it.key)}">${icon("pin")}${esc(t("showOnMap"))}</button>` : ""}
         <div class="d-price num">${it ? price(it, true) + usd(it) : money(r.price, true) + usd({ price: r.price })}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
@@ -1281,8 +1277,7 @@
       ${r.features?.length ? `<section class="d-sec"><h3>${esc(L_("features"))}</h3><div class="opts">${r.features.map((f) => `<span class="tag">${esc(feature(f))}</span>`).join("")}</div></section>` : ""}
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
-        ["seen", day(r.new_date || r.first_seen)]])}
-      ${it?.lat != null ? `<section class="d-sec"><h3>${esc(L_("map"))}</h3><p class="meta">${esc(L_("mapNote"))}</p></section><div class="d-map"></div>` : ""}`;
+        ["seen", day(r.new_date || r.first_seen)]])}`;
   }
 
   // The stations of a listing: line, station, how far.
@@ -1414,9 +1409,9 @@
     $("results").hidden = tab !== "list";
     $("panel-body").hidden = tab === "list";
     renderTabs();
+    markOpen();
     const body = $("panel-body");
     if (tab === "list") {
-      dropMap(body);
       body.dataset.key = "";
       body.innerHTML = "";
       if (was === "list") return;
@@ -1428,7 +1423,6 @@
     }
     if (was === "list") body.scrollTop = 0;
     if (tab === "compare") {
-      dropMap(body);
       body.dataset.key = "compare";
       body.innerHTML = '<div class="skeleton"></div>';
       compareHtml(tabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
@@ -1694,6 +1688,7 @@
         $("filters-body").querySelector(`select[data-num="${f}"]`)?.focus();  // redrawn: keep the keyboard there
       }
     });
+    $("unplaced").addEventListener("toggle", renderUnplaced);
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
     $("filters-body").addEventListener("toggle", (e) => {  // (toggle doesn't bubble: caught on the way down)
       const k = e.target.dataset?.fold;
@@ -1763,6 +1758,11 @@
         toast(t("searchRemoved"));
         renderSearches();
       } else if (b.dataset.fit) { fitNext = "results"; placeMap(); }
+      else if (b.dataset.onMap) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
+        fitNext = { id: b.dataset.onMap };
+        placeMap();
+        if (!SPLIT.matches) setSheet("half", false);
+      }
       else if (b.dataset.savedSearch != null) {  // open a saved search: what's new in it, if anything; then seen
         const s = searches[+b.dataset.savedSearch], query = queryFrom(new URLSearchParams(s.c));
         const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
