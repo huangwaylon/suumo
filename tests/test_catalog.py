@@ -29,9 +29,9 @@ def test_derived_fields(tmp_path):
                  land_m2_max=120.0, price_max=60_000_000, built=None),
              rec(3, "land", layout="3LDK", floor_m2=None, land_m2=100.0, built=None, build_condition=True))
     condo, house, land = ({i.type: i for i in s.items}[t] for t in ("used_condo", "new_house", "land"))
-    assert condo.age == 45 and not condo.post_1981 and condo.leasehold and condo.unit_price == 800_000
+    assert condo.age_months == 545 and not condo.post_1981 and condo.leasehold and condo.unit_price == 800_000
     assert condo.stations == [("狛江", 3), ("喜多見", None)]  # bus access, no bus stops
-    assert house.plan == 14 and house.size == 95.0 and house.land == 120.0 and house.age == 0
+    assert house.plan == 14 and house.size == 95.0 and house.land == 120.0 and house.age_months == 0
     assert house.post_1981 and house.unit_price is None                              # a price range
     assert land.plan is None and land.size is None and land.conditional and land.pref == "tokyo"
 

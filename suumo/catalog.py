@@ -40,14 +40,15 @@ def is_bus(st):
     return bool(st.get("bus_stop") or (st.get("line") and "バス" in st["line"]))
 
 
-def _age_years(rec, today):
+def _age_months(rec, today):
+    """Whole months since it was built (new homes: 0)."""
     if rec["type"] in NEW_TYPES:
         return 0
     built = rec.get("built")
     if not built:
         return None
     y, m = int(built[:4]), int(built[5:7] or 1)
-    return max(0, (today.year * 12 + today.month - (y * 12 + m)) // 12)
+    return max(0, today.year * 12 + today.month - (y * 12 + m))
 
 
 class Item:
@@ -69,8 +70,8 @@ class Item:
         size = rec.get("floor_m2_max") or rec.get("floor_m2") or rec.get("building_m2_max") or rec.get("building_m2")
         self.size = size if self.type != "land" else None
         self.land = rec.get("land_m2_max") or rec.get("land_m2")
-        self.age = _age_years(rec, today)
-        self.built = rec.get("built")
+        self.age_months = _age_months(rec, today)
+        built = rec.get("built")
         # (name, minutes on foot or None when the access is by bus); bus stops aren't stations
         self.stations = [(s["name"], None if s.get("bus") else s.get("walk"))
                          for s in rec.get("stations") or [] if s.get("name") and not is_bus(s)]
@@ -85,7 +86,7 @@ class Item:
         # land sold with a build condition (also listed under new_house, price without the building)
         self.conditional = bool(rec.get("build_condition") or rec.get("price_excludes_building")
                                 or ("/tochi/" in rec.get("url", "") and self.type != "land"))
-        self.post_1981 = self.type in NEW_TYPES or bool(self.built and self.built >= QUAKE_CODE)
+        self.post_1981 = self.type in NEW_TYPES or bool(built and built >= QUAKE_CODE)
 
 
 @dataclass

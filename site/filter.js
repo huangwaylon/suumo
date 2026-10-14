@@ -48,7 +48,7 @@
       const it = {
         id: String(id), idn: id, type, key: type + ":" + id, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
-        land: c.land[i], age: c.age[i], built: c.built[i], builtInt: c.built[i] ? +c.built[i].replace("-", "") : 0,
+        land: c.land[i], age: c.age[i] == null ? null : Math.floor(c.age[i] / 12), ageMonths: c.age[i],
         stations, features: tags(c.features[i], index.features), flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
@@ -139,7 +139,7 @@
       case "price_desc": return [-(it.priceHi || 0), it.idn];
       case "size_desc": return [-(it.size || it.land || 0), it.idn];
       case "walk_asc": return [orLast(walkTo(it, q.stations)), it.idn];
-      case "age_asc": return [orLast(it.age), ...newest(it.builtInt), it.idn];
+      case "age_asc": return [orLast(it.ageMonths), it.idn];
       case "unit_asc": return [orLast(it.unit), it.idn];
       case "drop_desc": return [it.prevPrice && it.price ? it.price / it.prevPrice : Infinity, it.idn];  // biggest cut first
       default: return [...newest(it.newDate), ...newest(it.firstSeen), -it.idn];

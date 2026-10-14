@@ -156,7 +156,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
     def station(name, pref):
         return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
 
-    cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "built",
+    cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age",
                             "stations", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
                             "name", "layout", "image")}
     last_id = 0
@@ -166,7 +166,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
         row = {
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
-            "land": i.land, "age": i.age, "built": i.built,
+            "land": i.land, "age": i.age_months,  # months
             # pairs (station, access): minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
             "stations": [x for name, walk in i.stations for x in (
                 stations(station(name, i.pref)), _access(walk, i.bus.get(name), i.car.get(name)))],

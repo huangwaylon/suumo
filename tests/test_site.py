@@ -139,6 +139,17 @@ def test_sorts(tmp_path, sort, expected):
 
 
 @needs_node
+def test_age_counts_months(tmp_path):
+    recs = [rec(1, built="2019-10"), rec(2, built="2020-06"), rec(3, "new_house", built="2027-03"),
+            rec(4, built="2025-12"), rec(5, built=None)]
+    assert ids(tmp_path, recs, {"sort": "age_asc"}, {"ageMax": 0}, {"ageMax": 6}) == [
+        ["3", "4", "2", "1", "5"],   # new homes are 0; then by month built, newest first; unknown last
+        ["4", "3"],                  # 10 months old is 0 years (新着順: newest id first)
+        ["4", "3", "2"],             # 2 is 6 years 4 months old, 1 is 7 years
+    ]
+
+
+@needs_node
 def test_choice_counts_in_one_pass(tmp_path):
     recs = [rec(1, layout="3LDK"), rec(2, area_code="13208", layout="2DK"), rec(3, "used_house", building_m2=90.0),
             rec(4, "land", land_m2=90.0, **LAND)]
