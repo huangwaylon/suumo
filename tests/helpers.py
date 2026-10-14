@@ -49,7 +49,10 @@ const fs = require("fs"), path = require("path");
 const manifest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));  // every prefecture's index, as one
 const db = Filter.combine(manifest.prefs.map(([slug]) =>
   Filter.load(JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[2]), "p", slug + ".json"), "utf8")))));
-const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved, counts}) => {
+const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved, counts, suggest,
+                                                                        parse, opts}) => {
+  if (suggest != null) return Filter.suggest(db, suggest, opts);
+  if (parse != null) return Filter.parse(parse, db, opts);
   if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
     .filter(([, m]) => m < 3).sort((a, b) => a[1] - b[1]).map(([s]) => s);
@@ -66,7 +69,8 @@ process.stdout.write(JSON.stringify(out));
 def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY, stations=None, saved=()):
     """Build the site from recs and run requests through site/filter.js in Node: {query} -> {ids, others, count},
     {query, choices} -> the choice counts (Filter.facets), {query, counts: patches} -> Filter.counts,
-    {station: typed} -> the matching stations, best first.
+    {station: typed} -> the matching stations, best first, {suggest: text, opts} -> Filter.suggest,
+    {parse: text, opts} -> Filter.parse.
     stations: the station-name cache ({name: [kana, english]})."""
     data, out = tmp_path / "data", tmp_path / "site"
     write(data, recs, areas, events)

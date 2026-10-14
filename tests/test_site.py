@@ -389,3 +389,47 @@ def test_counts_of_variants_in_one_pass(tmp_path):
     [c] = site_queries(tmp_path, recs, [{"query": {"plan": 8, "walk": 10}, "counts": patches}], events=events)
     # plan 2LDK+ and 10 min: 1, 2 (3 is a 1K, 4 land, 5 is 12 min away); 土地 lets 4 through, 喜多見 none
     assert c == {"total": 2, "fresh": 1, "cheaper": 1, "land": 1, "kitami": 0, "none": 2}
+
+
+# Natural search: a few wards and stations, in kanji, kana and English
+NL_AREAS = {"13113": "渋谷区", "13112": "世田谷区", "13103": "港区", "13104": "新宿区"}
+NL_STATIONS = {"渋谷": ["しぶや", "Shibuya"], "新宿": ["しんじゅく", "Shinjuku"],
+               "二子玉川": ["ふたこたまがわ", "Futako-Tamagawa"], "自由が丘": ["じゆうがおか", "Jiyugaoka"],
+               "勝どき": ["かちどき", "Kachidoki"]}
+NL_OPTS = {"places": {"渋谷区": "Shibuya", "世田谷区": "Setagaya", "港区": "Minato", "新宿区": "Shinjuku"},
+           "features": {"ペット相談": "Pets negotiable", "角住戸": "Corner unit", "角地": "Corner lot"}, "year": 2026}
+
+
+def nl_records():
+    st = lambda name, walk=5: [{"line": "線", "name": name, "walk": walk}]  # noqa: E731
+    return [rec(1, area_code="13113", area="渋谷区", stations=st("渋谷"), features=["ペット相談", "角住戸"],
+                name="パークタワー渋谷"),
+            rec(2, area_code="13113", area="渋谷区", stations=st("渋谷", 12), layout="1LDK"),
+            rec(3, area_code="13112", area="世田谷区", stations=st("二子玉川"), layout="2LDK"),
+            rec(4, area_code="13112", area="世田谷区", stations=st("自由が丘"), name="自由が丘レジデンス"),
+            rec(5, area_code="13103", area="港区", stations=st("勝どき"), name="パークタワー勝どき"),
+            rec(6, area_code="13104", area="新宿区", stations=st("新宿")),
+            rec(7, "land", area_code="13112", area="世田谷区", stations=st("二子玉川"), land_m2=200.0,
+                features=["角地"], **LAND),
+            rec(8, "used_house", area_code="13112", area="世田谷区", stations=st("自由が丘"), layout="4LDK",
+                floor_m2=None, building_m2=100.0, land_m2=170.0)]
+
+
+def nl(tmp_path, requests):
+    return site_queries(tmp_path, nl_records(), [{**r, "opts": NL_OPTS} for r in requests], areas=NL_AREAS,
+                        stations=NL_STATIONS)
+
+
+@needs_node
+def test_suggestions(tmp_path):
+    texts = ["渋谷", "しぶや", "3LDK futako", "パークタ", "ペット", "x", "自由が丘 ", "minato", "勝どき"]
+    out = dict(zip(texts, nl(tmp_path, [{"suggest": t} for t in texts]), strict=True))
+    brief = {t: [(c["kind"], c["value"], c["count"]) for c in cs] for t, cs in out.items()}
+    assert brief["渋谷"] == [("area", "13113", 2), ("station", "渋谷", 2), ("name", "パークタワー渋谷", 1)]
+    assert brief["しぶや"] == [("station", "渋谷", 2)]                     # kana: stations' readings
+    assert brief["3LDK futako"] == [("station", "二子玉川", 2)]             # the word after the last space
+    assert brief["パークタ"] == [("name", "パークタワー渋谷", 1), ("name", "パークタワー勝どき", 1)]   # shorter first
+    assert brief["ペット"] == [("word", "ペット相談", 1)]
+    assert brief["x"] == [] and brief["自由が丘 "] == []                    # too short; nothing typed yet
+    assert brief["minato"] == [("area", "13103", 1)]                        # English area names
+    assert out["勝どき"][0] == {"kind": "station", "value": "勝どき", "label": "勝どき", "count": 1}

@@ -417,5 +417,138 @@
     return best;
   }
 
-  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch };
+  // ---------- Words typed into the search box: names and words they can mean (Filter.suggest, Filter.parse) ----------
+
+  // A name as it is matched: normalized, without spaces, hyphens, ・ or a （…） suffix, with SUUMO's spelling variants
+  // between kanji made one (市ヶ谷 = 市ケ谷 = 市が谷, 駒澤 = 駒沢, 江曾島 = 江曽島; の is ノ after normalize).
+  const KANJI = "\\u3400-\\u9fff々〆";
+  const VARIANT = new RegExp(`(?<=[${KANJI}])[ヶヵケガ](?=[${KANJI}])`, "g");
+  const nameKey = (s) => normalize(s).replace(/\s*\(.*\)$/, "").replace(/[\s\-・'’.]/g, "").replace(VARIANT, "ケ")
+    .replace(/澤/g, "沢").replace(/曾/g, "曽");
+  const hasKanji = (s) => new RegExp(`[${KANJI}]`).test(s);
+  // area name -> English keys: "Shibuya" -> shibuya, shibuyaku, shibuyaward ("Shibuya-ku" and "Shibuya ward" too)
+  const SUFFIX = { 区: ["ku", "ward"], 市: ["shi", "city"], 町: ["machi", "cho", "town"], 村: ["mura", "son", "village"] };
+  function areaKeys(name, opts) {
+    const keys = [nameKey(name)], short = name.replace(/[区市町村]$/, "");
+    if (short !== name && short.length >= 2) keys.push(nameKey(short));
+    const en = opts.places?.[name];
+    if (en) {
+      const k = nameKey(en);
+      keys.push(k, ...(SUFFIX[name.slice(-1)] || []).map((x) => k + x));
+    }
+    return keys;
+  }
+  const stationKeys = (name, readings) => [nameKey(name).replace(/駅$/, ""), ...(readings || []).filter(Boolean).map(nameKey)];
+
+  // Words with a meaning in the query: property types, conditions, tag synonyms, and place words (stop: "周辺",
+  // "near"; marker: 駅, station). The first word of each entry is its label.
+  const WORDS = [
+    [["マンション", "condo", "condos", "apartment", "mansion"], { cat: "condo" }],
+    [["戸建て", "戸建", "一戸建て", "一戸建", "一軒家", "house", "houses"], { cat: "house" }],
+    [["土地", "land", "lot"], { cat: "land" }],
+    [["新築", "new"], { age: "new" }],
+    [["中古", "used"], { age: "used" }],
+    [["南向き", "南向", "south"], { flag: "south" }],
+    [["角部屋", "角住戸", "corner"], { corner: true }],
+    [["タワーマンション", "タワマン", "tower"], { flag: "tower" }],
+    [["最上階"], { flag: "top" }],
+    [["所有権", "freehold"], { flag: "freehold" }],
+    [["建築条件なし", "建築条件無し"], { flag: "noCondition" }],
+    [["新着"], { flag: "newOnly" }],
+    [["値下げ", "値下がり"], { flag: "dropsOnly" }],
+    [["仲介手数料なし", "仲介手数料無料", "仲介手数料不要", "手数料なし", "手数料無料", "手数料不要"], { flag: "nofee" }],
+    [["即入居", "即入居可", "即引渡", "即引渡し", "即引渡可", "即引渡し可"], { flag: "ready" }],
+    [["駐車場", "駐車場あり", "車庫", "parking"], { flag: "parking" }],
+    [["新耐震"], { flag: "post1981" }],
+    [["ペット可", "ペット", "ペット相談", "ペット相談可", "pet", "pets"], { tag: "ペット相談" }],
+    [["リノベーション", "リノベ", "renovated"], { tag: "リノベーション" }],
+    [["リフォーム", "リフォーム済"], { tag: "内装リフォーム" }],
+    [["築浅"], { scalar: ["ageMax", 5] }],
+    [["駅近", "駅チカ"], { scalar: ["walk", 5] }],
+    [["周辺", "付近", "近く", "近辺", "エリア", "辺り", "あたり", "around", "in", "at", "the", "area"], { stop: true }],
+    [["near"], { stop: true, near: true }],
+    [["駅", "station", "sta"], { stop: true, marker: true }],
+  ].map(([words, meaning]) => ({ ...meaning, label: words[0], keys: words.map(nameKey) }));
+
+  // Per prefecture, built the first time it's needed (cached for the same opts): what each name key can mean, and
+  // the candidates suggest offers, with how many properties each has.
+  function nameTables(part, opts) {
+    if (part.names && part.names.opts === opts) return part.names;
+    const ix = part.index, n = (len) => new Int32Array(len);
+    const areaN = n(ix.areas.length), stationN = n(ix.stations.length), townN = n(ix.towns.length),
+      nameN = n(ix.names.length), tagN = n(ix.features.length), town = new Array(ix.towns.length).fill(null);
+    for (const it of part.items) {
+      areaN[it.areaId]++;
+      for (const s of it.stationIds) stationN[s]++;
+      if (it.townId != null) { townN[it.townId]++; town[it.townId] ??= it.town; }
+      if (it.nameId != null) nameN[it.nameId]++;
+      for (const k of it.tagIds) tagN[k]++;
+    }
+    const meanings = new Map(), add = (key, m) => { if (key) (meanings.get(key) || meanings.set(key, []).get(key)).push(m); };
+    const candidates = [];
+    ix.areas.forEach(([code, name], k) => {
+      const keys = areaKeys(name, opts);
+      for (const key of keys) add(key, { kind: "area", value: code, label: name });
+      candidates.push({ kind: "area", value: code, label: name, keys, count: areaN[k] });
+    });
+    ix.stations.forEach((name, k) => {
+      const readings = ix.stationNames?.[k], keys = stationKeys(name, readings);
+      keys.forEach((key, j) => add(key, { kind: "station", value: name, label: name, reading: j > 0 && !hasKanji(key) }));
+      candidates.push({ kind: "station", value: name, label: name, keys, count: stationN[k] });
+    });
+    const tags = new Map(ix.features.map((f, k) => [f, tagN[k]]));
+    for (const w of WORDS) {
+      if (w.tag && !tags.has(w.tag)) continue;  // a tag no listing here has
+      for (const key of w.keys) add(key, { kind: "word", ...w });
+      const keys = w.tag ? [nameKey(w.tag), ...w.keys.filter((k) => k !== nameKey(w.tag))] : [...w.keys];  // label first
+      candidates.push({ kind: "word", value: w.tag || w.label, label: w.tag || w.label, keys,
+        count: w.tag ? tags.get(w.tag) : null });
+    }
+    ix.features.forEach((f, k) => {  // a tag by its own name (one word: no spaces or numbers), in Japanese or English
+      const en = opts.features?.[f], keys = [f, ...(en && !/\s/.test(en) ? [en] : [])].filter((x) => !/[\s\d]/.test(x)).map(nameKey);
+      for (const key of keys) if (!(meanings.get(key) || []).some((m) => m.kind === "word")) add(key, { kind: "word", tag: f, label: f });
+      const same = candidates.find((c) => c.kind === "word" && c.value === f);  // ペット相談 is a synonym's tag too
+      if (same) same.keys.push(...keys.filter((key) => !same.keys.includes(key)));
+      else if (keys.length) candidates.push({ kind: "word", value: f, label: f, keys, count: tagN[k] });
+    });
+    town.forEach((t, k) => { if (t) candidates.push({ kind: "town", value: t, label: t, keys: [nameKey(t)], count: townN[k] }); });
+    ix.names.forEach((name, k) => { if (nameN[k]) candidates.push({ kind: "name", value: name, label: name, keys: [nameKey(name)], count: nameN[k] }); });
+    return (part.names = { opts, meanings, candidates, tags: new Set(ix.features) });
+  }
+
+  const KIND_ORDER = { area: 0, station: 1, word: 2, town: 3, name: 4 };
+  const CAPS = { station: 3, area: 2, town: 2, name: 2, word: 2 };
+  // Candidates for the word being typed (after the last space; at least one kanji, or two other characters):
+  // [{kind: area|station|town|name|word, value, label, count}], best first. value: an area code, a station or tag
+  // name, or text (towns, building names); label: the Japanese name (the page translates it).
+  function suggest(db, text, opts = {}) {
+    const typed = (text || "").split(/\s+/).pop(), key = nameKey(typed);
+    if (!key || (!hasKanji(typed) && key.length < 2)) return [];
+    const found = new Map();  // kind + value -> candidate
+    for (const part of db.parts || [db]) {
+      for (const c of nameTables(part, opts).candidates) {
+        // the name itself may contain what was typed; other keys (readings, English) must start with it
+        let quality = 3;
+        for (let j = 0; j < c.keys.length; j++) {
+          const k = c.keys[j], m = k === key ? 0 : k.startsWith(key) ? 1 : j === 0 && k.includes(key) ? 2 : 3;
+          if (m < quality) quality = m;
+        }
+        if (quality === 3) continue;
+        const id = c.kind + "\u0000" + c.value, seen = found.get(id);
+        if (seen) { seen.count = (seen.count ?? 0) + (c.count ?? 0) || seen.count; seen.quality = Math.min(seen.quality, quality); }
+        else found.set(id, { kind: c.kind, value: c.value, label: c.label, count: c.count, quality });
+      }
+    }
+    const ranked = [...found.values()].sort((a, b) => a.quality - b.quality || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]
+      || (b.count ?? 0) - (a.count ?? 0) || a.label.length - b.label.length);
+    const taken = {}, out = [];
+    for (const c of ranked) {
+      if ((taken[c.kind] = (taken[c.kind] || 0) + 1) > CAPS[c.kind]) continue;
+      out.push({ kind: c.kind, value: c.value, label: c.label, count: c.count });
+    }
+    return out;
+  }
+
+  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch,
+    suggest, nameKey };
 });
