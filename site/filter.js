@@ -45,15 +45,15 @@
         const m = c.access[i][j];
         stations.push([index.stations[st[j]], m >= 0 && m < 1000 ? m : null, m < 0 ? -m : null, m >= 1000 ? (m - 1000) / 10 : null]);
       }
-      const it = {
-        id: String(id), idn: id, type, key: type + ":" + id, area: area[0], areaName: area[1],
+      const sid = String(id), it = {
+        id: sid, idn: id, type, key: type + ":" + sid, area: area[0], areaName: area[1],
         price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
         land: c.land[i], age: c.age[i] == null ? null : Math.floor(c.age[i] / 12), ageMonths: c.age[i],
         stations, features: tags(c.features[i], index.features), flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
-        town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null,
-        lng: town ? town[2] : null, name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], String(id)),
+        town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
+        name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], sid),
       };
       items[i] = it;
     }
