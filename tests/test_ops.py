@@ -1,4 +1,5 @@
 """Maintenance commands, the run lock, git data commits, polite fetching and long runs (no network)."""
+import fcntl
 import json
 import subprocess
 from datetime import date, datetime
@@ -12,7 +13,7 @@ from suumo.archive import Archive
 from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
 from suumo.export import export
-from suumo.geo import _municipality, _same_spelling, town_of
+from suumo.geo import _municipality, _same_spelling, geocode, town_of
 from suumo.gitdata import commit_data
 from suumo.maintenance import prune, reparse, seed
 from suumo.pipeline import Pipeline
@@ -256,3 +257,11 @@ def test_search_results_are_crawled_once_a_day(tmp_path):
     assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                 # done today
     assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4)                  # before tomorrow's 04:00
     assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4)                      # after it
+
+
+def test_a_second_geocoder_skips(tmp_path):
+    cache = tmp_path / "towns.json"
+    with open(f"{cache}.lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        assert geocode(tmp_path / "data", cache, log=QUIET) == 0  # would need the network otherwise
+    assert not cache.exists()

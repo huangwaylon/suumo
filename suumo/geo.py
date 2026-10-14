@@ -4,6 +4,7 @@ Listings carry addresses, not coordinates, and SUUMO shows most only to the ‰∏ÅÁ
 distinct town is looked up once and cached in geo/towns.json (git-tracked, sorted): {town: [lat, lng] or null}.
 Later runs only look up towns they haven't seen. One request at a time, GEO_DELAY apart.
 """
+import fcntl
 import json
 import re
 import time
@@ -85,7 +86,18 @@ def towns_in(data_dir):
 
 
 def geocode(data_dir, cache_path, budget_seconds=None, log=print):
-    """Look up the towns not in the cache yet. Errors are logged and retried on the next call."""
+    """Look up the towns not in the cache yet. Errors are logged and retried on the next call. One geocoder at a
+    time: while another holds the cache (a long `geocode` next to the runs), this one skips."""
+    with open(f"{cache_path}.lock", "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            log("geocoding: another geocoder is running; skipped")
+            return 0
+        return _geocode(data_dir, cache_path, budget_seconds, log)
+
+
+def _geocode(data_dir, cache_path, budget_seconds, log):
     cache = load_cache(cache_path)
     todo = sorted(towns_in(data_dir) - set(cache))
     if not todo:

@@ -5,6 +5,7 @@ archive/
 archive-*/
 scope-*.toml
 logs/
+geo/*.lock
 _site/
 .env
 uv.lock
