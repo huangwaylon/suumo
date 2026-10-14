@@ -123,14 +123,14 @@ def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
     c = http.Client(delay=1.0, log=QUIET)
     replies = iter([FakeResponse(429, headers={"Retry-After": "30"}), FakeResponse(200)])
-    c.session.get = lambda url, timeout: next(replies)
+    c.session.get = lambda url, timeout, allow_redirects: next(replies)
     assert c.get("/x/") == "<html/>"
     assert c.delay == pytest.approx(2.0 * 0.95) and c.slowdowns == 1   # doubled, then eased once
-    c.session.get = lambda url, timeout: FakeResponse(200)
+    c.session.get = lambda url, timeout, allow_redirects: FakeResponse(200)
     for _ in range(200):
         c.get("/x/")
     assert c.delay == 1.0                                   # back to the base after fast successes
-    c.session.get = lambda url, timeout: FakeResponse(503)
+    c.session.get = lambda url, timeout, allow_redirects: FakeResponse(503)
     with pytest.raises(RuntimeError):
         c.get("/x/")
     assert c.delay == http.MAX_DELAY                        # doubled per failure, capped
@@ -139,9 +139,10 @@ def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
 def test_client_404_is_gone_not_an_error(monkeypatch):
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
     c = http.Client(delay=1.0, log=QUIET)
-    c.session.get = lambda url, timeout: FakeResponse(404)
-    with pytest.raises(FileNotFoundError):
-        c.get("/x/")
+    for status in (404, 302):  # 302: an ended listing redirected to its building's page
+        c.session.get = lambda url, timeout, allow_redirects, s=status: FakeResponse(s, headers={"Location": "/x"})
+        with pytest.raises(FileNotFoundError):
+            c.get("/x/")
     assert c.delay == 1.0
 
 
@@ -306,3 +307,35 @@ def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, mo
     assert geocode(data, cache, log=QUIET) == 2
     assert asked == ["茨城県水戸市見川３"]
     assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}
+
+
+def test_queue_fetches_one_listing_per_property_first_and_copies_land_twins(tmp_path):
+    db = DB(tmp_path / "s.db")
+    archive = Archive(tmp_path / "a")
+    condo = {"name": "狛江ハイツ", "floor_m2": 60.0, "layout": "3LDK", "built": "2000-01", "price": 30_000_000}
+    rows = [  # (type, id, list fields, fetched page): 1 is fetched; 2 is another agent's 1; 3 and 4 are one property
+        ("used_condo", "1", condo, '{"a":1}'), ("used_condo", "2", condo, None),
+        ("used_condo", "3", {**condo, "price": 1}, None), ("used_condo", "4", {**condo, "price": 1}, None),
+        ("used_condo", "5", {**condo, "price": 2}, None),
+        ("new_house", "6", {"path": "/tochi/tokyo/sc_komae/nc_6/"}, None),
+        ("land", "6", {"path": "/tochi/tokyo/sc_komae/nc_6/"}, None)]
+    for type_, lid, rec_, detail in rows:
+        db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, detail_json, first_seen, "
+             "last_seen) VALUES (?, ?, 'tokyo', '13219', '狛江市', ?, ?, '2026-10-05', 'x')",
+             type_, lid, json.dumps({"path": f"/ms/chuko/tokyo/sc_komae/nc_{lid}/", **rec_}), detail)
+        if not detail:
+            db.enqueue(type_, lid, 0, "backfill", "x")
+    db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
+    db.commit()
+    fetched = []
+
+    class Client:
+        def get(self, path):
+            fetched.append(path)
+            return Archive.read(FIXTURES / "detail_used_condo_20205670.html.gz")
+    targets = [Target("tokyo", t, None) for t in ("used_condo", "new_house", "land")]
+    Pipeline(db, archive, Client(), targets, NOW, "r", log=QUIET).process_queue(3600)
+    ids = [p.rstrip("/").split("nc_")[1] for p in fetched]
+    assert ids == ["3", "5", "6", "2", "4"]   # one per property first, then the copies; land 6 fetched once
+    assert db.listing("land", "6")["detail_json"] == db.listing("new_house", "6")["detail_json"]
+    assert archive.detail_path("tokyo", "land", "6").exists() and db.x("SELECT COUNT(*) FROM queue").fetchone()[0] == 0

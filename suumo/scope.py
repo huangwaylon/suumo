@@ -6,7 +6,8 @@ from .parse import TYPES
 
 # SUUMO's prefecture path slugs -> names as written in addresses
 PREFS = {
-    "hokkaido": "北海道", "aomori": "青森県", "iwate": "岩手県", "miyagi": "宮城県", "akita": "秋田県",
+    "hokkaido_": "北海道",  # SUUMO's slug has the underscore
+    "aomori": "青森県", "iwate": "岩手県", "miyagi": "宮城県", "akita": "秋田県",
     "yamagata": "山形県", "fukushima": "福島県", "ibaraki": "茨城県", "tochigi": "栃木県", "gumma": "群馬県",
     "saitama": "埼玉県", "chiba": "千葉県", "tokyo": "東京都", "kanagawa": "神奈川県", "niigata": "新潟県",
     "toyama": "富山県", "ishikawa": "石川県", "fukui": "福井県", "yamanashi": "山梨県", "nagano": "長野県",

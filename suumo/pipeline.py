@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from .archive import Archive
 from .db import dumps
 from .detail import parse_detail
+from .export import dup_key
 from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import in_scope
 
@@ -216,10 +217,10 @@ class Pipeline:
         last_checkpoint = t0
         done = failed = gone = 0
         streak = []  # consecutive fetch failures
-        rows = self.db.x("""SELECT q.type, q.id, l.pref, l.area_code, l.list_json, l.status
-                            FROM queue q LEFT JOIN listings l ON l.type=q.type AND l.id=q.id
-                            WHERE q.attempts < ? ORDER BY q.priority DESC, q.enqueued_at, q.id""",
-                         MAX_DETAIL_ATTEMPTS).fetchall()
+        rows = self._queue_order(self.db.x(
+            """SELECT q.type, q.id, q.priority, l.pref, l.area_code, l.list_json, l.status
+               FROM queue q LEFT JOIN listings l ON l.type=q.type AND l.id=q.id
+               WHERE q.attempts < ? ORDER BY q.priority DESC, q.enqueued_at, q.id""", MAX_DETAIL_ATTEMPTS).fetchall())
         total = len(rows)
         for n, r in enumerate(rows):
             now = time.monotonic()
@@ -235,6 +236,9 @@ class Pipeline:
                 continue
             if not in_scope(self.targets, r["pref"], r["type"], r["area_code"]):
                 continue  # left for `prune`
+            if self._copy_twin(r):  # land listed under new_house too: the same page, already fetched
+                done += 1
+                continue
             try:
                 html = self.client.get(json.loads(r["list_json"])["path"])
             except FileNotFoundError:
@@ -270,6 +274,39 @@ class Pipeline:
         self.report["detail"] = {"fetched": done, "failed": failed, "gone": gone, "remaining": remaining}
         self.report.pop("progress", None)
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
+
+    def _queue_order(self, rows):
+        """One listing per property first: a listing whose property already has a page, or comes again in the
+        queue (another agent's listing of it: dup_key; land also listed under new_house: its /tochi/ path), waits
+        until every property has one. Priorities still come first."""
+        def keys(type_key, lid, rec):
+            k = {dup_key({**rec, "type": type_key})} - {None}
+            return k | {("tochi", lid)} if "/tochi/" in rec.get("path", "") else k
+        covered = set()
+        for r in self.db.x("SELECT type, id, list_json FROM listings WHERE detail_json IS NOT NULL"):
+            covered |= keys(r["type"], r["id"], json.loads(r["list_json"]))
+        ranked = []
+        for n, r in enumerate(rows):
+            k = keys(r["type"], r["id"], json.loads(r["list_json"])) if r["list_json"] else set()
+            ranked.append((-r["priority"], bool(k & covered), n, r))
+            covered |= k
+        return [r for *_, r in sorted(ranked, key=lambda x: x[:3])]
+
+    def _copy_twin(self, r):
+        """Land sold with a build condition is listed under both new_house and land with one page (/tochi/): copy
+        the other listing's fetched fields and archived page instead of fetching it again."""
+        twin_type = {"land": "new_house", "new_house": "land"}.get(r["type"])
+        twin = twin_type and self.db.listing(twin_type, r["id"])
+        if not (twin and twin["detail_json"] and r["list_json"]
+                and json.loads(twin["list_json"]).get("path") == json.loads(r["list_json"]).get("path")):
+            return False
+        self.db.x("UPDATE listings SET detail_json=? WHERE type=? AND id=?", twin["detail_json"], r["type"], r["id"])
+        page = self.archive.detail_path(twin["pref"], twin_type, r["id"])
+        if page.exists():
+            self.archive.save_detail(r["pref"], r["type"], r["id"], Archive.read(page))
+        self.db.dequeue(r["type"], r["id"])
+        self.db.commit()
+        return True
 
     def _queue_progress(self, n, total, done, failed, gone, elapsed, budget_left):
         per = elapsed / n

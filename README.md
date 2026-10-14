@@ -1,6 +1,6 @@
 # SUUMO for-sale tracker
 
-Crawls SUUMO for-sale listings in the areas listed in `scope.toml` (all of Tokyo), fetches each listing's own
+Crawls SUUMO for-sale listings in the areas listed in `scope.toml` (all 47 prefectures), fetches each listing's own
 page once for the full spec, tracks listings as they appear, change price and disappear, exports the data as
 JSONL to `data/` (committed to git), and publishes a search site on GitHub Pages:
 **https://huangwaylon.github.io/suumo/**

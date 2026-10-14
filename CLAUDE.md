@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml` (all of Tokyo): crawls search results
+Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml` (all 47 prefectures): crawls search results
 hourly, fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
 `data/`, and publishes a static search site on GitHub Pages (https://huangwaylon.github.io/suumo/), rebuilt by
 GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `README.md` is the operator guide
@@ -92,6 +92,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   (`label > a` + `<span>(N)</span>`) from the other types (`js-linkSc###` ids, `searchitem-list-value`).
 - `new_house` search results include land listings sold with a build condition; their `path` is under `/tochi/`
   (so `url` is stored, not derived) and their price excludes the building.
+- Hokkaido's slug is `hokkaido_` (with the underscore); the others are plain romaji (`gumma` for 群馬).
+- Redirects aren't followed: an ended listing's page redirects to its building's `/library/` page (200), so a
+  redirect counts as gone.
 - `-` means "not stated" everywhere; `clean()` drops it. Prices: `8702万8000円`, ranges `A～B` or `A・B`, footnotes after `※`.
 - Search results show one station; listing pages show up to 3 (each in its own `<div>`), sometimes including a bus
   stop (`line` containing バス → `bus_stop: true`). Often SUUMO gives only the bus company or a route number

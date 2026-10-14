@@ -41,7 +41,9 @@ class Client:
             self.delay = max(self.base, self.delay * EASE)
 
     def get(self, path):
-        """GET BASE+path and return decoded HTML. Raises FileNotFoundError on 404 (listing gone)."""
+        """GET BASE+path and return decoded HTML. Raises FileNotFoundError when it's gone: 404/410, or a redirect
+        (SUUMO sends an ended listing to its building's /library/ page; redirects aren't followed, so only the paths
+        we chose are fetched)."""
         url = BASE + path
         for attempt in range(1, RETRIES + 1):
             wait = self.delay + random.uniform(0, self.delay * 0.5) - (time.monotonic() - self._last)
@@ -50,7 +52,7 @@ class Client:
             self._last = start = time.monotonic()
             backoff = min(60, 5 * 2 ** (attempt - 1))
             try:
-                r = self.session.get(url, timeout=40)
+                r = self.session.get(url, timeout=40, allow_redirects=False)
                 self.requests_made += 1
                 if r.status_code == 200:
                     self.bytes_downloaded += len(r.content)
@@ -63,7 +65,7 @@ class Client:
                         self._slow = 0
                         self._ease()
                     return r.content.decode("utf-8", errors="replace")
-                if r.status_code in (404, 410):
+                if r.status_code in (404, 410) or 300 <= r.status_code < 400:
                     raise FileNotFoundError(url)
                 err = f"HTTP {r.status_code}"
                 self._slow_down(err)  # 429, 403 (blocked?), 5xx: SUUMO is pushing back
