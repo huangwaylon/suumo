@@ -88,6 +88,8 @@
   }
 
   const STATION_WORDS = new Set(["station", "sta", "sta.", "駅"]);  // "Shibuya Station" finds what "Shibuya" does
+  let typed = [null, []];  // the last text searched and its words: split once per search, not once per item
+  const words = (v) => (typed[0] === v ? typed : (typed = [v, normalize(v).split(/\s+/).filter((w) => w && !STATION_WORDS.has(w))]))[1];
 
   // One check per condition: (item, value, query) -> passes. Empty values pass.
   const CHECKS = {
@@ -105,7 +107,7 @@
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
     // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
     since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
-    text: (it, v, q, db) => !v || normalize(v).split(/\s+/).every((w) => !w || STATION_WORDS.has(w) || haystack(it, db).includes(w)),
+    text: (it, v, q, db) => !v || words(v).every((w) => haystack(it, db).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
@@ -115,23 +117,32 @@
     post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
+  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"];
+  const ALL = [...Object.entries(CHECKS).map(([d, check]) => [d, check, false]),
+    ...Object.entries(BUILDING).map(([d, check]) => [d, check, true])];
+
+  // The query's conditions that are set, as [name, check, on the building]: the others pass every item.
+  const conditions = (q) => ALL.filter(([d]) => {
+    const v = q[d];
+    return v != null && v !== false && v !== "" && !(Array.isArray(v) && !v.length);
+  });
 
   // The conditions an item fails (at most 2 are collected: that's all faceting needs).
-  function failing(db, it, q) {
+  function failing(db, it, q, conds = conditions(q)) {
     const out = [];
-    const add = (d) => { if (!out.includes(d)) out.push(d); return out.length > 1; };
-    for (const d in CHECKS) if (!CHECKS[d](it, q[d], q, db) && add(GROUP[d] || d)) return out;
     const exempt = it.type === "land" && q.types.includes("land");
-    for (const d in BUILDING) {
+    for (const [d, check, building] of conds) {
+      if ((building && exempt) || check(it, q[d], q, db)) continue;
       // land isn't a building: choosing 土地 is what would let it through
-      if (!exempt && !BUILDING[d](it, q[d], q, db) && add(it.type === "land" ? "types" : d)) return out;
+      const dim = building && it.type === "land" ? "types" : GROUP[d] || d;
+      if (!out.includes(dim) && out.push(dim) > 1) return out;
     }
     return out;
   }
 
-  const matches = (db, it, q) => failing(db, it, q).length === 0;
+  const matches = (db, it, q, conds = conditions(q)) => failing(db, it, q, conds).length === 0;
 
-  const newest = (d) => (d ? [0, -d] : [1, 0]);  // newest first, missing last
+  const newest = (d) => (d ? -d : Infinity);  // newest first, missing last
   const orLast = (v) => (v == null ? Infinity : v);
   function sortKey(it, q) {
     switch (q.sort) {
@@ -142,7 +153,7 @@
       case "age_asc": return [orLast(it.ageMonths), it.idn];
       case "unit_asc": return [orLast(it.unit), it.idn];
       case "drop_desc": return [it.prevPrice && it.price ? it.price / it.prevPrice : Infinity, it.idn];  // biggest cut first
-      default: return [...newest(it.newDate), ...newest(it.firstSeen), -it.idn];
+      default: return [newest(it.newDate), newest(it.firstSeen), -it.idn];
     }
   }
   function compare(a, b) {
@@ -152,12 +163,17 @@
 
   // The matching items (of all, or of the given ones), sorted.
   function search(db, q, items = db.items) {
-    const hits = items.filter((it) => matches(db, it, q));
-    const keys = new Map(hits.map((it) => [it, sortKey(it, q)]));
-    return hits.sort((a, b) => compare(keys.get(a), keys.get(b)));
+    const conds = conditions(q), hits = [];
+    for (const it of items) if (matches(db, it, q, conds)) hits.push([sortKey(it, q), it]);
+    return hits.sort((a, b) => compare(a[0], b[0])).map((h) => h[1]);
   }
 
-  const count = (db, q) => db.items.reduce((n, it) => n + matches(db, it, q), 0);
+  function count(db, q) {
+    const conds = conditions(q);
+    let n = 0;
+    for (const it of db.items) if (matches(db, it, q, conds)) n++;
+    return n;
+  }
 
   // Counts for every choice of every condition, in one pass: an item that fails no condition counts for
   // all choices it satisfies; one that fails exactly one condition counts for that condition's choices.
@@ -166,10 +182,11 @@
     const out = { total: 0, types: {}, areas: {}, stations: {}, features: {} };
     const n = {};  // threshold choices counted in arrays (much faster than objects keyed by large numbers)
     for (const d in choices) n[d] = new Array(choices[d].length).fill(0);
-    for (const flag of ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"]) out[flag] = 0;
+    for (const flag of FLAGS) out[flag] = 0;
     const tally = (o, k) => { o[k] = (o[k] || 0) + 1; };
+    const conds = conditions(q);
     for (const it of db.items) {
-      const f = failing(db, it, q);
+      const f = failing(db, it, q, conds);
       if (f.length > 1) continue;
       const only = f[0], free = only === undefined, on = (d) => free || only === d;
       if (free) out.total++;
@@ -181,13 +198,10 @@
       if (on("features")) for (const t of it.features) if (q.features.every((x) => x === t || it.features.has(x))) tally(out.features, t);
       for (const d in choices) {
         if (!on(GROUP[d] || d)) continue;
-        const check = CHECKS[d] || BUILDING[d], values = choices[d];
-        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) n[d][i]++;
+        const check = CHECKS[d] || BUILDING[d], values = choices[d], counts = n[d];
+        for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) counts[i]++;
       }
-      for (const flag in { freehold: 1, noCondition: 1, newOnly: 1, dropsOnly: 1 }) {
-        if (on(flag) && CHECKS[flag](it, true, q, db)) out[flag]++;
-      }
-      if (on("post1981") && BUILDING.post1981(it, true, q, db)) out.post1981++;
+      for (const flag of FLAGS) if (on(flag) && (CHECKS[flag] || BUILDING[flag])(it, true, q, db)) out[flag]++;
     }
     for (const d in choices) out[d] = Object.fromEntries(choices[d].map((v, i) => [v, n[d][i]]));
     return out;
