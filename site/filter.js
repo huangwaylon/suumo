@@ -19,9 +19,11 @@
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
   // all match, and so do "jiyugaoka" and "Jiyūgaoka".
-  const normalize = (s) => (s || "").normalize("NFKC").toLowerCase()
-    .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
+  // (Accents are only stripped from strings that can have them: Latin, Greek, Cyrillic; kana's dakuten stay.)
+  const normalize = (s) => {
+    const k = (s || "").normalize("NFKC").toLowerCase().replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
+    return /[\u00c0-\u1fff]/.test(k) ? k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC") : k;
+  };
   // A station name as typed: "Futako-Tamagawa", "futakotamagawa" and "ふたこたまがわ" are the same.
   const stationKey = (s) => normalize(s).replace(/[\s\-・]/g, "");
 
@@ -40,7 +42,7 @@
   const photo = (v, id) => (typeof v === "number" ? `030/N010000/${id.slice(-3)}/${String(v).padStart(4, "0")}.jpg` : v);
 
   function load(index) {
-    const c = index.columns, n = c.id.length, items = new Array(n);
+    const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map();
     let id = 0;
     for (let i = 0; i < n; i++) {
       id += c.id[i];
@@ -62,8 +64,13 @@
         fees: c.fees?.[i] != null ? c.fees[i] * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
         // positions in this prefecture's tables (index.areas, .stations, .features), for counting
         areaId: c.area[i], stationIds: st, tagIds: tagIds(c.features[i]), part: null,
+        nameId: c.name[i], townId: c.town[i], layoutId: c.layout[i], stopId: null,
       };
       it.features = new Set(it.tagIds.map((k) => index.features[k]));
+      if (it.stop) {  // bus stops get a table of their own (for text search)
+        if (!stops.has(it.stop[0])) stops.set(it.stop[0], stops.size);
+        it.stopId = stops.get(it.stop[0]);
+      }
       items[i] = it;
     }
     index.columns = null;  // the items hold everything now; free the raw columns
@@ -73,6 +80,7 @@
     const db = { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
       byKey: new Map(items.map((it) => [it.key, it])) };
     db.parts = [db];  // the prefectures searched: one here, several after combine
+    db.stops = [...stops.keys()];
     for (const it of items) it.part = db;
     return db;
   }
@@ -86,10 +94,48 @@
       byKey: new Map(all((d) => [...d.byKey])), parts: all((d) => d.parts) };
   }
 
-  // The text a search word is looked for in, built the first time a text search runs: names, places and stations
-  // in kanji, kana and English (it.alias: the English area name, set by the page).
-  const haystack = (it, db) => (it.haystack ??= normalize([it.name, it.town, it.areaName, it.alias, it.layout,
-    ...it.stations.flatMap(([s]) => [s + "駅", ...(db.stationNames.get(s) || [])]), it.stop?.[0]].filter(Boolean).join(" ")));
+  // Text search: a word matches an item when it is part of its name, town, area (or its English name, it.alias:
+  // set by the page), layout, a station (with 駅, kana or English) or its bus stop. Each prefecture's tables are
+  // normalized once, the first time a text search runs; a search marks the table entries containing each word, and
+  // items are tested by their positions in those tables.
+  function textTables(part) {
+    if (part.textTables) return part.textTables;
+    const ix = part.index, alias = new Array(ix.areas.length).fill(null), town = new Array(ix.towns.length).fill(null);
+    for (const it of part.items) {
+      if (it.alias && alias[it.areaId] == null) alias[it.areaId] = it.alias;
+      if (it.town && it.townId != null && town[it.townId] == null) town[it.townId] = it.town;
+    }
+    const norm = (v) => (v ? normalize(v) : null);
+    return (part.textTables = {
+      names: ix.names.map(norm), towns: town.map(norm), layouts: ix.layouts.map(norm),
+      areas: ix.areas.map((a, k) => [norm(a[1]), norm(alias[k])].filter(Boolean)),
+      stations: ix.stations.map((st, k) => [st + "駅", ...(ix.stationNames?.[k] || [])].filter(Boolean).map(normalize)),
+      stops: part.stops.map(norm),
+    });
+  }
+  const marks = (list, w) => Uint8Array.from(list, (v) => (v && v.includes(w) ? 1 : 0));
+  const marksAny = (list, w) => Uint8Array.from(list, (vs) => (vs.some((v) => v.includes(w)) ? 1 : 0));
+  let textCache = [null, new Map()];  // the last text searched, and per prefecture the marks of each of its words
+  function wordMarks(part, v) {
+    if (textCache[0] !== v) textCache = [v, new Map()];
+    let m = textCache[1].get(part);
+    if (!m) {
+      const t = textTables(part);
+      textCache[1].set(part, m = words(v).map((w) => ({ names: marks(t.names, w), towns: marks(t.towns, w),
+        layouts: marks(t.layouts, w), areas: marksAny(t.areas, w), stations: marksAny(t.stations, w), stops: marks(t.stops, w) })));
+    }
+    return m;
+  }
+  function textMatches(it, v) {
+    for (const m of wordMarks(it.part, v)) {
+      if ((it.nameId != null && m.names[it.nameId]) || (it.townId != null && m.towns[it.townId]) || m.areas[it.areaId]
+        || (it.layoutId != null && m.layouts[it.layoutId]) || (it.stopId != null && m.stops[it.stopId])) continue;
+      let hit = false;
+      for (const s of it.stationIds) if (m.stations[s]) { hit = true; break; }
+      if (!hit) return false;
+    }
+    return true;
+  }
 
   function walkTo(it, chosen) {
     let best = null;
@@ -128,7 +174,7 @@
     parking: (it, v, q, db) => !v || !!(it.flags & bit(db, "parking")),    // houses and land only
     // monthly fees (yen) of condos; houses and land have none and pass
     feesMax: (it, v) => v == null || !isCondo(it.type) || (it.fees != null && it.fees <= v),
-    text: (it, v, q, db) => !v || words(v).every((w) => haystack(it, db).includes(w)),
+    text: (it, v) => !v || textMatches(it, v),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
@@ -195,16 +241,23 @@
       default: return [newest(it.newDate), newest(it.firstSeen), -it.idn];
     }
   }
-  function compare(a, b) {
-    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
-    return 0;
-  }
 
   // The matching items (of all, or of the given ones), sorted.
   function search(db, q, items = db.items) {
     const conds = conditions(q), hits = [];
-    for (const it of items) if (matches(db, it, q, conds)) hits.push([sortKey(it, q), it]);
-    return hits.sort((a, b) => compare(a[0], b[0])).map((h) => h[1]);
+    for (const it of items) if (passes(db, it, q, conds)) hits.push(it);
+    // sort keys in columns of numbers (a stable sort of positions, so ties keep the items' order)
+    const n = hits.length, width = n ? sortKey(hits[0], q).length : 0;
+    const keys = Array.from({ length: width }, () => new Float64Array(n));
+    for (let i = 0; i < n; i++) {
+      const k = sortKey(hits[i], q);
+      for (let l = 0; l < width; l++) keys[l][i] = k[l];
+    }
+    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => {
+      for (let l = 0; l < width; l++) if (keys[l][a] !== keys[l][b]) return keys[l][a] < keys[l][b] ? -1 : 1;
+      return 0;
+    });
+    return order.map((i) => hits[i]);
   }
 
   function count(db, q) {
