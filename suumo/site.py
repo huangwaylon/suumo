@@ -1,7 +1,7 @@
 """Build the static search site (GitHub Pages) from data/ and geo/towns.json.
 
   <out>/index.html, app.js, filter.js, i18n.js, style.css   copied from site/
-  <out>/data/index.json                            manifest: the prefectures (slug, name, count), the saved list
+  <out>/data/index.json                            manifest: prefectures (slug, name, count, detail share), saved list
   <out>/data/p/<pref>.json                         one prefecture's properties, search fields only, stored by column
   <out>/data/l/<type>/<id>.json                    one listing's full record, price history, other agents
 
@@ -32,7 +32,8 @@ SPLIT_KM = 3  # same-named stations further apart than this are different statio
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
-         "relisted": 128}
+         "relisted": 128, "south": 256, "top": 512, "upper": 1024, "nofee": 2048, "ready": 4096, "tower": 8192,
+         "parking": 16384}
 
 B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
@@ -125,14 +126,14 @@ class Table:
 
 def representatives(snap):
     """One listing per property: in each duplicate group the one with the fullest record (page fetched, most
-    tags), then the lowest id. Returns {item: [the other listings]}."""
+    tags), then the lowest id. Returns {item: [the other listings]}, those without a commission first."""
     reps = {}
     for i in snap.items:
         group = snap.groups.get(i.dup)
         if not group or i.saved or i.gone:  # saved / ended listings aren't grouped: each stands for itself
             reps[i] = []
         elif i is min(group, key=lambda g: (not g.rec.get("has_detail"), -len(g.features), g.idn)):
-            reps[i] = [g for g in group if g is not i]
+            reps[i] = sorted((g for g in group if g is not i), key=lambda g: (not g.nofee, g.price_lo or 0, g.idn))
     return reps
 
 
@@ -181,7 +182,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
     layouts = Table.by_count(i.rec.get("layout") for i in reps)
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
                             "access", "stop", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit",
-                            "town", "name", "layout", "image")}
+                            "town", "name", "layout", "image", "fees")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         r, new, drop = i.rec, snap.new(i), snap.drop(i)
@@ -198,7 +199,11 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
                       | FLAGS["dropped"] * bool(drop) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
-                      | FLAGS["relisted"] * bool(new and new[1] == "relisted")),
+                      | FLAGS["relisted"] * bool(new and new[1] == "relisted")
+                      | FLAGS["south"] * i.south | FLAGS["top"] * i.top | FLAGS["upper"] * i.upper
+                      # no commission when any agent listing the property sells it without one
+                      | FLAGS["nofee"] * (i.nofee or any(o.nofee for o in reps[i])) | FLAGS["ready"] * i.ready
+                      | FLAGS["tower"] * i.tower | FLAGS["parking"] * i.parking),
             # when it was new (YYYYMMDDHH), and its latest drop [YYYYMMDDHH, old price]: for 新着, 値下げ and
             # "since your last visit"
             "others": len(reps[i]), "newAt": new[0] if new else None, "drop": list(drop[:2]) if drop else None,
@@ -206,6 +211,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
             "town": towns(town or None), "name": names(_name(r)), "layout": layouts(r.get("layout")),
             "image": _image(r.get("image"), r["id"]),
+            "fees": round(i.fees / 100) if i.fees is not None else None,   # condos' monthly fees, ¥100
         }
         last_id = i.idn
         for k, v in row.items():
@@ -228,7 +234,8 @@ def listing_record(snap, item, others):
     return {**item.rec, "stations": stations or None, "history": snap.history.get(item.key, []),
             "new_date": _new_date(snap.new(item)),
             "name": _name(item.rec),
-            "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url")} for o in others]}
+            "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url"),
+                        "deal_type": o.rec.get("deal_type")} for o in others]}
 
 
 def _updated(data_dir):
@@ -239,6 +246,10 @@ def _updated(data_dir):
         if out.returncode == 0 and out.stdout.strip():
             return datetime.fromtimestamp(int(out.stdout), JST).strftime("%Y-%m-%d %H:%M")
     return ""
+
+
+def _detail_share(items):
+    return round(sum(1 for i in items if i.rec.get("has_detail")) / len(items), 3) if items else 0
 
 
 def _dump(obj):
@@ -272,7 +283,8 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
         built[pref] = build_index(snap, by_pref[pref], towns, readings, station_prefs)
         (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
     manifest = {"updated": updated,
-                "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
+                # [slug, name, properties, share of them with their listing page fetched]
+                "prefs": [[p, PREFS.get(p, p), len(by_pref[p]), _detail_share(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
     fx = Path(data_dir) / "fx.json"  # the yen-dollar rate (fx.py): the page shows prices in USD too
     if fx.exists():

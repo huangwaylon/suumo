@@ -30,7 +30,9 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     assert assets <= {p.name for p in out.iterdir()}
     assert re.search(r'const VERSION = "[0-9a-f]{12}";', (out / "sw.js").read_text())  # stamped: a new page, new cache
     manifest, index = json.loads((out / "data/index.json").read_text()), built["tokyo"]
-    assert manifest["prefs"] == [["tokyo", "東京都", len(index["columns"]["id"])]] and manifest["saved"] == {}
+    [[slug, name, n, share]] = manifest["prefs"]
+    assert (slug, name, n) == ("tokyo", "東京都", len(index["columns"]["id"])) and manifest["saved"] == {}
+    assert 0 < share <= 1   # the share with their listing page fetched
     assert manifest["fx"] == {"date": "2026-10-13", "jpy_per_usd": 158.12}   # the page's USD prices
     assert json.loads((out / "data/p/tokyo.json").read_text()) == index   # one index per prefecture
     cols = index["columns"]
@@ -298,7 +300,7 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     assert set(built["tokyo"]["stations"]) == {"小川町（東京）", "二子玉川"}
     assert built["saitama"]["stations"] == ["小川町（埼玉）"]
     assert built["kanagawa"]["stations"] == ["二子玉川"]          # one station near the border: one name
-    assert [p for p, _, _ in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
+    assert [p[0] for p in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
 
 
 def test_rail_stations_take_the_listings_spelling():
@@ -309,3 +311,67 @@ def test_rail_stations_take_the_listings_spelling():
     rail = {"stations": [["阿佐ヶ谷", 35.7, 139.6, []], ["江曾島", 36.5, 139.9, []], ["藤沢", 35.3, 139.5, []],
                          ["新宿", 35.69, 139.7, []]]}
     assert [s[0] for s in listing_spelling(rail, reps)["stations"]] == ["阿佐ケ谷", "江曽島", "藤沢", "新宿"]
+
+
+@needs_node
+def test_flags_from_the_listing_page(tmp_path):
+    house = {"layout": "4LDK", "floor_m2": None, "building_m2": 95.0, "land_m2": 100.0}
+    recs = [rec(1, direction="南東", floor=12, floors_above=12, handover="即引渡可", deal_type="仲介"),
+            rec(2, direction="北", floor=1, floors_above=25, features=["東南向き", "即引渡し可"],
+                deal_type="売主・仲介手数料0"),
+            rec(3, floor=3, floors_above=5, features=["最上階・上階なし"], deal_type="販売提携(媒介)",
+                handover="2027年3月予定"),
+            rec(4, "used_house", parking={"status": "カースペース"}, deal_type="売主", **house),
+            rec(5, "used_house", parking={"status": "無"}, features=["駐車２台可"], **house),
+            rec(6, "used_house", parking={"status": "無"}, **house),
+            rec(7, parking={"status": "空有"})]
+    flags = ["south", "top", "upper", "nofee", "ready", "tower", "parking"]
+    got = ids(tmp_path, recs, *[{f: True} for f in flags], {})
+    assert dict(zip(flags, got, strict=False)) == {
+        "south": ["2", "1"],                 # direction 南東, or a south tag
+        "top": ["3", "1"],                   # floor == floors_above, or the tag
+        "upper": ["3", "1"],                 # condos from the 2nd floor
+        "nofee": ["4", "2"],                 # the seller itself ('仲介手数料0' is not a broker)
+        "ready": ["2", "1"],
+        "tower": ["2"],                      # 20 floors or more
+        "parking": ["5", "4"],               # houses: a car space, or a parking tag; condos never
+    }
+    assert got[-1] == ["7", "6", "5", "4", "3", "2", "1"]
+
+
+@needs_node
+def test_no_commission_from_any_agent_of_the_property(tmp_path):
+    recs = [rec(1, dup_key="a", has_detail=True, deal_type="仲介"), rec(2, dup_key="a", deal_type="仲介", price=1),
+            rec(3, dup_key="a", deal_type="売主"), rec(4, deal_type="仲介")]
+    [hits] = site_queries(tmp_path, recs, [{"query": {"nofee": True}}])
+    assert hits["ids"] == ["1"]          # 3 sells it without commission: the property counts as no-commission
+    others = json.loads((tmp_path / "site/data/l/used_condo/1.json").read_text())["others"]
+    assert [o["deal_type"] for o in others] == ["売主", "仲介"]    # the agent without commission first
+
+
+@needs_node
+def test_monthly_fees(tmp_path):
+    recs = [rec(1, mgmt_fee=12000, repair_fee=10000), rec(2, mgmt_fee=15000, repair_fee=12000, other_monthly=500),
+            rec(3, mgmt_fee=9000), rec(4, "used_house", layout="4LDK", floor_m2=None, building_m2=95.0),
+            rec(5, mgmt_fee=8000, repair_fee=6000)]
+    assert ids(tmp_path, recs, {"feesMax": 25000}, {"sort": "fees_asc"}) == [
+        ["5", "4", "1"],                     # condos up to ¥25,000 a month (3: repair fund unknown); houses pass
+        ["5", "1", "2", "3", "4"],           # unknown and houses last
+    ]
+    assert loaded(tmp_path, recs, "fees") == [22000, 27500, None, 14000, None]   # yen (stored as ¥100)
+
+
+@needs_node
+def test_unit_and_size_sorts_keep_kinds_apart(tmp_path):
+    house = {"layout": "4LDK", "floor_m2": None}
+    recs = [rec(1, price=50_000_000, floor_m2=50.0), rec(2, "used_house", price=30_000_000, building_m2=100.0,
+                                                        land_m2=200.0, **house),
+            rec(3, "land", price=40_000_000, land_m2=400.0, **LAND), rec(4, price=90_000_000, floor_m2=60.0),
+            rec(5, "used_house", price=20_000_000, building_m2=55.0, land_m2=90.0, **house)]
+    assert ids(tmp_path, recs, {"sort": "unit_asc"}, {"sort": "unit_asc", "types": ["used_house"]},
+               {"sort": "size_desc"}, {"sort": "size_desc", "types": ["land"]}) == [
+        ["3", "1", "4", "2", "5"],           # land 10万/㎡, condos 100万 and 150万; houses last
+        ["2", "5"],                          # only houses: by their own unit price
+        ["2", "4", "5", "1", "3"],           # buildings by floor area, land last
+        ["3"],
+    ]

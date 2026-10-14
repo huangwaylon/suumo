@@ -19,6 +19,15 @@ NEW_TYPES = {"new_house", "new_condo"}
 NEW_DAYS = 7           # 新着: a new/relisted event within this many days
 DROP_DAYS = 30         # 値下げ: a price drop within this many days
 QUAKE_CODE = "1981-06"  # 新耐震基準: built from June 1981
+CONDOS = {"used_condo", "new_condo"}
+SOUTH = {"南", "南東", "南西"}  # direction (condos)
+SOUTH_TAGS = {"南向き", "全室南向き", "東南向き", "南西向き", "全室東南向き", "全室南西向き"}
+TOP_TAG = "最上階・上階なし"
+READY_TAGS = {"即引渡可", "即引渡し可"}
+TOWER_FLOORS = 20
+_no_fee = re.compile(r"売主|事業主|代理")      # the seller or its agent: no commission
+_fee = re.compile(r"媒介|仲介(?!手数料)")       # a broker ('売主・仲介手数料0' is still no commission)
+_parking = re.compile(r"カースペース|車庫|カーポート|ビルトイン|駐車|台")
 
 _plan = re.compile(r"(\d+)\s*(SLDK|LDK|SDK|SK|LK|DK|K|R)")
 _KIND = {"R": 0, "K": 0, "SK": 0, "DK": 1, "SDK": 1, "LK": 1, "LDK": 2, "SLDK": 2}
@@ -155,6 +164,24 @@ class Item:
         self.conditional = bool(rec.get("build_condition") or rec.get("price_excludes_building")
                                 or ("/tochi/" in rec.get("url", "") and self.type != "land"))
         self.post_1981 = self.type in NEW_TYPES or bool(built and built >= QUAKE_CODE)
+        tags, condo = set(self.features), self.type in CONDOS
+        floor, floors = rec.get("floor"), rec.get("floors_above")
+        floor = floor if isinstance(floor, int) else None
+        self.south = rec.get("direction") in SOUTH or bool(tags & SOUTH_TAGS)
+        self.top = condo and ((floor is not None and floor == floors) or TOP_TAG in tags)
+        self.upper = condo and floor is not None and floor >= 2
+        deal = rec.get("deal_type") or ""
+        self.nofee = bool(_no_fee.search(deal)) and not _fee.search(deal)   # this listing's own deal type
+        self.ready = (rec.get("handover") or "").startswith("即") or bool(tags & READY_TAGS)
+        self.tower = isinstance(floors, int) and floors >= TOWER_FLOORS
+        parking = rec.get("parking")
+        status = (parking.get("status") or "") if isinstance(parking, dict) else ""
+        self.parking = not condo and (bool(_parking.search(status) and not status.startswith("無"))
+                                      or any("駐車" in t for t in tags))
+        # monthly fees of a condo (yen): management + repair fund (+ other monthly costs); None unless both known
+        mgmt, repair = rec.get("mgmt_fee"), rec.get("repair_fee")
+        known = condo and mgmt is not None and repair is not None
+        self.fees = mgmt + repair + (rec.get("other_monthly") or 0) if known else None
 
 
 @dataclass

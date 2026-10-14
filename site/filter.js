@@ -10,7 +10,12 @@
     text: "", types: [], areas: [], stations: [], walk: null, priceMin: null, priceMax: null, plan: null,
     sizeMin: null, landMin: null, ageMax: null, post1981: false, features: [], freehold: false,
     noCondition: false, newOnly: false, dropsOnly: false, since: null, sort: "new",
+    south: false, top: false, upper: false, nofee: false, ready: false, tower: false, parking: false, feesMax: null,
   });
+  const isCondo = (type) => type === "used_condo" || type === "new_condo";
+  const isHouse = (type) => type === "used_house" || type === "new_house";
+  // A flag bit of the index; 0 when the index predates it (a cached old index after a deploy): nothing has it.
+  const bit = (db, name) => db.flags[name] || 0;
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
   // all match, and so do "jiyugaoka" and "Jiyūgaoka".
@@ -54,6 +59,7 @@
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
         name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], sid),
+        fees: c.fees?.[i] != null ? c.fees[i] * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
       };
       items[i] = it;
     }
@@ -107,6 +113,15 @@
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
     // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
     since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
+    south: (it, v, q, db) => !v || !!(it.flags & bit(db, "south")),
+    top: (it, v, q, db) => !v || !!(it.flags & bit(db, "top")),            // condos only
+    upper: (it, v, q, db) => !v || !!(it.flags & bit(db, "upper")),        // condos only
+    nofee: (it, v, q, db) => !v || !!(it.flags & bit(db, "nofee")),
+    ready: (it, v, q, db) => !v || !!(it.flags & bit(db, "ready")),
+    tower: (it, v, q, db) => !v || !!(it.flags & bit(db, "tower")),
+    parking: (it, v, q, db) => !v || !!(it.flags & bit(db, "parking")),    // houses and land only
+    // monthly fees (yen) of condos; houses and land have none and pass
+    feesMax: (it, v) => v == null || !isCondo(it.type) || (it.fees != null && it.fees <= v),
     text: (it, v, q, db) => !v || words(v).every((w) => haystack(it, db).includes(w)),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
@@ -117,7 +132,8 @@
     post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
-  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"];
+  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981", "south", "top", "upper", "nofee",
+    "ready", "tower", "parking"];
   const ALL = [...Object.entries(CHECKS).map(([d, check]) => [d, check, false]),
     ...Object.entries(BUILDING).map(([d, check]) => [d, check, true])];
 
@@ -143,15 +159,21 @@
   const matches = (db, it, q, conds = conditions(q)) => failing(db, it, q, conds).length === 0;
 
   const newest = (d) => (d ? -d : Infinity);  // newest first, missing last
+  const onlyLand = (q) => q.types.length > 0 && q.types.every((t) => t === "land");
+  const onlyHouses = (q) => q.types.length > 0 && q.types.every(isHouse);
   const orLast = (v) => (v == null ? Infinity : v);
   function sortKey(it, q) {
     switch (q.sort) {
       case "price_asc": return [orLast(it.price), it.idn];
       case "price_desc": return [-(it.priceHi || 0), it.idn];
-      case "size_desc": return [-(it.size || it.land || 0), it.idn];
+      // land after the buildings, unless only land is chosen
+      case "size_desc": return [it.type === "land" && !onlyLand(q) ? 1 : 0, -(it.size || it.land || 0), it.idn];
       case "walk_asc": return [orLast(walkTo(it, q.stations)), it.idn];
       case "age_asc": return [orLast(it.ageMonths), it.idn];
-      case "unit_asc": return [orLast(it.unit), it.idn];
+      // a house's price per ㎡ of building isn't comparable with a condo's or a plot's: houses last unless only
+      // houses are chosen
+      case "unit_asc": return [orLast(isHouse(it.type) && !onlyHouses(q) ? null : it.unit), it.idn];
+      case "fees_asc": return [orLast(isCondo(it.type) ? it.fees : null), it.idn];
       case "drop_desc": return [it.prevPrice && it.price ? it.price / it.prevPrice : Infinity, it.idn];  // biggest cut first
       default: return [newest(it.newDate), newest(it.firstSeen), -it.idn];
     }
