@@ -17,7 +17,7 @@ import subprocess
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
 from .catalog import load
@@ -43,7 +43,7 @@ def _image(url, lid):
     rebuilds it with the id); other forms keep their path, or the whole URL."""
     if not url or not url.startswith(IMAGE_PREFIX):
         return url
-    path = parse_qs(urlparse(url).query).get("src", [""])[0]
+    path = unquote_plus(url[len(IMAGE_PREFIX):].partition("&")[0])
     m = _image_path.match(path)
     return "/".join(m.group(1, 2, 3, 5)) if m and m.group(4) == lid else path
 
@@ -228,10 +228,12 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
     if rail.exists():
         shutil.copyfile(rail, out / "data" / "rail.json")
+    listings = out / "data" / "l"
+    for type_ in {i.type for i in reps}:
+        (listings / type_).mkdir(parents=True)
     for item, others in reps.items():
-        path = out / "data" / "l" / item.type / f"{item.rec['id']}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(_dump(listing_record(snap, item, others)), encoding="utf-8")
+        with open(f"{listings}/{item.type}/{item.rec['id']}.json", "w", encoding="utf-8") as f:
+            f.write(_dump(listing_record(snap, item, others)))
     sizes = ", ".join(f"{p} {(out / 'data' / 'p' / f'{p}.json').stat().st_size / 1e6:.1f} MB" for p in built)
     log(f"site: {len(reps):,} properties ({len(snap.items):,} listings); indexes: {sizes} → {out}")
     return {"manifest": manifest, **built}
