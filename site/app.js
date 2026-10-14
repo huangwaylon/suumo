@@ -48,10 +48,11 @@
   }
 
   function renderSettings() {
-    const group = (name, options) => `<div class="seg" role="group" aria-labelledby="set-${name}">${Object.entries(options).map(([k, label]) =>
-      `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${settings[name] === k}">${esc(label)}</button>`).join("")}</div>`;
+    const group = (name, options, now = settings[name]) => `<div class="seg" role="group" aria-labelledby="set-${name}">${Object.entries(options).map(([k, label]) =>
+      `<button class="seg-btn" data-setting="${name}" data-value="${k}" aria-pressed="${now === k}">${esc(label)}</button>`).join("")}</div>`;
     $("settings-body").innerHTML = `<section class="sec"><h3 id="set-lang">${esc(t("language"))}</h3>${group("lang", { ja: "日本語", en: "English" })}</section>
       <section class="sec"><h3 id="set-theme">${esc(t("theme"))}</h3>${group("theme", t("themes"))}</section>
+      ${manifest?.fx ? `<section class="sec"><h3 id="set-usd">${esc(t("usdSetting"))}</h3>${group("usd", t("onOff"), showUsd() ? "on" : "off")}</section>` : ""}
       ${manifest?.updated ? `<p class="meta">${esc(t("updated", day(manifest.updated.slice(0, 10))))}</p>` : ""}`;
   }
 
@@ -133,7 +134,9 @@
     const d = yen / manifest?.fx?.jpy_per_usd;
     return !(d > 0) ? "" : d >= 1e6 ? `$${+(d / 1e6).toFixed(2)}M` : `$${Math.round(d / 1e3)}K`;
   }
+  const showUsd = () => (settings.usd ? settings.usd === "on" : S.lang === "en");  // default: in English only
   function usd(it) {
+    if (!showUsd()) return "";
     const lo = dollars(it.price), hi = it.priceHi && it.priceHi !== it.price ? dollars(it.priceHi) : "";
     return lo && `<small class="usd" title="${esc(t("usdRate", manifest.fx.jpy_per_usd, day(manifest.fx.date)))}">${esc(t("usd", hi ? `${lo}–${hi}` : lo))}</small>`;
   }
@@ -364,6 +367,10 @@
     return out.join("");
   }
 
+  // the walk time never breaks across lines ("徒歩5分", "5 min walk")
+  const nowrapWalk = (s) => esc(s).replace(/(徒歩\d+分|停歩\d+分|\d+ min walk)/, '<span class="nw">$1</span>');
+  const fees = (it) => (isCondo(it.type) && it.fees != null ? t("feesCard", it.fees) : "");
+
   function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card${sideTabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
@@ -371,8 +378,9 @@
       <div class="body">
         <div class="price num">${price(it, true)}${usd(it)}</div>
         <div class="spec">${spec}</div>
-        <div class="meta wrap">${esc(station(it))}</div>
+        <div class="meta wrap"><span class="kind">${esc(typeName(it.type))}</span> · ${nowrapWalk(station(it))}</div>
         <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name].filter(Boolean).join(" · "))}</div>
+        ${fees(it) ? `<div class="meta fees">${esc(fees(it))}</div>` : ""}
         <div class="tags">${tags(it)}</div>
       </div></a>
       <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favFor", money(it.price), it.layout, it.town || it.areaName))}">${icon("heart")}</button></article>`;
@@ -1321,6 +1329,7 @@
       settings[b.dataset.setting] = b.dataset.value;
       saveSettings();
       if (b.dataset.setting === "theme") applyTheme();
+      else if (b.dataset.setting === "usd") { render(); if (openKey) showDetail(openKey); }
       else { applyLanguage(); render(); if (openKey) showDetail(openKey); }
       renderSettings();
       $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();

@@ -122,10 +122,10 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
   url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab0bb' stroke-width='1.5'><path d='M4 11l8-7 8 7v9h-5v-6h-6v6H4z'/></svg>") no-repeat center / 28px; }
 .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* the heart sits on the photo (top left on phones, top right on tiles) */
-.fav { position: absolute; top: 16px; left: 16px; display: grid; place-items: center; width: 36px; height: 36px; background: rgb(0 0 0 / .45); color: #fff;
-  border-radius: 50%; }
-.fav::after { content: ""; position: absolute; inset: -4px; }  /* a larger target than it looks */
-.fav .i { width: 18px; height: 18px; }
+/* a 44px target around a 36px circle */
+.fav { position: absolute; top: 12px; left: 12px; display: grid; place-items: center; width: 44px; height: 44px; color: #fff; }
+.fav::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: rgb(0 0 0 / .45); }
+.fav .i { position: relative; width: 18px; height: 18px; }
 .fav[aria-pressed="true"] .i { fill: var(--fav); stroke: var(--fav); }
 .body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .price { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
@@ -137,6 +137,9 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .spec span:first-child { white-space: normal; }  /* a long layout wraps instead of overflowing */
 .meta { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta.wrap { white-space: normal; }  /* the station line: the walk time must show */
+.nw { white-space: nowrap; }
+.meta .kind { color: var(--text); }
+.meta.fees { color: var(--text); }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tag { font-size: 12px; font-weight: 600; line-height: 20px; padding: 0 6px; border-radius: 5px; background: var(--bg); color: var(--muted); }
 .tag.new { color: var(--new); } .tag.drop { color: var(--drop); } .tag.warn { color: var(--warn); }
@@ -346,7 +349,10 @@ details.group .opts { padding-bottom: 12px; }
 /* Small phones -------------------------------------------------------------------------------------- */
 @media (max-width: 380px) {
   #filters-open > span:not(.badge) { display: none; }  /* the search box needs the room */
-  .card > a { grid-template-columns: 100px 1fr; }
+}
+/* Very small phones: the photo on top, full width */
+@media (max-width: 359px) {
+  .card > a { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Phones -------------------------------------------------------------------------------------------- */
@@ -370,7 +376,7 @@ details.group .opts { padding-bottom: 12px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
   .card > a { grid-template-columns: 1fr; gap: 0; padding: 0; }
   .card .ph { border-radius: 0; }
-  .fav { top: 8px; left: auto; right: 8px; }
+  .fav { top: 4px; left: auto; right: 4px; }
   .card .body { padding: 12px 14px 14px; }
   .skeleton { height: 280px; }
   .filters { left: auto; width: 420px; transform: translateX(100%); box-shadow: -8px 0 30px rgb(0 0 0 / .12); }
@@ -432,7 +438,7 @@ details.group .opts { padding-bottom: 12px; }
   body.areamode .card > a { grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
   body.areamode .card .ph { border-radius: 8px; }
   body.areamode .card .body { padding: 0; }
-  body.areamode .fav { top: 16px; left: 16px; right: auto; }
+  body.areamode .fav { top: 12px; left: 12px; right: auto; }
   .prefs { background: none; display: block; }
   .prefs-panel { position: absolute; width: 400px; max-height: min(70vh, 560px); border-radius: 12px; border: 1px solid var(--line);
     box-shadow: 0 12px 40px rgb(0 0 0 / .2); padding-bottom: 8px; animation: none; }

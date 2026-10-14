@@ -69,6 +69,7 @@ window.I18N = {
     perM2: (k) => `${(k / 10).toFixed(1)}万円/㎡`, perTsubo: (k) => `坪${Math.round(k / 10)}万円`, tsubo: (v) => `${v}坪`,
     width: (v) => `幅${v}m`, walkMin: (n) => `徒歩${n}分`, busMin: (n) => `バス${n}分`, stopWalk: (n) => `停歩${n}分`,
     // settings
+    usdSetting: "USDを表示", onOff: { on: "表示する", off: "表示しない" }, feesCard: (v) => `管理費等 ${+(v / 1e4).toFixed(1)}万円/月`,
     theme: "テーマ", themes: { auto: "システム", light: "ライト", dark: "ダーク" }, language: "言語",
   },
   en: {
@@ -339,6 +340,7 @@ window.I18N = {
       佐賀県: "Saga", 長崎県: "Nagasaki", 熊本県: "Kumamoto", 大分県: "Oita", 宮崎県: "Miyazaki", 鹿児島県: "Kagoshima",
       沖縄県: "Okinawa",
     },
+    usdSetting: "Show prices in USD", onOff: { on: "On", off: "Off" }, feesCard: (v) => `Fees ¥${Math.round(v / 1e3)}k/mo`,
     theme: "Theme", themes: { auto: "System", light: "Light", dark: "Dark" }, language: "Language",
   },
 };
