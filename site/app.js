@@ -57,14 +57,16 @@
 
   // ---------- choices ----------
 
-  const PRICE_CHIPS = [3000, 4000, 5000, 6000, 8000, 10000, 15000].map((m) => m * 1e4);  // 上限: one tap
   const PRICES = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000, 15000, 20000, 30000].map((m) => m * 1e4);
   const PLANS = [[3, "1K"], [5, "1LDK"], [7, "2DK"], [8, "2LDK"], [10, "3DK"], [11, "3LDK"], [14, "4LDK"]];
   const SIZES = [40, 50, 60, 70, 80, 100, 120];
   const LANDS = [50, 80, 100, 120, 150, 200];
   const AGES = [0, 5, 10, 20, 30];
   const WALKS = [5, 7, 10, 15, 20];
-  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981"];
+  const FEES = [15000, 20000, 25000, 30000, 35000, 40000, 50000];  // condos' monthly fees, yen
+  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981", "south", "top", "upper", "nofee", "ready",
+    "tower", "parking"];
+  const PICKS = ["freehold", "south", "upper", "top", "nofee", "ready", "noCondition", "tower", "parking"];  // こだわり
   const QUICK = ["newOnly", "dropsOnly"];  // also one tap away above the results
   const PAGE = 30, TSUBO = 3.30578;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
@@ -179,7 +181,8 @@
 
   const KEYS = { q: "text", t: "types", a: "areas", st: "stations", f: "features", w: "walk", pmin: "priceMin",
     pmax: "priceMax", plan: "plan", s: "sizeMin", lm: "landMin", g: "ageMax", quake: "post1981", fh: "freehold",
-    nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort" };
+    nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort", so: "south", top: "top",
+    up: "upper", nf: "nofee", rd: "ready", tw: "tower", pk: "parking", fee: "feesMax" };
 
   // Thresholds can be any sensible number (a link, a typed search), not only the offered choices.
   const RANGE = { priceMin: [0, 1e11], priceMax: [0, 1e11], plan: [3, 30], sizeMin: [1, 2000], landMin: [1, 10000],
@@ -482,6 +485,7 @@
     for (const f of FLAGS) {
       if (of[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
     }
+    if (of.feesMax != null) out.push([t("chipFees", of.feesMax), reset("feesMax"), "extra"]);
     if (of.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
     for (const f of of.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
@@ -492,7 +496,8 @@
   const railOn = () => WIDE.matches && !settings.railOff;  // desktop: the filter rail, unless hidden (remembered)
   const filtersVisible = () => railOn() || document.body.classList.contains("show-filters");
   const CHOICES = { priceMin: PRICES, priceMax: PRICES, plan: PLANS.map(([v]) => v), sizeMin: SIZES, landMin: LANDS,
-    ageMax: AGES, walk: WALKS };
+    ageMax: AGES, walk: WALKS, feesMax: FEES };
+  const openFolds = new Set();  // the collapsed sections (エリア, こだわり) the user opened
 
   function chipBtn(attrs, label, n, on) {
     return `<button class="chip" ${attrs} aria-pressed="${on}"${!n && !on ? " disabled" : ""}>${esc(label)}${n != null ? `<span class="n">${num(n)}</span>` : ""}</button>`;
@@ -502,10 +507,17 @@
   const flag = (field, n) => chipBtn(`data-flag="${field}"`, t("flags")[field], n, q[field]);
   // A value set by a link or a typed search that isn't one of the choices: shown as an extra choice (no count).
   const withExtra = (field, values) => (q[field] == null || values.includes(q[field]) ? values : [...values, q[field]].sort((a, b) => a - b));
-  function select(field, label, values, fmt) {
-    return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${withExtra(field, values).map((v) =>
-      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}${values.includes(v) ? esc(t("paren", num(facets[field][v] || 0))) : ""}</option>`).join("")}</select></label>`;
+  const selectEl = (field, values, fmt, none, label) => `<select class="select" data-num="${field}" aria-label="${esc(label)}"><option value="">${esc(none)}</option>${
+    withExtra(field, values).map((v) => `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}${values.includes(v) ? esc(t("paren", num(facets[field][v] || 0))) : ""}</option>`).join("")}</select>`;
+  const select = (field, label, values, fmt) => `<label class="field"><span>${esc(label)}</span>${selectEl(field, values, fmt, t("any"), label)}</label>`;
+  // The share of the chosen prefectures' listings whose page was fetched (conditions from it only cover those).
+  function detailShare() {
+    let n = 0, sum = 0;
+    for (const [slug, , c, share] of manifest.prefs) if (chosen.includes(slug) && typeof share === "number") { n += c; sum += share * c; }
+    return n ? sum / n : null;
   }
+  // A flag of the index: an old cached index may not have the newer ones.
+  const flagKnown = (f) => f === "freehold" || f === "noCondition" || db.flags[f] != null;
   const count = (field, v) => (CHOICES[field].includes(v) ? facets[field][v] || 0 : null);  // none for an extra value
 
   function renderFilters() {
@@ -513,7 +525,7 @@
     if (key !== facetsFor) { facets = Filter.facets(db, q, CHOICES); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
-      body.innerHTML = ["text", "types", "areas", "price", "plan", "size", "age", "stations", "extra"].map((s) =>
+      body.innerHTML = ["text", "types", "price", "plan", "areas", "stations", "size", "age", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
         <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
@@ -524,11 +536,16 @@
     const sec = (s, html) => { body.querySelector(`[data-sec="${s}"]`).innerHTML = html; };
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
+    const any = (fn) => !q.types.length || q.types.some(fn), condos = any(isCondo), others = any((type) => !isCondo(type));
+    // a section that opens on demand, saying what's chosen in it
+    const fold = (k, summary, html) => `<details class="fold" data-fold="${k}"${openFolds.has(k) ? " open" : ""}><summary><h3>${esc(t(`sec.${k}`))}</h3>${
+      `<span class="fold-sum${summary ? " on" : ""}">${esc(summary || t("any"))}</span>`}</summary><div class="fold-body">${html}</div></details>`;
+    const list = (labels) => labels.slice(0, 3).join(", ") + (labels.length > 3 ? t("andMore", labels.length - 3) : "");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
-    sec("areas", `${h3("areas")}${areaGroups()}`);
-    sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}<p id="price-max">${esc(t("max"))}</p><div class="opts">${
-      withExtra("priceMax", PRICE_CHIPS).map((v) => one("priceMax", v, t("priceMax", money(v)), count("priceMax", v))).join("")}</div>`);
+    sec("areas", fold("areas", list(q.areas.map(areaName)), areaGroups()));
+    sec("price", `${h3("price")}<div class="field-pair">${selectEl("priceMin", PRICES, (v) => money(v), t("minNone"), t("priceFrom"))}<span aria-hidden="true">${
+      esc(t("to"))}</span>${selectEl("priceMax", PRICES, (v) => money(v), t("maxNone"), t("priceTo"))}</div>`);
     sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${withExtra("plan", CHOICES.plan).map((v) =>
       one("plan", v, t("planFrom", planLabel(v)), count("plan", v))).join("")}</div>`);
     sec("size", `${h3("size")}${isLand ? "" : select("sizeMin", t("floorArea"), SIZES, (v) => t("sizeMin", v))}${
@@ -541,10 +558,14 @@
     const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f) && narrows(facets.features[f])).slice(0, 30)];
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
-    const flagsShown = FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f]))));
-    sec("extra", !flagsShown.length && !shownTags.length ? "" : `${h3("extra")}<div class="opts">${flagsShown.map((f) =>
-      flag(f, facets[f])).join("")}</div><div class="opts">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
-      shownTags.length > 12 ? `<details class="group"><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.slice(12).map(tagChip).join("")}</div></details>` : ""}`);
+    // こだわり: the curated flags that fit the chosen types, condos' fees, then SUUMO's tags
+    const fits = { top: condos, upper: condos, tower: condos, parking: others, noCondition: others };
+    const share = detailShare();
+    const extras = activeConditions().filter(([, , s]) => s === "extra").map(([label]) => label);
+    sec("extra", fold("extra", list(extras), `${share != null && share < 0.9 ? `<p class="hint share">${esc(t("detailShare", Math.round(share * 100)))}</p>` : ""}
+      <div class="opts">${PICKS.filter((f) => q[f] || (flagKnown(f) && fits[f] !== false)).map((f) => flag(f, facets[f])).join("")}</div>
+      ${condos || q.feesMax != null ? select("feesMax", t("feesLabel"), FEES, (v) => t("feesMax", v)) : ""}
+      ${shownTags.length ? `<details class="group"${q.features.length ? " open" : ""}><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.map(tagChip).join("")}</div></details>` : ""}`));
     $("apply").textContent = t("show", num(facets.total));
     $("clear").disabled = !activeConditions().length;
   }
@@ -1223,6 +1244,7 @@
     document.body.classList.toggle("show-filters", open && !WIDE.matches);
     sheetSemantics();
     if (open) {
+      if (section) openFolds.add(section);
       renderFilters();
       const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
       if (sec) sec.scrollIntoView({ block: "start" }); else $("filters-body").scrollTop = 0;
@@ -1278,6 +1300,10 @@
       }
     });
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
+    $("filters-body").addEventListener("toggle", (e) => {  // (toggle doesn't bubble: caught on the way down)
+      const k = e.target.dataset?.fold;
+      if (k) { if (e.target.open) openFolds.add(k); else openFolds.delete(k); }
+    }, true);
     $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
       if (e.target.id === "station-q" && e.key === "Enter") $("station-list").querySelector('button[aria-pressed="false"]')?.click();
     });
