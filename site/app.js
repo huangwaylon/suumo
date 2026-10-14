@@ -499,7 +499,7 @@
   let ignoredNote = [];  // phrases the last search understood but couldn't use (築30年以上)
   const withoutLast = (s) => s.replace(/\S+\s*$/, "").trim();
   const joined = (...parts) => parts.filter(Boolean).join(" ");
-  const altLabel = (a) => (a.field === "stations" ? t("station", stationName(a.value)) : areaName(a.value));
+  const altLabel = (a) => (a.field === "stations" ? t("altStation", stationName(a.value)) : t("altArea", areaName(a.value), areaNames.get(a.value) || ""));
   function suggestLabel(c) {
     if (c.kind === "area") return areaName(c.value);
     if (c.kind === "station") return t("station", stationName(c.value));
