@@ -110,15 +110,12 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   Everything downstream is keyed by prefecture: `scope.PREFS` (all 47, slug → name used in addresses) feeds
   geocoding and the site; the index lists each area with its prefecture, and the filter groups areas by
   prefecture once there is more than one. English area names are `places` in `site/i18n.js` (kanji is shown
-  when a name is missing). Lines from other regions may need entries in `catalog._OPERATORS`
-  if SUUMO writes them with and without the operator name.
+  when a name is missing).
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
   add its name to `types` in both languages in `site/i18n.js`.
 - **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` if the JS needs one;
   the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`renderFilters`, URL key in
   `KEYS`, threshold values in `CHOICES`); its labels in `site/i18n.js`; a test in `tests/test_site.py`.
-- **Line names:** `catalog.line_name` merges spellings (NFKC, section brackets, `_OPERATORS`, `_ALIASES`);
-  check `Counter(line for item...)` after adding a region.
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, progress,
   checkpoints, outage pause), `http.py` (slow-down), `archive.LIST_DAYS`, `catalog.NEW_DAYS`/`DROP_DAYS`,
   `cli.GEO_BUDGET`, and the choice lists at the top of `site/app.js`.
