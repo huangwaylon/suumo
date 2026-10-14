@@ -112,7 +112,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
 .panel-head { flex: none; background: var(--surface); border-bottom: 1px solid var(--line); }
 .results, .panel-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.results { padding: 12px 12px calc(24px + var(--safe-b) + var(--sheet-y, 0px)); }
+.results { padding: 12px 12px calc(24px + var(--safe-b)); }
 .results:focus { outline: none; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; padding: 4px 12px; }  /* the end wraps on very small screens */
 #panel:not([data-tab="list"]) .toolbar { display: none; }
@@ -352,7 +352,7 @@ details.group .opts { padding-bottom: 12px; }
 .on-map { min-height: 36px; margin: 6px 0 0 -10px; padding: 0 10px; color: var(--accent); font-size: 14px; }
 .on-map .i { width: 18px; height: 18px; }
 /* the listing's actions, at the bottom of its tab */
-.actions { position: sticky; bottom: var(--sheet-y, 0px); z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 8px;
+.actions { position: sticky; bottom: 0; z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 8px;
   padding: 8px 16px calc(8px + var(--safe-b)); background: var(--surface); border-top: 1px solid var(--line); }
 .actions .btn { white-space: nowrap; }
 .fav-btn[aria-pressed="true"] .i { color: var(--fav); fill: currentColor; }  /* the heart red, the text readable */
@@ -375,7 +375,6 @@ details.group .opts { padding-bottom: 12px; }
 .tab-x .i { width: 14px; height: 14px; }
 .tab-all { flex: none; margin-left: auto; padding: 0 8px; min-height: 36px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .panel-body { background: var(--surface); }
-.panel-body::after { content: ""; display: block; height: var(--sheet-y, 0px); }  /* (phones: the end above the screen's) */
 .panel-body:focus { outline: none; }
 .d-head h2:focus { outline: none; }
 
@@ -408,7 +407,7 @@ details.group .opts { padding-bottom: 12px; }
   .chip-row .chip { flex: none; }
 }
 @container (min-width: 600px) {
-  .results { padding: 16px 20px calc(24px + var(--safe-b) + var(--sheet-y, 0px)); }
+  .results { padding: 16px 20px calc(24px + var(--safe-b)); }
   .toolbar { padding: 4px 20px; }
   .chips { margin: 0 0 12px; }
   .searches { margin: 0 -20px 12px; padding: 0 20px; }
@@ -450,13 +449,15 @@ body.resizing { user-select: none; cursor: col-resize; }
 /* Phones and tablets: the map on top, the list under it ------------------------------------------- */
 @media (max-width: 1023px) {
   .map { position: absolute; inset: 0; }
-  /* the panel is a sheet over the map: peek (its head), half, full; it moves (the map never resizes) */
-  .panel { position: fixed; z-index: 20; inset: var(--bar) 0 0; transform: translateY(var(--sheet-y)); transition: transform .25s ease;
+  /* the panel is a sheet over the map: peek (its head), half, full; it moves (the map never resizes) and ends at the
+     screen's bottom (its height and its move change together), so nothing in it is below the screen */
+  .panel { position: fixed; z-index: 20; inset: var(--bar) 0 auto; height: calc(100dvh - var(--bar) - var(--sheet-y));
+    transform: translateY(var(--sheet-y)); transition: transform .25s ease, height .25s ease;
     border-radius: 16px 16px 0 0; overflow: hidden; box-shadow: 0 -2px 16px rgb(0 0 0 / .18); }
   .panel[data-sheet="peek"] { --sheet-y: calc(100dvh - var(--bar) - var(--peek, 112px) - var(--safe-b)); }
   .panel[data-sheet="half"] { --sheet-y: calc(50dvh - var(--bar)); }
   .panel[data-sheet="full"] { --sheet-y: 0px; border-radius: 0; }
-  .panel.dragging { transition: none; }
+  .panel.dragging { transition: none; height: calc(100dvh - var(--bar)); }
   .panel-head { touch-action: none; }  /* dragged by its head; the tabs still swipe sideways */
   .tabs { touch-action: pan-x; }
   .sheet-handle { display: block; width: 100%; height: 20px; }
@@ -485,7 +486,7 @@ body.resizing { user-select: none; cursor: col-resize; }
   body.rail-off .layout { --rail: 0px; }
   body.rail-off .filters { visibility: hidden; overflow: hidden; border-right: 0; }
   #filters-close .i { display: none; } #filters-close .rail-hide { display: block; }
-  .filters { position: relative; inset: auto; height: auto; min-height: 0; transform: none; visibility: visible;
+  .filters { position: relative; inset: auto; height: auto; min-height: 0; transform: none; visibility: visible; transition: none;
     width: auto; min-width: 0; box-shadow: none; border-right: 1px solid var(--line); z-index: 1; }
   .filters-foot { grid-template-columns: 1fr; }
   /* favorites: no filter rail */
