@@ -42,7 +42,7 @@ a { color: inherit; text-decoration: none; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn:disabled { opacity: .4; cursor: default; }
-.btn:active, .chip:active, .icon-btn:active, .fab:active { scale: .97; }
+.btn:active, .chip:active, .icon-btn:active { scale: .97; }
 input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .icon-btn { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; }
 .icon-btn[aria-pressed="true"] { color: var(--fav); }
@@ -105,7 +105,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .sg[aria-selected="true"], .sg:hover { background: var(--accent-soft); }
 
 /* Results ------------------------------------------------------------------------------------------- */
-.results { min-width: 0; scroll-margin-top: var(--bar); padding: 12px 12px calc(88px + var(--safe-b)); }
+.results { min-width: 0; padding: 12px 12px calc(24px + var(--safe-b)); }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; margin-bottom: 8px; }  /* the end wraps on very small screens */
 .toolbar-end { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: auto; }
 #count { margin: 0; font-size: 15px; white-space: nowrap; }
@@ -174,16 +174,8 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .empty h3 { margin: 0 0 6px; color: var(--text); font-size: 17px; }
 .empty .chips { justify-content: center; margin: 16px 0; }
 
-/* Floating list/map switch (phones and tablets) */
-#area-go { display: none; }
-.fab { position: fixed; z-index: 20; left: 50%; bottom: calc(16px + var(--safe-b)); transform: translateX(-50%);
-  display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 999px;
-  background: var(--text); color: var(--bg); font-weight: 600; box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
-
 /* Map ----------------------------------------------------------------------------------------------- */
-.map { display: none; }
-body.show-map .map { display: block; position: fixed; inset: var(--bar) 0 0 0; z-index: 10; }
-body.show-map .results { display: none; }
+.map-failed { margin: 0; padding: 24px; color: var(--muted); text-align: center; }
 /* a town: an outlined pill (its count), zoomed in a price tag with a tail; a cluster: a filled circle (tap: zoom in) */
 .pin { display: grid; place-items: center; min-width: 28px; height: 24px; padding: 0 7px; border-radius: 12px;
   background: var(--surface); color: var(--text); border: 1.5px solid var(--accent); font: 700 12px/1 -apple-system, sans-serif;
@@ -208,9 +200,6 @@ body.show-map .results { display: none; }
 .leaflet-container .popup-list a, .leaflet-container .popup-list a:hover { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; padding: 6px 0;
   border-top: 1px solid var(--line); color: var(--text); line-height: 1.4; }
 .popup-list img { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; }
-.map-note { position: absolute; z-index: 500; left: 12px; top: 12px; padding: 6px 12px; pointer-events: none;
-  border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; box-shadow: var(--shadow); }
-#map.popup-open .map-note, body.areamode #map.moved .map-note { display: none; }
 [data-theme="dark"] :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-bar a) { background: var(--surface); color: var(--text); }
 [data-theme="dark"] :is(.ph img, .hero) { filter: brightness(.92); }
 [data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.7) contrast(.75) saturate(.4); }
@@ -227,9 +216,6 @@ body.show-map .results { display: none; }
 .rail-panel i { width: 14px; height: 4px; border-radius: 2px; flex: none; }
 .rail-bulk { display: flex; gap: 12px; margin: 2px 0 4px; }
 .rail-bulk button { color: var(--accent); font-size: 12px; font-weight: 600; min-height: 28px; }
-.area-btn { position: absolute; z-index: 600; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%);
-  min-height: 40px; font-size: 14px; box-shadow: 0 4px 14px rgb(0 0 0 / .2); white-space: nowrap; }
-body.areamode .area-btn { bottom: 12px; }
 
 /* Filters ------------------------------------------------------------------------------------------- */
 .filters { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--surface);
@@ -288,6 +274,8 @@ details.group .opts { padding-bottom: 12px; }
 .pref-btn .i { width: 16px; height: 16px; color: var(--muted); }
 .pref-btn:not([hidden]) + #count::before { content: "·"; margin-right: 6px; color: var(--faint); font-weight: 400; }
 #count { flex: none; font-weight: 600; }
+.fit-btn { min-height: 44px; padding: 0 4px; color: var(--muted); font-size: 13px; text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
+.fit-btn::before { content: "/"; margin-right: 4px; color: var(--faint); }
 .prefs { position: fixed; inset: 0; z-index: 56; display: flex; align-items: flex-end; justify-content: center; background: rgb(0 0 0 / .35); }
 .prefs-panel { display: flex; flex-direction: column; width: 100%; max-width: 560px; max-height: 85vh; max-height: 85dvh;
   background: var(--surface); border-radius: 16px 16px 0 0; padding-bottom: var(--safe-b); animation: rise .2s ease; }
@@ -380,8 +368,7 @@ details.group .opts { padding-bottom: 12px; }
 .tab-all { flex: none; margin-left: auto; padding: 0 8px; min-height: 36px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .panel-body { background: var(--surface); min-height: calc(100vh - var(--bar) - 49px); }
 .panel-body:focus { outline: none; }
-.panel-body .compare { margin: 12px; }
-body:has(#panel:not([data-tab="list"])) .fab { display: none; }
+.panel-body .compare { margin: 12px; max-width: calc(100% - 24px); }
 .d-head h2:focus { outline: none; }
 
 /* Small phones -------------------------------------------------------------------------------------- */
@@ -395,14 +382,6 @@ body:has(#panel:not([data-tab="list"])) .fab { display: none; }
 
 /* Phones -------------------------------------------------------------------------------------------- */
 @media (max-width: 699px) {
-  /* the map: one bottom bar, リスト on the left, この範囲で絞る on the right */
-  body.mapbar .mapbar-box { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center;
-    justify-content: space-between; gap: 8px; height: calc(56px + var(--safe-b)); padding: 0 12px var(--safe-b);
-    background: var(--surface); border-top: 1px solid var(--line); }
-  body.mapbar .fab { position: static; transform: none; height: 44px; padding: 0 14px; background: none; color: var(--text); box-shadow: none; border: 1px solid var(--line); border-radius: 10px; }
-  body.mapbar #area-go:not([hidden]) { display: inline-flex; min-height: 44px; padding: 0 14px; white-space: nowrap; }
-  body.mapbar .map .area-btn { display: none; }
-  body.show-map .map { bottom: calc(56px + var(--safe-b)); }
   /* the conditions in one row that swipes, the list in sight */
   #chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px 10px; padding: 0 12px; }
   #chips > * { flex: none; }
@@ -417,7 +396,7 @@ body:has(#panel:not([data-tab="list"])) .fab { display: none; }
   .bar { padding: 0 16px 0 20px; }
   .search-wrap { max-width: 560px; }
   .suggest-box { position: absolute; top: calc(100% + 6px); max-height: min(70vh, 520px); border: 1px solid var(--line); border-radius: 12px; }
-  .results { padding: 16px 20px calc(96px + var(--safe-b)); }
+  .results { padding: 16px 20px calc(24px + var(--safe-b)); }
   .chips { margin: 0 0 12px; }
   .searches { margin: 0 -20px 12px; padding: 0 20px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
@@ -434,49 +413,45 @@ body:has(#panel:not([data-tab="list"])) .fab { display: none; }
   .settings-panel { border-radius: 16px; padding-bottom: 8px; }
 }
 
-/* Phones and tablets: the map full screen on request ---------------------------------------------- */
-@media (max-width: 1279px) {
-  body.areamode .tabs { position: static; }
-  /* the map area view: the map on top, the list under it */
-  body.areamode .layout { display: flex; flex-direction: column; }
-  body.areamode .map { display: block; order: -1; position: sticky; top: var(--bar); z-index: 5; height: min(48vh, 40vh + 40px); }
-  body.areamode .results { display: block; }
+/* Phones and tablets: the map on top, the list under it ------------------------------------------- */
+@media (max-width: 1023px) {
+  .layout { display: flex; flex-direction: column; }
+  .map { order: -1; position: sticky; top: var(--bar); z-index: 5; height: min(48vh, 40vh + 40px); }
+  .tabs { position: static; }
 }
 
-/* Desktop: filters | results | map ---------------------------------------------------------------- */
+/* Wide: the map, the list of what's in view beside it --------------------------------------------- */
+@media (min-width: 1024px) {
+  .layout { --rail: 0px; display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) 440px; }
+  .filters { grid-area: 1 / 1; } .map { grid-area: 1 / 2; } .panel { grid-area: 1 / 3; }  /* results come first in the page */
+  .map { position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); }
+  .panel { min-width: 0; border-left: 1px solid var(--line); }
+  /* the narrow list: cards as rows (as on phones), more of them in sight */
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .card > a { grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
+  .card .ph { border-radius: 8px; }
+  .card .body { padding: 0; }
+  .fav { top: 12px; left: 12px; right: auto; }
+  .skeleton { height: 112px; }
+}
+
+/* Desktop: the filter rail ------------------------------------------------------------------------- */
 @media (min-width: 1280px) {
-  .filters-foot #apply, .fab { display: none; }
+  .filters-foot #apply { display: none; }
   body.show-filters::before { display: none; }
-  /* --rail: the filter rail's width; 0 when it's hidden (#filters-open, « in its head), the results get the room */
-  .layout { --rail: 280px; display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) minmax(380px, 34%);
-    transition: grid-template-columns .2s ease; }
+  /* --rail: the filter rail's width; 0 when it's hidden (#filters-open, « in its head), the map gets the room */
+  .layout { --rail: 280px; transition: grid-template-columns .2s ease; }
   body.rail-off .layout { --rail: 0px; }
   body.rail-off .filters { visibility: hidden; overflow: hidden; border-right: 0; }
   #filters-close .i { display: none; } #filters-close .rail-hide { display: block; }
-  .filters { grid-area: 1 / 1; } .panel { grid-area: 1 / 2; } .map { grid-area: 1 / 3; }  /* results come first in the page */
   .filters { position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); transform: none; visibility: visible;
     width: auto; min-width: 0; box-shadow: none; border-right: 1px solid var(--line); z-index: 1; }
   .filters-foot { grid-template-columns: 1fr; }
-  /* favorites: no filter rail; comparing: the table gets the whole width */
+  /* favorites: no filter rail */
   body.listmode .layout { --rail: 0px; }
   body.listmode .filters { visibility: hidden; overflow: hidden; border-right: 0; }
   body.listmode #filters-open { visibility: hidden; }
   body:not(.rail-off) .chips .chip.ghost { display: none; }  /* the rail has its own clear all */
-  .results { padding-bottom: 32px; }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-  /* the map beside the results */
-  .map, body.show-map .map { display: block; position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); border-left: 1px solid var(--line); }
-  .area-btn { bottom: 24px; }
-  /* the map area view: conditions | map | the list of what's visible */
-  body.areamode .layout { grid-template-columns: var(--rail) minmax(0, 1fr) 420px; }
-  body.areamode .map { grid-area: 1 / 2; border-left: 0; }
-  body.areamode .panel { grid-area: 1 / 3; border-left: 1px solid var(--line); }
-  body.areamode .grid { grid-template-columns: minmax(0, 1fr); }
-  /* the narrow list beside the map: cards as rows (as on phones), more of them in sight */
-  body.areamode .card > a { grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
-  body.areamode .card .ph { border-radius: 8px; }
-  body.areamode .card .body { padding: 0; }
-  body.areamode .fav { top: 12px; left: 12px; right: auto; }
   .prefs { background: none; display: block; }
   .prefs-panel { position: absolute; width: 400px; max-height: min(70vh, 560px); border-radius: 12px; border: 1px solid var(--line);
     box-shadow: 0 12px 40px rgb(0 0 0 / .2); padding-bottom: 8px; animation: none; }
