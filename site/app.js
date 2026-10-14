@@ -194,7 +194,15 @@
 
   // URL parameters -> a query (unknown values dropped)
   function queryFrom(p) {
-    const base = Filter.emptyQuery(), out = Filter.emptyQuery();
+    const out = rawQuery(p);
+    out.types = out.types.filter((type) => db.index.types.includes(type));
+    out.areas = out.areas.filter((a) => areaNames.has(a));
+    return out;
+  }
+  // ... of any prefecture (saved searches); an older link's conditions in today's terms (Filter.upgrade)
+  function rawQuery(p) {
+    let out = Filter.emptyQuery();
+    const base = Filter.emptyQuery();
     for (const [k, f] of Object.entries(KEYS)) {
       if (!p.has(k)) continue;
       const v = p.get(k), d = base[f];
@@ -205,8 +213,7 @@
       else out[f] = v;
     }
     if (!Object.hasOwn(t("sorts"), out.sort)) out.sort = "new";
-    out.types = out.types.filter((type) => db.index.types.includes(type));
-    out.areas = out.areas.filter((a) => areaNames.has(a));
+    out = Filter.upgrade?.(out) ?? out;
     return out;
   }
   // a query -> its URL parameters (the conditions only)
@@ -1638,6 +1645,7 @@
       await loadPrefs(prefsFromHash());
       choosePrefs(prefsFromHash());
       refreshFavs();
+      for (const s of searches) s.c = searchKey(rawQuery(new URLSearchParams(s.c)));  // in today's terms
       // a visit = a new data version: the previous one is what "since your last visit" compares with
       const visit = stored("suumo.visit", {}), now = +String(manifest.updated).replace(/\D/g, "").slice(0, 10) || null;
       if (now && visit.cur !== now) { visit.prev = visit.cur ?? null; visit.cur = now; localStorage.setItem("suumo.visit", JSON.stringify(visit)); }
