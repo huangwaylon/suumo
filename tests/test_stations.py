@@ -105,3 +105,21 @@ def test_merge_never_replaces_a_value_with_nothing():
     assert cache["町田"] == ["まちだ", "Machida-shi", 4]
     stations.merge(cache, "町田", ["ちょうだ", None], 1)
     assert cache["町田"] == ["まちだ", "Machida-shi", 4]
+
+
+def test_a_box_wikidata_gives_up_on_is_fetched_in_quarters(monkeypatch):
+    monkeypatch.setattr(stations.time, "sleep", lambda s: None)
+    calls = []
+
+    class Session:
+        def get(self, url, params, headers, timeout):
+            calls.append(params["query"])
+            if len(calls) == 1:
+                raise stations.requests.Timeout()
+            first = len(calls) == 2
+            rows = [{"ja": "大津駅", "kana": "おおつえき"}] if first else [{"ja": "大津駅", "en": "Otsu Station"}]
+            return type("R", (), {"raise_for_status": lambda self: None,
+                                  "text": json.dumps({"results": {"bindings": [{k: {"value": v} for k, v in r.items()}
+                                                                               for r in rows]}})})()
+    assert stations.fetch_split(Session(), [135.0, 34.8, 136.4, 35.7]) == {"大津": ["おおつ", "Otsu"]}
+    assert len(calls) == 5   # the box, then its four quarters

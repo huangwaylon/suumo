@@ -576,8 +576,13 @@
           if (m < quality) quality = m;
         }
         if (quality === 3) continue;
-        const id = c.kind + "\u0000" + c.value, seen = found.get(id);
-        if (seen) { seen.count = (seen.count ?? 0) + (c.count ?? 0) || seen.count; seen.quality = Math.min(seen.quality, quality); }
+        // names and towns that differ only in width or spacing are one suggestion (text search treats them alike)
+        const id = c.kind + "\u0000" + (c.kind === "name" || c.kind === "town" ? nameKey(c.value) : c.value), seen = found.get(id);
+        if (seen) {
+          seen.count = (seen.count ?? 0) + (c.count ?? 0) || seen.count;
+          seen.quality = Math.min(seen.quality, quality);
+          if (c.label.length < seen.label.length) Object.assign(seen, { value: c.value, label: c.label });  // the plain spelling
+        }
         else found.set(id, { kind: c.kind, value: c.value, label: c.label, count: c.count, quality });
       }
     }

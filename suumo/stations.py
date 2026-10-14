@@ -84,6 +84,27 @@ def fetch(session, area):
                 min(english.get(k, ()), key=lambda e: (len(e), e), default=None)] for k in kana.keys() | english.keys()}
 
 
+def fetch_split(session, area, depth=2):
+    """fetch, and when Wikidata gives up on a big box (timeout, 5xx), the four quarters of it instead (up to depth
+    times); a station found in several takes the first known reading and name."""
+    try:
+        return fetch(session, area)
+    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        if depth == 0 or (status is not None and status < 500):
+            raise
+    west, south, east, north = area
+    mid_x, mid_y = (west + east) / 2, (south + north) / 2
+    found = {}
+    for quarter in ([west, south, mid_x, mid_y], [mid_x, south, east, mid_y], [west, mid_y, mid_x, north],
+                    [mid_x, mid_y, east, north]):
+        time.sleep(DELAY)
+        for k, (kana, english) in fetch_split(session, quarter, depth - 1).items():
+            old = found.get(k, [None, None])
+            found[k] = [old[0] or kana, old[1] or english]
+    return found
+
+
 def update(cache_path, rail_path, prefs, data_dir, log=print):
     """Fill the cache for the prefectures not in it yet. An error is logged and retried on the next call."""
     cache = load_cache(cache_path)
@@ -101,7 +122,7 @@ def update(cache_path, rail_path, prefs, data_dir, log=print):
         if n:
             time.sleep(DELAY)
         try:
-            found = fetch(session, box)
+            found = fetch_split(session, box)
         except (requests.RequestException, ValueError, KeyError) as e:
             log(f"  ! station names for {pref}: {e!r}")
             continue

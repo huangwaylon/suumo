@@ -413,7 +413,8 @@ def nl_records():
                 features=["角地"], **LAND),
             rec(8, "used_house", area_code="13112", area="世田谷区", stations=st("自由が丘"), layout="4LDK",
                 floor_m2=None, building_m2=100.0, land_m2=170.0),
-            rec(9, area_code="14103", area="横浜市西区", stations=st("横浜"))]
+            rec(9, area_code="14103", area="横浜市西区", stations=st("横浜")),
+            rec(10, area_code="13104", area="新宿区", stations=st("新宿"), name="自由が丘　レジデンス")]  # spaced
 
 
 def nl(tmp_path, requests):
@@ -423,7 +424,7 @@ def nl(tmp_path, requests):
 
 @needs_node
 def test_suggestions(tmp_path):
-    texts = ["渋谷", "しぶや", "3LDK futako", "パークタ", "ペット", "x", "自由が丘 ", "minato", "勝どき"]
+    texts = ["渋谷", "しぶや", "3LDK futako", "パークタ", "ペット", "x", "自由が丘 ", "minato", "勝どき", "自由が丘レ"]
     out = dict(zip(texts, nl(tmp_path, [{"suggest": t} for t in texts]), strict=True))
     brief = {t: [(c["kind"], c["value"], c["count"]) for c in cs] for t, cs in out.items()}
     assert brief["渋谷"] == [("area", "13113", 2), ("station", "渋谷", 2), ("name", "パークタワー渋谷", 1)]
@@ -434,6 +435,7 @@ def test_suggestions(tmp_path):
     assert brief["x"] == [] and brief["自由が丘 "] == []                    # too short; nothing typed yet
     assert brief["minato"] == [("area", "13103", 1)]                        # English area names
     assert out["勝どき"][0] == {"kind": "station", "value": "勝どき", "label": "勝どき", "count": 1}
+    assert brief["自由が丘レ"] == [("name", "自由が丘レジデンス", 2)]   # spelled with and without a space: one
 
 
 CONDOS, HOUSES = {"used_condo", "new_condo"}, {"used_house", "new_house"}
