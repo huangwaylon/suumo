@@ -53,6 +53,13 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
 「ほかN社も掲載」. 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings
 silently), 値下げ = a price drop in the last 30 days. Names that are agents' ad copy aren't shown.
+Conditions from the listing pages (only listings whose page was fetched have them; the manifest says what share
+that is per prefecture): 南向き (direction 南/南東/南西 or a south tag), 最上階, 2階以上, タワー (20+ floors),
+仲介手数料なし (sold by the seller or its agent: if any agent of a property sells without commission, the property
+counts, and that agent comes first among the others), 即入居, 駐車場 (houses and land), and condos' monthly fees
+(管理費 + 修繕積立金 + その他). Station names are spelled one way per prefecture (荻窪駅 → 荻窪). The search box also
+reads conditions from plain text (「渋谷 3LDK 6000万以下 徒歩10分 ペット可」, "2ldk under 5000万 near Shibuya"):
+`Filter.parse` in site/filter.js; what it doesn't understand stays a text search.
 
 The site is public (GitHub Pages) but marked `noindex`. Photos load from SUUMO's image server; Leaflet loads from
 unpkg (with integrity hashes) only when a map is shown.

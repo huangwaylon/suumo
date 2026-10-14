@@ -21,13 +21,13 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `in_scope` |
 | `suumo/http.py` | `Client`: one request at a time, delay + jitter, retries, automatic slow-down; 404/410 → `FileNotFoundError` |
 | `suumo/gitdata.py` | `commit_data`: commit `data/` and `geo/` only, optionally push |
-| `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags), duplicate groups, 新着/値下げ and price history from `data/events/` |
+| `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags: south/top/upper/nofee/ready/tower/parking, condos' monthly `fees`), one station spelling per prefecture, duplicate groups, 新着/値下げ and price history from `data/events/` |
 | `suumo/fx.py` | The day's yen-dollar rate (ECB via frankfurter.dev, no key) into `data/fx.json`, checked once a day by `run` (an unchanged rate leaves the file alone); the site shows ≈ USD next to yen prices |
 | `suumo/geo.py` | Town (丁目) coordinates from MLIT's 位置参照情報 (one file per prefecture, `PLACES_URL`; a new version each spring), the rest from 国土地理院's address search; cached in `geo/towns.json` |
 | `suumo/rail.py` | Railway lines and stations for the maps, the whole country: MLIT 国土数値情報 鉄道データ (N02, CC BY 4.0), simplified; colours and English names from ODPT's open, basic (`ODPT_TOKEN`) and challenge (`ODPT_CHALLENGE_TOKEN`, challenge licence) APIs, else carried over from the previous file; `rail` writes `geo/rail.json`. Also decides which same-named stations are really two (`site.station_prefectures`) |
 | `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json`, per prefecture over the area its listings' stations span (`catalog.station_area`, places from rail.json); a name several prefectures return keeps the reading of the one whose listings mention it most (`stations.merge`), never overwritten with null; the site searches and shows them. `site.listing_spelling` renames rail stations to the listings' spelling (阿佐ケ谷, not 阿佐ヶ谷) |
-| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json`, one search index per prefecture `data/p/<pref>.json` loaded as chosen, one JSON per listing) |
-| `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `facets` (every choice count in one pass) |
+| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json` with `prefs` entries `[slug, name, count, share with the listing page fetched]`, one search index per prefecture `data/p/<pref>.json` loaded as chosen (flag bits `FLAGS`, `fees` in ¥100), one JSON per listing (`others` with `deal_type`, no-commission agents first)) |
+| `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `counts` (q and variants `{name: patch}` in one pass), `facets` (every choice count in one pass: thresholds bucketed by binary search, tags/areas/stations in typed arrays per prefecture), text search by matching each prefecture's small tables (names, towns, areas, layouts, stations, bus stops) instead of per-item text; `suggest` (candidates for the word being typed), `parse` + `applyParse` (search-box text → conditions; dictionaries per prefecture, built on first use). Must work with an index older than itself (the service worker may serve one after a deploy): read new columns with `?.`, missing flags are 0 |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
 | `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests; compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
@@ -86,7 +86,12 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   with its page fetched and most tags; the others become `others` links). Land
   listed under both `new_house` and `land` is kept once, as land. Stations are identified by name, one spelling per prefecture (`catalog.unify_station_names`: 荻窪駅 → 荻窪). A building
   condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly. 新着 = a new/relisted
-  event within 7 days, 値下げ = a drop within 30 days.
+  event within 7 days, 値下げ = a drop within 30 days. 南向き = direction 南/南東/南西 or a south tag; 最上階 = floor ==
+  floors above ground (or the tag); 2階以上, タワー (20+ floors) from the floor fields; 仲介手数料なし = deal type
+  売主/事業主/代理 without a broker, set when any agent of the property has it; 即入居 = handover 即… or the tag;
+  駐車場 = houses/land with a car space or a 駐車 tag (condos never); 管理費等 = management + repair fund (+ other
+  monthly costs) of condos, unknown unless both are stated (houses and land pass a fees limit). 坪単価順 puts houses
+  last unless only houses are chosen; 広い順 puts land last unless only land is chosen.
 - **Public repo:** nothing secret in git (no `.env`, no tokens); commits use the GitHub noreply address
   (`git config user.email` is set in this repo). `uv.lock` isn't committed (it would pin the local package mirror).
 - **User-facing text lives in `site/i18n.js`**, in Japanese (default) and English; never hard-code it in app.js or
@@ -128,8 +133,10 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - **New property type:** add it to `parse.TYPES` (path segment), check its search-result markup in `parse_list_page`,
   add its name to `types` in both languages in `site/i18n.js`.
 - **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` if the JS needs one;
-  the rule in `site/filter.js` (`emptyQuery`, `matches`); a control in `site/app.js` (`renderFilters`, URL key in
-  `KEYS`, threshold values in `CHOICES`); its labels in `site/i18n.js`; a test in `tests/test_site.py`.
+  the rule in `site/filter.js` (`emptyQuery`, `CHECKS`/`BUILDING`; a flag also in `FLAGS`/`FLAG_BITS`, a threshold in
+  `THRESHOLDS` for facets; words for it in `WORDS` or a pattern in `parse`); a control in `site/app.js`
+  (`renderFilters`, URL key in `KEYS`, threshold values in `CHOICES`); its labels in `site/i18n.js`; a test in
+  `tests/test_site.py` (and a case in `NL_CASES` for its words).
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, progress,
   checkpoints, outage pause), `http.py` (slow-down), `archive.LIST_DAYS`, `catalog.NEW_DAYS`/`DROP_DAYS`,
   `cli.GEO_BUDGET`, and the choice lists at the top of `site/app.js`.

@@ -41,8 +41,7 @@ class FakeSession:
             def raise_for_status(self):
                 pass
 
-            def json(self):
-                return {"results": {"bindings": [{k: {"value": v} for k, v in r.items()} for r in rows]}}
+            text = json.dumps({"results": {"bindings": [{k: {"value": v} for k, v in r.items()} for r in rows]}})
         return R()
 
 

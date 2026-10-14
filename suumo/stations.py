@@ -74,7 +74,7 @@ def fetch(session, area):
                     timeout=120)
     r.raise_for_status()
     kana, english = {}, {}
-    for row in r.json()["results"]["bindings"]:
+    for row in json.loads(r.text, strict=False)["results"]["bindings"]:  # labels can hold raw control characters
         k = key(row["ja"]["value"])
         if "kana" in row:
             kana.setdefault(k, Counter())[re.sub(r"(えき|ていりゅうじょう)$", "", row["kana"]["value"])] += 1
