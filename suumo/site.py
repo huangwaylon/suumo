@@ -136,6 +136,21 @@ def representatives(snap):
     return reps
 
 
+def listing_spelling(rail, reps):
+    """Rail stations renamed to how the listings write them (MLIT 阿佐ヶ谷, SUUMO 阿佐ケ谷), so the site matches names
+    exactly: a chosen station's lines on the map, two same-named stations. Only when one listing name fits."""
+    used = {name for i in reps for name, _ in i.stations}
+    spelled = defaultdict(set)
+    for name in used:
+        if "（" not in name:  # SUUMO's own 藤沢（長野県） stays as it is
+            spelled[station_key(name)].add(name)
+    for s in rail["stations"]:
+        fits = spelled.get(station_key(s[0]), ())
+        if s[0] not in used and len(fits) == 1:
+            s[0] = next(iter(fits))
+    return rail
+
+
 def station_prefectures(reps, rail_stations=()):
     """station name -> the prefectures to tell apart, for a name that is really two stations (小川町 in Tokyo and
     in Saitama: "小川町（埼玉）"). A name in listings of two prefectures is usually one station near the border
@@ -240,8 +255,9 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     by_pref = defaultdict(dict)
     for item, others in reps.items():
         by_pref[item.pref][item] = others
-    rail = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
-    station_prefs = station_prefectures(reps, json.loads(rail.read_text())["stations"] if rail.exists() else ())
+    rail_path = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
+    rail = listing_spelling(json.loads(rail_path.read_text()), reps) if rail_path.exists() else None
+    station_prefs = station_prefectures(reps, rail["stations"] if rail else ())
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = {}
     for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
@@ -251,8 +267,8 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
-    if rail.exists():
-        shutil.copyfile(rail, out / "data" / "rail.json")
+    if rail:
+        (out / "data" / "rail.json").write_text(_dump(rail), encoding="utf-8")
     listings = out / "data" / "l"
     for type_ in {i.type for i in reps}:
         (listings / type_).mkdir(parents=True)

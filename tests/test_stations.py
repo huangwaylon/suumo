@@ -2,6 +2,7 @@
 import json
 
 from suumo import stations
+from tests.helpers import rec, write
 
 
 def test_keys_match_the_ways_names_are_written():
@@ -10,6 +11,10 @@ def test_keys_match_the_ways_names_are_written():
     assert stations.key("駒澤大学") == stations.key("駒沢大学駅")
     assert stations._english("Futako-Tamagawa Station") == "Futako-Tamagawa"
     assert stations._english("Ōtsuka Station (Tokyo)") == "Ōtsuka"
+    assert stations._english("Shin‐Yokohama Station") == "Shin-Yokohama"   # U+2010: typed as '-'
+    assert stations._english("Zushi·Hayama Station") == "Zushi·Hayama"
+    assert stations._english("閻魔大王") is None and stations._english("Category:Kinuta-hommura") is None
+    assert stations.key("江曾島") == stations.key("江曽島")
 
 
 def test_box_leaves_out_far_islands():
@@ -48,7 +53,10 @@ def test_update_fills_the_cache_once_per_prefecture(tmp_path, monkeypatch):
     towns = tmp_path / "towns.json"
     towns.write_text(json.dumps({"東京都江東区大島３": [35.69, 139.83]}, ensure_ascii=False))
     cache = tmp_path / "stations.json"
+    data = tmp_path / "data"
+    write(data, [rec(1, address="東京都江東区大島３")])
+    write(data, [rec(2, address="千葉県浦安市舞浜１", area_code="12227")], pref="chiba")  # not geocoded yet
     for _ in range(2):
-        stations.update(cache, towns, ["tokyo"], log=lambda *a: None)
-    assert session.calls == 1
+        stations.update(cache, towns, ["tokyo", "chiba"], data, log=lambda *a: None)
+    assert session.calls == 1 and json.loads(cache.read_text())["_prefs"] == ["tokyo"]  # chiba waits for its towns
     assert stations.names(cache) == {"大島": ["おおじま", "Ojima"], "練馬": [None, "Nerima"]}

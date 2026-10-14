@@ -15,12 +15,13 @@ import json
 import re
 import zipfile
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import requests
 
 from .archive import write_atomic
 
-N02_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N02/N02-24/N02-24_GML.zip"
+N02_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N02/N02-25/N02-25_GML.zip"
 ODPT_APIS = (  # (base, key setting): open, basic licence, challenge licence
     ("https://api-public.odpt.org/api/v4/", None),
     ("https://api.odpt.org/api/v4/", "ODPT_TOKEN"),
@@ -140,16 +141,40 @@ def build_rail(sections, stations, lines_info, operators_en):
     return {"attribution": ATTRIBUTION, "operators": operators, "lines": lines, "stations": out_stations}
 
 
+def carry_over(rail, previous):
+    """Colours and English names ODPT didn't give this time (no key for an API, or it's down), from the previous
+    rail.json, matched by operator and line name."""
+    old_ops = {o[0]: o for o in previous["operators"]}
+    old_lines = {(previous["operators"][line[0]][0], line[1]): line for line in previous["lines"]}
+    for o in rail["operators"]:
+        prev = old_ops.get(o[0])
+        if prev:
+            o[1] = o[1] or prev[1]
+            o[3] = prev[3] if o[3] == o[0] else o[3]  # ODPT's short name (JR東日本) over the full one
+    for line in rail["lines"]:
+        op = rail["operators"][line[0]][0]
+        prev = old_lines.get((op, line[1]))
+        if prev:
+            line[2] = line[2] or prev[2]
+            fallback = {*OPERATOR_COLOURS.values(), OTHER}
+            if line[3] in fallback and prev[3] not in fallback:  # the line's own colour, never a fallback
+                line[3] = prev[3]
+    return rail
+
+
 def update(path, keys, log=print):
-    """Download N02 (about 13 MB), add ODPT's colours and names, write path. keys: {setting: key}."""
+    """Download N02 (about 15 MB), add ODPT's colours and names (else the previous file's), write path.
+    keys: {setting: key}."""
     r = requests.get(N02_URL, timeout=300)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         def layer(kind):
-            name = next(n for n in z.namelist() if n.startswith("UTF-8/") and n.endswith(f"_{kind}.geojson"))
+            name = next(n for n in z.namelist() if "UTF-8/" in n and n.endswith(f"_{kind}.geojson"))
             return json.loads(z.read(name))["features"]
         sections, stations = layer("RailroadSection"), layer("Station")
     rail = build_rail(sections, stations, *odpt(keys, log))
+    if Path(path).exists():
+        rail = carry_over(rail, json.loads(Path(path).read_text()))
     write_atomic(path, (json.dumps(rail, ensure_ascii=False, separators=(",", ":")) + "\n").encode())
     own = sum(1 for line in rail["lines"] if line[3] not in OPERATOR_COLOURS.values() and line[3] != OTHER)
     log(f"rail: {len(rail['operators'])} operators, {len(rail['lines'])} lines ({own} in their own colour), "

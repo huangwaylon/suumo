@@ -45,7 +45,7 @@ null,
 ],
 "JR東日本新横浜": [
 null,
-"JR East Shin‐Yokohama"
+"JR East Shin-Yokohama"
 ],
 "JR東日本新橋": [
 null,
@@ -101,7 +101,7 @@ null,
 ],
 "JR東日本西日暮里": [
 null,
-"JR East Nishi‐Nippori"
+"JR East Nishi-Nippori"
 ],
 "JR東日本関内": [
 null,
@@ -117,7 +117,7 @@ null,
 ],
 "JR東海新横浜": [
 null,
-"JR Central Shin‐Yokohama"
+"JR Central Shin-Yokohama"
 ],
 "JR東海東京": [
 null,
@@ -180,7 +180,7 @@ null,
 ],
 "たまプラーザ": [
 "たまプラーザ",
-"閻魔大王"
+null
 ],
 "つきみ野": [
 "つきみの",
@@ -702,10 +702,6 @@ null,
 "なかがみ",
 "Nakagami"
 ],
-"中耕地": [
-null,
-"Category:Nakakochi"
-],
 "中里": [
 null,
 "Nakazato"
@@ -729,6 +725,10 @@ null,
 "中野新橋": [
 "なかのしんばし",
 "Nakano-shimbashi"
+],
+"丸山": [
+null,
+"Maruyama"
 ],
 "乃木坂": [
 "のぎざか",
@@ -876,7 +876,7 @@ null,
 ],
 "京急東神奈川": [
 "けいきゅうひがしかながわ",
-"Keikyū Higashi‐kanagawa"
+"Keikyū Higashi-kanagawa"
 ],
 "京急田浦": [
 "けいきゅうたうら",
@@ -1021,6 +1021,10 @@ null,
 "人形町": [
 "にんぎょうちょう",
 "Ningyōchō"
+],
+"今井浜海岸": [
+"いまいはまかいがん",
+"Imaihama-Kaigan"
 ],
 "今羽": [
 null,
@@ -1318,6 +1322,10 @@ null,
 "かちどき",
 "Kachidoki"
 ],
+"北上尾": [
+"きたあげお",
+"Kita-Ageo"
+],
 "北与野": [
 "きたよの",
 "Kita-Yono"
@@ -1381,6 +1389,10 @@ null,
 "北新横浜": [
 "きたしんよこはま",
 "Kita Shin-Yokohama"
+],
+"北春日部": [
+"きたかすかべ",
+"Kita-kasukabe"
 ],
 "北朝霞": [
 "きたあさか",
@@ -1566,6 +1578,10 @@ null,
 "みなみかしわ",
 "Minami-Kashiwa"
 ],
+"南桜井": [
+"みなみさくらい",
+"Minami-sakurai"
+],
 "南橋本": [
 "みなみはしもと",
 "Minami-Hashimoto"
@@ -1697,6 +1713,10 @@ null,
 "向ケ丘遊園正門": [
 null,
 "Mukōgaoka-Yūen-Seimon"
+],
+"向原": [
+"むこうはら",
+"Mukōhara"
 ],
 "向島": [
 null,
@@ -1954,6 +1974,10 @@ null,
 null,
 "Otsukahommachi"
 ],
+"大塚駅前": [
+null,
+"Ōtsuka-ekimae"
+],
 "大宮": [
 "おおみや",
 "Ōmiya"
@@ -2117,6 +2141,10 @@ null,
 "姉ケ崎": [
 "あねがさき",
 "Anegasaki"
+],
+"姥子": [
+"うばこ",
+"Ubako"
 ],
 "子安": [
 "こやす",
@@ -2338,6 +2366,10 @@ null,
 "こたけむかいはら",
 "Kotake-mukaihara"
 ],
+"小絹": [
+"こきぬ",
+"Kokinu"
+],
 "小菅": [
 "こすげ",
 "Kosuge"
@@ -2481,6 +2513,10 @@ null,
 "巣鴨": [
 "すがも",
 "Sugamo"
+],
+"巣鴨新田": [
+"すがもしんでん",
+"Sugamo-Shinden"
 ],
 "工業都市": [
 null,
@@ -2658,9 +2694,17 @@ null,
 "おなりもん",
 "Onarimon"
 ],
+"御花畑": [
+"おはなばたけ",
+"Ohanabatake"
+],
 "御茶ノ水": [
 "おちゃのみず",
 "Ochanomizu"
+],
+"志久": [
+null,
+"Shiku"
 ],
 "志木": [
 "しき",
@@ -2956,7 +3000,7 @@ null,
 ],
 "新横浜": [
 "しんよこはま",
-"Shin‐Yokohama"
+"Shin-Yokohama"
 ],
 "新橋": [
 "しんばし",
@@ -3088,11 +3132,11 @@ null,
 ],
 "日暮里・舎人ライナー日暮里": [
 null,
-"Nippori‐Toneri Liner Nippori"
+"Nippori-Toneri Liner Nippori"
 ],
 "日暮里・舎人ライナー西日暮里": [
 null,
-"Nippori‐Toneri Liner Nishi‐Nippori"
+"Nippori-Toneri Liner Nishi-Nippori"
 ],
 "日本大通り": [
 "にほんおおどおり",
@@ -3145,6 +3189,10 @@ null,
 "春日": [
 "かすが",
 "Kasuga"
+],
+"春日部": [
+"かすかべ",
+"Kasukabe"
 ],
 "昭和": [
 "しょうわ",
@@ -3368,7 +3416,7 @@ null,
 ],
 "東京メトロ西日暮里": [
 null,
-"Tokyo Metro Nishi‐Nippori"
+"Tokyo Metro Nishi-Nippori"
 ],
 "東京メトロ高田馬場": [
 null,
@@ -3445,6 +3493,10 @@ null,
 "東小金井": [
 "ひがしこがねい",
 "Higashi-Koganei"
+],
+"東尾久三丁目": [
+"ひがしおぐさんちょうめ",
+"Higashi-ogu-sanchōme"
 ],
 "東山北": [
 "ひがしやまきた",
@@ -3742,6 +3794,10 @@ null,
 "ねづ",
 "Nezu"
 ],
+"桃源台": [
+"とうげんだい",
+"Tōgendai"
+],
 "桐ケ谷": [
 null,
 "Kirigaya"
@@ -3890,6 +3946,10 @@ null,
 "よこはまはざわ",
 "Yokohama-Hazawa"
 ],
+"横瀬": [
+"よこぜ",
+"Yokoze"
+],
 "横田": [
 "よこた",
 "Yokota"
@@ -3917,6 +3977,10 @@ null,
 "武州唐沢": [
 "ぶしゅうからさわ",
 "Bushū-Karasawa"
+],
+"武州川辺": [
+null,
+"Bushū-kawabe"
 ],
 "武州日野": [
 "ぶしゅうひの",
@@ -4113,6 +4177,10 @@ null,
 "沢井": [
 "さわい",
 "Sawai"
+],
+"河津": [
+"かわづ",
+"Kawazu"
 ],
 "河辺": [
 "かべ",
@@ -4550,6 +4618,10 @@ null,
 "まちやにちょうめ",
 "Machiya-nichōme"
 ],
+"町屋駅前": [
+"まちやえきまえ",
+"Machiya-ekimae"
+],
 "町田": [
 "まちだ",
 "Machida"
@@ -4565,6 +4637,10 @@ null,
 "白丸": [
 "しろまる",
 "Shiromaru"
+],
+"白久": [
+"しろく",
+"Shiroku"
 ],
 "白井": [
 "しろい",
@@ -4664,7 +4740,7 @@ null,
 ],
 "相模鉄道・東急電鉄新横浜": [
 null,
-"Sagami Railways and Tokyu Railways Shin‐Yokohama"
+"Sagami Railways and Tokyu Railways Shin-Yokohama"
 ],
 "相模鉄道横浜": [
 null,
@@ -4741,10 +4817,6 @@ null,
 "砂川七番": [
 "すながわななばん",
 "Sunagawa-Nanaban"
-],
-"砧本村": [
-null,
-"Category:Kinuta-hommura"
 ],
 "磯子": [
 "いそご",
@@ -5120,7 +5192,7 @@ null,
 ],
 "花月総持寺": [
 "かげつそうじじ",
-"Kagetsu‐sōjiji"
+"Kagetsu-sōjiji"
 ],
 "若松河田": [
 "わかまつかわだ",
@@ -5242,6 +5314,10 @@ null,
 "はすぬま",
 "Hasunuma"
 ],
+"蓮田": [
+"はすだ",
+"Hasuda"
+],
 "蔵前": [
 "くらまえ",
 "Kuramae"
@@ -5253,6 +5329,10 @@ null,
 "薬園台": [
 "やくえんだい",
 "Yakuendai"
+],
+"藤の牛島": [
+"ふじのうしじま",
+"Fujino-ushijima"
 ],
 "藤ケ丘": [
 "ふじがおか",
@@ -5441,6 +5521,10 @@ null,
 "西武球場前": [
 "せいぶきゅうじょうまえ",
 "Seibu-Kyūjō-mae"
+],
+"西武秩父": [
+"せいぶちちぶ",
+"Seibu-Chichibu"
 ],
 "西武立川": [
 "せいぶたちかわ",
@@ -5942,6 +6026,10 @@ null,
 "とびたきゅう",
 "Tobitakyū"
 ],
+"飛鳥山": [
+"あすかやま",
+"Asukayama"
+],
 "飛鳥山公園入口": [
 "あすかやまこうえんいりぐち",
 null
@@ -6025,6 +6113,10 @@ null,
 "駒込": [
 "こまごめ",
 "Komagome"
+],
+"駿河小山": [
+"するがおやま",
+"Suruga-Oyama"
 ],
 "高井戸": [
 "たかいど",
@@ -6134,6 +6226,10 @@ null,
 null,
 "Hiregasaki"
 ],
+"鳥沢": [
+"とりさわ",
+"Torisawa"
+],
 "鳥浜": [
 "とりはま",
 "Torihama"
@@ -6200,7 +6296,7 @@ null,
 ],
 "鶴見川口": [
 null,
-"Tsurumi‐Kawaguchi"
+"Tsurumi-Kawaguchi"
 ],
 "鶴見市場": [
 "つるみいちば",

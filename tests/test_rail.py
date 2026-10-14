@@ -36,3 +36,12 @@ def test_lines_get_official_colours_names_and_stations_one_marker():
         ("どこか鉄道", "遠い線", None, rail.OTHER),
         ("東日本旅客鉄道", "東北線", "Utsunomiya Line", "#FF9845")]
     assert out["stations"] == [["新宿", 35.692, 139.701, [0, 3]]]         # one marker, both lines
+
+
+def test_rebuild_without_odpt_keeps_the_previous_colours_and_names():
+    sections = [section("東京地下鉄", "4号線丸ノ内線", [[139.70, 35.69], [139.71, 35.69]]),
+                section("どこか鉄道", "遠い線", [[130.0, 33.0], [130.1, 33.0]])]
+    previous = rail.build_rail(sections, [], {("東京地下鉄", "丸ノ内線"): ("#F62E36", "Marunouchi Line")},
+                               {"東京地下鉄": ("Tokyo Metro", "東京メトロ")})
+    out = rail.carry_over(rail.build_rail(sections, [], {}, {}), previous)  # ODPT gave nothing this time
+    assert out["operators"] == previous["operators"] and out["lines"] == previous["lines"]

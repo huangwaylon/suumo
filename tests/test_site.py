@@ -295,3 +295,13 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     assert built["saitama"]["stations"] == ["小川町（埼玉）"]
     assert built["kanagawa"]["stations"] == ["二子玉川"]          # one station near the border: one name
     assert [p for p, _, _ in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
+
+
+def test_rail_stations_take_the_listings_spelling():
+    from types import SimpleNamespace
+
+    from suumo.site import listing_spelling
+    reps = [SimpleNamespace(stations=[("阿佐ケ谷", 5), ("江曽島", 9), ("藤沢（長野県）", 3), ("藤沢", 4)])]
+    rail = {"stations": [["阿佐ヶ谷", 35.7, 139.6, []], ["江曾島", 36.5, 139.9, []], ["藤沢", 35.3, 139.5, []],
+                         ["新宿", 35.69, 139.7, []]]}
+    assert [s[0] for s in listing_spelling(rail, reps)["stations"]] == ["阿佐ケ谷", "江曽島", "藤沢", "新宿"]

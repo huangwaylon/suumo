@@ -3,7 +3,8 @@
 SUUMO names stations in kanji only ("二子玉川"), so kana and English searches find nothing. One SPARQL query per
 prefecture fetches every station and tram stop inside the box its geocoded towns span, with the kana reading
 (P1814) and the English label; keeping only stations in the box makes 白山 Tokyo's Hakusan, not a Shirayama
-elsewhere. The cache ({name: [kana, english]}) is filled once per prefecture; delete it to refresh. Bus stops
+elsewhere. The cache ({name: [kana, english]}) is filled once per prefecture, when all its towns are geocoded (so
+the box is final); delete it to refresh. Bus stops
 aren't in Wikidata and stay kanji only.
 """
 import re
@@ -12,7 +13,7 @@ from collections import Counter
 
 import requests
 
-from .geo import load_cache, save_cache
+from .geo import load_cache, save_cache, towns_in
 from .scope import PREFS
 
 API = "https://query.wikidata.org/sparql"
@@ -20,7 +21,8 @@ QUERY = """SELECT ?ja ?kana ?en WHERE {
   SERVICE wikibase:box { ?s wdt:P625 ?at.
     bd:serviceParam wikibase:cornerSouthWest "Point(%f %f)"^^geo:wktLiteral;
                     wikibase:cornerNorthEast "Point(%f %f)"^^geo:wktLiteral. }
-  ?s wdt:P31/wdt:P279* wd:Q55488; rdfs:label ?ja FILTER(lang(?ja) = "ja")
+  VALUES ?kind { wd:Q55488 wd:Q2175765 }  # railway station, tram stop (not a subclass of station)
+  ?s wdt:P31/wdt:P279* ?kind; rdfs:label ?ja FILTER(lang(?ja) = "ja")
   OPTIONAL { ?s wdt:P1814 ?kana } OPTIONAL { ?s rdfs:label ?en FILTER(lang(?en) = "en") }
 }"""
 USER_AGENT = "suumo-site/1.0 (https://github.com/huangwaylon/suumo)"  # Wikidata asks for a contact
@@ -28,16 +30,22 @@ MARGIN = 0.15  # degrees around the towns: stations just over the border are nam
 
 
 def key(name):
-    """The form names are matched in: '市ヶ谷', '市ケ谷駅', '市が谷' -> '市ケ谷'; '浦安駅 (千葉県)' -> '浦安'."""
+    """The form names are matched in: '市ヶ谷', '市ケ谷駅', '市が谷' -> '市ケ谷'; '浦安駅 (千葉県)' -> '浦安';
+    '江曾島' -> '江曽島'."""
     name = unicodedata.normalize("NFKC", name)
-    for a, b in (("ヶ", "ケ"), ("ヵ", "ケ"), ("が", "ケ"), ("澤", "沢")):
+    for a, b in (("ヶ", "ケ"), ("ヵ", "ケ"), ("が", "ケ"), ("澤", "沢"), ("曾", "曽")):
         name = name.replace(a, b)
     return re.sub(r"\s*\(.*\)$", "", name).removesuffix("駅").removesuffix("停留場").strip()
 
 
 def _english(label):
-    """'Futako-Tamagawa Station' -> 'Futako-Tamagawa'."""
-    return re.sub(r"\s+(Station|Stop|station|stop)\b.*$", "", re.sub(r"\s*\(.*\)$", "", label)).strip()
+    """'Futako-Tamagawa Station' -> 'Futako-Tamagawa'; 'Shin‐Yokohama' -> 'Shin-Yokohama'. None for a label that
+    isn't a name in Latin letters (vandalism, 'Category:...')."""
+    name = re.sub(r"\s+(Station|Stop|station|stop)\b.*$", "", re.sub(r"\s*\(.*\)$", "", label)).strip()
+    name = re.sub("[\u2010-\u2015]", "-", name)
+    latin = all(c.isascii() or unicodedata.name(c, "").startswith("LATIN") or unicodedata.category(c)[0] in "PZ"
+                for c in name)
+    return name if latin and ":" not in name and re.search("[A-Za-z]", name) else None
 
 
 def box(towns, pref):
@@ -61,19 +69,22 @@ def fetch(session, area):
         k = key(row["ja"]["value"])
         if "kana" in row:
             kana.setdefault(k, Counter())[re.sub(r"(えき|ていりゅうじょう)$", "", row["kana"]["value"])] += 1
-        if "en" in row:
-            english.setdefault(k, set()).add(_english(row["en"]["value"]))
+        if "en" in row and (en := _english(row["en"]["value"])):
+            english.setdefault(k, set()).add(en)
     return {k: [kana[k].most_common(1)[0][0] if k in kana else None,
                 min(english.get(k, ()), key=lambda e: (len(e), e), default=None)] for k in kana.keys() | english.keys()}
 
 
-def update(cache_path, towns_path, prefs, log=print):
-    """Fill the cache for the prefectures not in it yet. An error is logged and retried on the next call."""
+def update(cache_path, towns_path, prefs, data_dir, log=print):
+    """Fill the cache for the prefectures not in it yet, each once all its towns are geocoded (its box is final).
+    An error is logged and retried on the next call."""
     cache = load_cache(cache_path)
     todo = [p for p in prefs if p not in cache.get("_prefs", [])]
     if not todo:
         return
     towns = load_cache(towns_path)
+    pending = towns_in(data_dir) - set(towns)
+    todo = [p for p in todo if not any(t.startswith(PREFS[p]) for t in pending)]
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
     for pref in todo:
