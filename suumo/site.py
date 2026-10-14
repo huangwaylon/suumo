@@ -101,14 +101,22 @@ def _mask(numbers):
 
 
 class Table:
-    """value -> small integer, so repeated strings are stored once."""
+    """value -> small integer, so repeated strings are stored once (None stays None)."""
 
     def __init__(self, values=()):
         self.index, self.values = {}, []
         for v in values:
             self(v)
 
+    @classmethod
+    def by_count(cls, values):
+        """The values numbered most common first: small numbers are short."""
+        n = Counter(v for v in values if v is not None)
+        return cls(sorted(n, key=lambda v: (-n[v], v)))
+
     def __call__(self, value):
+        if value is None:
+            return None
         if value not in self.index:
             self.index[value] = len(self.values)
             self.values.append(value)
@@ -147,17 +155,18 @@ def station_prefectures(reps, rail_stations=()):
 
 def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=None):
     """The search index of these listings (one prefecture's, on the site)."""
-    # tags numbered most common first, so each listing's tag set is a short bit string
-    tags = Counter(f for i in reps for f in i.features)
-    types, areas, stations, towns = Table(TYPES), Table(), Table(), Table()
-    features = Table(sorted(tags, key=lambda f: (-tags[f], f)))
     station_prefs = station_prefs if station_prefs is not None else station_prefectures(reps)
 
     def station(name, pref):
         return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
 
-    cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age",
-                            "stations", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
+    types, areas, towns = Table(TYPES), Table(), Table()
+    stations = Table.by_count(station(name, i.pref) for i in reps for name, _ in i.stations)
+    features = Table.by_count(f for i in reps for f in i.features)  # so each tag set is a short bit string
+    names = Table.by_count(_name(i.rec) for i in reps)
+    layouts = Table.by_count(i.rec.get("layout") for i in reps)
+    cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
+                            "access", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit", "town",
                             "name", "layout", "image")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
@@ -167,9 +176,9 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
             "land": i.land, "age": i.age_months,  # months
-            # pairs (station, access): minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
-            "stations": [x for name, walk in i.stations for x in (
-                stations(station(name, i.pref)), _access(walk, i.bus.get(name), i.car.get(name)))],
+            # access to each station: minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
+            "stations": [stations(station(name, i.pref)) for name, _ in i.stations],
+            "access": [_access(walk, i.bus.get(name), i.car.get(name)) for name, walk in i.stations],
             "features": _mask(features(f) for f in i.features),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
@@ -181,7 +190,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
             "drop": list(snap.drop(i)[:2]) if snap.drop(i) else None,
             "firstSeen": _date_int(i.first_seen),
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
-            "town": towns(town) if town else None, "name": _name(r), "layout": r.get("layout"),
+            "town": towns(town or None), "name": names(_name(r)), "layout": layouts(r.get("layout")),
             "image": _image(r.get("image"), r["id"]),
         }
         last_id = i.idn
@@ -194,7 +203,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
         "stations": stations.values,
         # [kana, English] per station (null when unknown: bus stops), so either finds it
         "stationNames": [(readings or {}).get(station_key(s)) for s in stations.values],
-        "features": features.values,
+        "features": features.values, "names": names.values, "layouts": layouts.values,
         "towns": [[t, *(towns_cache.get(t) or [None, None])] for t in towns.values],
     }
 

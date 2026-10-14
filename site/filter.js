@@ -41,8 +41,8 @@
       id += c.id[i];
       const type = index.types[c.type[i]], area = index.areas[c.area[i]], town = index.towns[c.town[i]];
       const st = c.stations[i], stations = [];
-      for (let j = 0; j < st.length; j += 2) {  // [name, walk minutes, bus minutes, car km] (nulls when not)
-        const m = st[j + 1];
+      for (let j = 0; j < st.length; j++) {  // [name, walk minutes, bus minutes, car km] (nulls when not)
+        const m = c.access[i][j];
         stations.push([index.stations[st[j]], m >= 0 && m < 1000 ? m : null, m < 0 ? -m : null, m >= 1000 ? (m - 1000) / 10 : null]);
       }
       const it = {
@@ -53,7 +53,7 @@
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null,
-        lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: photo(c.image[i], String(id)),
+        lng: town ? town[2] : null, name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], String(id)),
       };
       items[i] = it;
     }

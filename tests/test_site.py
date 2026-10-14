@@ -291,7 +291,7 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     (tmp_path / "rail.json").write_text(json.dumps({"lines": [], "stations": [   # where the railway data has them
         ["小川町", 35.6949, 139.7676, []], ["小川町", 36.0567, 139.2614, []], ["二子玉川", 35.6118, 139.6267, []]]}))
     built = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
-    assert built["tokyo"]["stations"] == ["小川町（東京）", "二子玉川"]
+    assert set(built["tokyo"]["stations"]) == {"小川町（東京）", "二子玉川"}
     assert built["saitama"]["stations"] == ["小川町（埼玉）"]
     assert built["kanagawa"]["stations"] == ["二子玉川"]          # one station near the border: one name
     assert [p for p, _, _ in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
