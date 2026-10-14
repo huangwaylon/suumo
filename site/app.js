@@ -1686,7 +1686,9 @@
       if (k) { if (e.target.open) openFolds.add(k); else openFolds.delete(k); }
     }, true);
     $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
-      if (e.target.id === "station-q" && e.key === "Enter") $("station-list").querySelector('button[aria-pressed="false"]')?.click();
+      if (e.target.id !== "station-q" || e.key !== "Enter") return;
+      e.preventDefault();  // (else Enter also activates the chip that gets the focus, undoing it)
+      $("station-list").querySelector('button[aria-pressed="false"]')?.click();
     });
     $("pref").addEventListener("click", () => openPrefs(true));
     $("prefs-close").addEventListener("click", () => openPrefs(false));
