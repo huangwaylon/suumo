@@ -111,7 +111,7 @@
   // issue, a workflow applies it and rebuilds the site. Until then the request shows here as pending.
   const REPO = "https://github.com/huangwaylon/suumo";
   const PENDING_HOURS = 24;   // a request that never arrived (issue not sent) is forgotten after this
-  let pending = stored("suumo.pending", {});  // key -> [save: true | false, time requested]
+  let pending = stored("suumo.pending", {});  // key -> [save: true | false, time requested, prefecture]
   const favs = new Set();      // the saved list as it shows here: the site's list with the pending requests applied
 
   // ---------- formatting ----------
@@ -251,7 +251,7 @@
 
   function compute() {
     if (mode === "search") return Filter.search(db, q);
-    const away = [...new Set([...favs].map((k) => manifest.saved[k]).filter((p) => p && !loaded.has(p)))];
+    const away = [...new Set([...favs].map((k) => manifest.saved[k] ?? pending[k]?.[2]).filter((p) => p && !loaded.has(p)))];
     if (away.length) loadPrefs(away).then(() => { fitNext = "results"; render(); });  // saved listings in prefectures not loaded yet
     return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => allByKey.get(k)).filter(Boolean));
   }
@@ -1560,7 +1560,7 @@
     const title = `${save ? "save" : "unsave"} ${key}`;  // read by suumo/saved.py
     window.open(`${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(t("issueBody", location.origin + location.pathname + hashFor({ id: key })))}`,
       "_blank", "noopener");
-    pending[key] = [save, Date.now()];
+    pending[key] = [save, Date.now(), [...loaded].find(([, d]) => d.byKey.has(key))?.[0]];  // (its prefecture: loaded to list it)
     refreshFavs();
     setFavButtons(key);
     toast(t(save ? "favAdded" : "favRemoved"));
