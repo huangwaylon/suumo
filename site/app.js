@@ -1043,7 +1043,6 @@
     panel.className = "rail-panel";
     panel.hidden = true;
     open.addEventListener("click", () => { panel.hidden = !panel.hidden; if (!panel.hidden) railPanel(); });
-    panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { panel.hidden = true; open.focus(); } });
     panel.addEventListener("change", (e) => {  // a switch: all lines, or one operator
       const op = e.target.dataset.op;
       if (op == null) settings.rail = e.target.checked;
@@ -1360,6 +1359,7 @@
   function openTab(key) {
     if (key === "list") return toList();
     if (isListing(key)) addTabs([key]);
+    map?.closePopup();  // (opened from a popup: the ring shows where it is)
     const from = tab;
     if (from === "list") openedFrom = key;
     showTab(key);
@@ -1753,6 +1753,7 @@
       } else if (b.dataset.fit) { fitNext = "results"; placeMap(); }
       else if (b.dataset.onMap) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
         fitNext = { id: b.dataset.onMap };
+        map.closePopup();
         placeMap();
         if (!SPLIT.matches) setSheet("half", false);
       }
@@ -1812,8 +1813,13 @@
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
       if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
-      if (e.key !== "Escape" || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-      if (!$("settings").hidden) openSettings(false);
+      if (e.key !== "Escape" || e.target.matches("input:not([type=checkbox]), select, textarea")) return;
+      const railPanel = $("map").querySelector(".rail-panel:not([hidden])");
+      if ($("map").contains(e.target) && (railPanel || $("map").querySelector(".leaflet-popup"))) {  // a popup, the lines panel
+        if (railPanel) { railPanel.hidden = true; $("map").querySelector(".rail-btn").focus(); }
+        else { map.closePopup(); $("map").focus({ preventScroll: true }); }
+      }
+      else if (!$("settings").hidden) openSettings(false);
       else if (!$("prefs").hidden) openPrefs(false);
       else if (document.body.classList.contains("show-filters")) openFilters(false);
       else if (tab !== "list" && (e.target === document.body || $("panel").contains(e.target))) toList();
