@@ -44,6 +44,7 @@
     $("sort").innerHTML = Object.entries(t("sorts")).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
     $("filters-body").innerHTML = "";  // rebuilt in the new language
     $("sort").value = q.sort;
+    sheetSemantics();  // its labels depend on the rail's state
   }
 
   function renderSettings() {
@@ -471,7 +472,8 @@
 
   // ---------- filters ----------
 
-  const filtersVisible = () => WIDE.matches || document.body.classList.contains("show-filters");
+  const railOn = () => WIDE.matches && !settings.railOff;  // desktop: the filter rail, unless hidden (remembered)
+  const filtersVisible = () => railOn() || document.body.classList.contains("show-filters");
   const CHOICES = { priceMin: PRICES, priceMax: PRICES, plan: PLANS.map(([v]) => v), sizeMin: SIZES, landMin: LANDS,
     ageMax: AGES, walk: WALKS };
 
@@ -1095,12 +1097,23 @@
       sheet.setAttribute("role", "dialog");
       sheet.setAttribute("aria-modal", "true");
     }
-    $("filters-open").setAttribute("aria-expanded", open);
+    $("filters-open").setAttribute("aria-expanded", WIDE.matches ? railOn() : open);
     for (const el of [document.querySelector(".bar"), document.querySelector(".results")]) el.inert = open;
+    // desktop: the rail can be hidden, giving its width to the results
+    document.body.classList.toggle("rail-off", WIDE.matches && !railOn());
+    $("filters-open").setAttribute("aria-label", t(WIDE.matches ? (railOn() ? "filtersHide" : "filtersShow") : "filtersOpen"));
+    $("filters-close").setAttribute("aria-label", t(WIDE.matches ? "filtersHide" : "close"));
   }
 
   // section: scroll the filters to it (a chip's label edits its condition)
   function openFilters(open, section) {
+    if (WIDE.matches && railOn() !== open) {
+      settings.railOff = !open;
+      saveSettings();
+      sheetSemantics();
+      setTimeout(() => map?.invalidateSize(), 250);  // after the columns' transition
+      if (!open) { $("filters-open").focus(); return; }
+    }
     if (open && !WIDE.matches && !document.body.classList.contains("show-filters")) {
       history.pushState({ sheet: true }, "", location.href);  // browser back closes the sheet
     }
@@ -1149,7 +1162,7 @@
       if (COARSE.matches) e.target.blur(); else e.target.focus();
     });
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
-    $("filters-open").addEventListener("click", () => openFilters(true));
+    $("filters-open").addEventListener("click", () => openFilters(!railOn()));
     $("filters-close").addEventListener("click", () => openFilters(false));
     $("apply").addEventListener("click", () => openFilters(false));
     $("clear").addEventListener("click", clearAll);
@@ -1265,7 +1278,7 @@
       else if (!$("detail").hidden) closeDetail();
       else if (document.body.classList.contains("show-filters")) openFilters(false);
     });
-    WIDE.addEventListener("change", () => { render(); showSide(); });
+    WIDE.addEventListener("change", () => { sheetSemantics(); render(); showSide(); });
     $("map-toggle").addEventListener("click", () => {  // desktop: the map in the side panel, or more room for the list
       settings.map = !mapOn();
       saveSettings();
