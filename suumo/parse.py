@@ -60,13 +60,12 @@ def parse_station(s):
     m = _station.search(s)
     if m:
         st = {"line": m.group(1).strip() or None, "name": m.group(2)}
-        rest = s[m.end():]
     else:  # new-condo list format: "line/station 徒歩N分"
         m = re.match(r"(.+?)/(\S+)", s)
         if not m:
             return None
         st = {"line": m.group(1), "name": m.group(2)}
-        rest = s[m.end():]
+    rest = s[m.end():]
     if st["line"] and "バス" in st["line"]:  # a bus line's stop listed as access, not a rail station
         st["bus_stop"] = True
     b = _bus.search(rest)

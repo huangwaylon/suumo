@@ -6,15 +6,13 @@ prefecture fetches every station and tram stop inside the box its geocoded towns
 elsewhere. The cache ({name: [kana, english]}) is filled once per prefecture; delete it to refresh. Bus stops
 aren't in Wikidata and stay kanji only.
 """
-import json
 import re
 import unicodedata
 from collections import Counter
 
 import requests
 
-from .archive import write_atomic
-from .geo import load_cache
+from .geo import load_cache, save_cache
 from .scope import PREFS
 
 API = "https://query.wikidata.org/sparql"
@@ -90,7 +88,7 @@ def update(cache_path, towns_path, prefs, log=print):
         cache.update(found)
         cache["_prefs"] = sorted({*cache.get("_prefs", []), pref})
         log(f"station names: {len(found):,} in {pref}")
-    write_atomic(cache_path, (json.dumps(cache, ensure_ascii=False, indent=0, sort_keys=True) + "\n").encode())
+    save_cache(cache_path, cache)
 
 
 def names(cache_path):

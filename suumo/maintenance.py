@@ -1,6 +1,6 @@
 """Maintenance that isn't part of a run: out-of-scope cleanup and re-parsing the raw archive."""
 import shutil
-from collections import defaultdict
+from collections import Counter
 from pathlib import Path
 
 from .archive import Archive
@@ -24,7 +24,7 @@ def prune(db, archive: Archive, targets, data_dir: Path, apply=False, log=print)
         log("nothing out of scope")
         return 0
     gone_prefs = sorted({r["pref"] for r in db.x("SELECT DISTINCT pref FROM listings")} - {t.pref for t in targets})
-    by = defaultdict(int)
+    by = Counter()
     for r in oos:
         by[f"{r['pref']}/{r['type']}"] += r["n"]
     log(f"out of scope: {dict(by)} | whole prefectures: {gone_prefs or 'none'}")

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS areas (
 
 CREATE TABLE IF NOT EXISTS queue (
     type TEXT NOT NULL, id TEXT NOT NULL,
-    priority INTEGER NOT NULL,        -- 2 new in a tracked area, 1 changed listing, 0 backfill
+    priority INTEGER NOT NULL,        -- 1 new since the area's baseline, 0 backfill
     reason TEXT NOT NULL, enqueued_at TEXT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
     PRIMARY KEY (type, id)
@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS events (
     type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL, area_code TEXT NOT NULL,
     payload TEXT NOT NULL                       -- {"price"} (+ "old_price" for price_changed)
 );
-DROP INDEX IF EXISTS events_posted;
 
 CREATE TABLE IF NOT EXISTS prefs (           -- when each prefecture's search results were last crawled
     pref TEXT PRIMARY KEY, crawled_at TEXT NOT NULL

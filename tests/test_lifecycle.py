@@ -5,12 +5,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from suumo import pipeline
 from suumo.archive import Archive
 from suumo.db import DB
 from suumo.export import export
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
-from tests.helpers import QUIET
+from tests.helpers import FIXTURES, QUIET
 
 JST = ZoneInfo("Asia/Tokyo")
 AREA = {"code": "13219", "name": "狛江市", "slug": "sc_komae", "expected": 0}
@@ -268,3 +269,23 @@ def test_rotating_prefectures_are_crawled_in_turn(tmp_path):
                     [("saitama", "land"), ("saitama", "used_house"), ("tokyo", "land")],
                     [("chiba", "land"), ("tokyo", "land")],
                     [("saitama", "land"), ("saitama", "used_house"), ("tokyo", "land")]]
+
+
+def test_area_crawl_requests_allowed_paths_and_archives_every_page(env, monkeypatch):
+    db, archive, targets, _, _ = env
+    page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")  # 67 hits, all on page 1
+
+    class Client:
+        paths = []
+
+        def get(self, path):
+            self.paths.append(path)
+            return page
+
+    monkeypatch.setattr(pipeline, "page_count", lambda hits: 2)  # pretend there is a second page
+    p = Pipeline(db, archive, Client(), targets, T0, "r0", log=QUIET)
+    out = p.crawl_area("tokyo", "used_condo", AREA)
+    assert Client.paths == ["/ms/chuko/tokyo/sc_komae/?pc=100", "/ms/chuko/tokyo/sc_komae/?pc=100&page=2"]
+    assert [f.name for f in archive.list_pages("tokyo", "20261005", "used_condo")] == \
+        ["sc_komae_p1.html.gz", "sc_komae_p2.html.gz"]
+    assert (out["status"], out["hits"], out["parsed"]) == ("complete", 67, 67)

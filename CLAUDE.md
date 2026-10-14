@@ -41,7 +41,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 - `listings` (PK `type, id`): `list_json` (search-result fields, refreshed every crawl), `detail_json` (listing-page
   fields), `status` active/removed, `first_seen`, `last_seen`, `missed`, `removed_at`.
 - `areas` (PK `pref, type, code`): `slug`, `baselined`, `last_hits`, `last_status` (complete / incomplete / suspect / error).
-- `queue` (PK `type, id`): `priority` 2 new / 1 changed / 0 backfill, `attempts`, `last_error` (`parse:` prefix = parser failure).
+- `queue` (PK `type, id`): `priority` 1 new / 0 backfill, `attempts`, `last_error` (`parse:` prefix = parser failure).
 - `events`: `kind` new / price_changed / removed / relisted, `payload` `{"price"}` (+ `"old_price"` for price
   changes), exported per run to `data/events/<run_id>.json`; the site's 新着, 値下げ and price history come from them.
   (Older databases also carry unused columns: `events.posted`, `listings.detail_fetched/info_date/next_update`,

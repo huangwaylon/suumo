@@ -1,6 +1,6 @@
 """Crawl search results, reconcile each area's listings, fetch listing pages from the queue, clean up.
 
-Every run (hourly) crawls all search results and diffs them against the DB. Lifecycle of a listing:
+A run crawls the search results (once a day with `--crawl-at`) and diffs them against the DB. Lifecycle of a listing:
   first seen -> stored; its listing page is fetched once (never again: later crawls refresh the search-result
     fields, so price changes still show)
   missing from REMOVE_AFTER_MISSES consecutive complete crawls of its area -> `removed` event, then
@@ -107,21 +107,23 @@ class Pipeline:
 
     def _fetch_area(self, pref, type_key, a):
         path = f"/{TYPES[type_key]}/{pref}/{a['slug']}/?pc={PAGE_SIZE}"
-        recs, errors = {}, []
-        html = self.client.get(path)
-        self.archive.save_list(pref, self.day, type_key, f"{a['slug']}_p1", html)
-        hits, first = parse_list_page(html, type_key, a)
-        recs.update((r["id"], r) for r in first)
-        for page in range(2, page_count(hits) + 1):
+
+        def page(n):
+            html = self.client.get(path if n == 1 else f"{path}&page={n}")
+            self.archive.save_list(pref, self.day, type_key, f"{a['slug']}_p{n}", html)
+            hits, recs = parse_list_page(html, type_key, a)
+            return hits, {r["id"]: r for r in recs}
+
+        hits, recs = page(1)
+        errors = []
+        for n in range(2, page_count(hits) + 1):
             try:
-                html = self.client.get(f"{path}&page={page}")
-                self.archive.save_list(pref, self.day, type_key, f"{a['slug']}_p{page}", html)
-                _, more = parse_list_page(html, type_key, a)
-                recs.update((r["id"], r) for r in more)
+                more = page(n)[1]
+                recs.update(more)
                 if not more:
-                    errors.append(f"page {page} empty")
+                    errors.append(f"page {n} empty")
             except Exception as e:  # the area is just marked incomplete
-                errors.append(f"page {page}: {e!r}")
+                errors.append(f"page {n}: {e!r}")
         return hits, recs, errors
 
     def crawl_area(self, pref, type_key, a):

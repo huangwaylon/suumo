@@ -1,17 +1,17 @@
 """Maintenance commands, the run lock, git data commits, polite fetching and long runs (no network)."""
 import json
 import subprocess
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from suumo import http, pipeline
+from suumo import http, pipeline, saved
 from suumo.archive import Archive
-from suumo.cli import is_locked, print_progress
+from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
-from suumo.geo import town_of
+from suumo.geo import _municipality, _same_spelling, town_of
 from suumo.gitdata import commit_data
 from suumo.maintenance import prune, reparse
 from suumo.pipeline import Pipeline
@@ -188,9 +188,6 @@ def test_town_of_drops_block_numbers_and_adds_the_prefecture(address, town):
 
 
 def test_archive_ignores_stray_files_in_list_days(tmp_path):
-    from datetime import date
-
-    from suumo.archive import Archive
     a = Archive(tmp_path)
     (tmp_path / "tokyo/list/20260101").mkdir(parents=True)
     (tmp_path / "tokyo/list/.DS_Store").write_text("")
@@ -200,7 +197,6 @@ def test_archive_ignores_stray_files_in_list_days(tmp_path):
 
 
 def test_saved_list_applies_issue_titles(tmp_path):
-    from suumo import saved
     path = tmp_path / "saved.json"
     assert saved.apply(path, "save used_condo:20205670") == "saved used_condo:20205670"
     assert saved.apply(path, "save used_condo:20205670") == "saved used_condo:20205670 (no change)"
@@ -213,27 +209,18 @@ def test_saved_list_applies_issue_titles(tmp_path):
 
 
 def test_geocoder_titles_match_district_towns_and_ke_spellings():
-    from suumo.geo import _municipality, _same_spelling
     assert _same_spelling("神奈川県箱根町強羅").startswith(_municipality("神奈川県足柄下郡箱根町強羅"))
     assert _same_spelling("茨城県龍ケ崎市佐貫町").startswith(_municipality("茨城県龍ヶ崎市佐貫町"))
     assert not _same_spelling("東京都府中市").startswith(_municipality("広島県府中市"))
 
 
 def test_hourly_runs_stop_listing_pages_before_the_next_run():
-    from datetime import datetime
-
-    from suumo.cli import seconds_until_minute
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 30, 0), 55) == 25 * 60
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 58, 30), 55) == 56 * 60 + 30   # next hour's :55
     assert seconds_until_minute(datetime(2026, 10, 6, 21, 55, 0), 55) == 0
 
 
 def test_search_results_are_crawled_once_a_day(tmp_path):
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    from suumo.cli import crawl_due
-    from suumo.db import DB
     jst = ZoneInfo("Asia/Tokyo")
     db = DB(tmp_path / "s.db")
     assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                     # never crawled
