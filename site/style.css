@@ -238,6 +238,7 @@ body.show-filters .filters { transform: none; visibility: visible; transition: t
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
 .filters-foot { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 10px 16px calc(10px + var(--safe-b));
   border-top: 1px solid var(--line); }
+.filters-foot .btn { padding: 0 12px; white-space: nowrap; }
 .sec { padding: 16px 0; border-bottom: 1px solid var(--line); }
 .sec:last-child { border-bottom: 0; }
 .sec:empty { display: none; }
@@ -385,8 +386,20 @@ details.group .opts { padding-bottom: 12px; }
 
 /* The list's columns follow the panel's width (a container): rows, then 2 or 3 columns of tiles ----- */
 .panel { container-type: inline-size; }
+@container (max-width: 479px) {
+  /* the head in one row: the count (short), ☆, the sort as an icon */
+  .toolbar { flex-wrap: nowrap; padding: 0 6px 0 12px; }
+  .pref-btn { flex: 0 1 auto; min-width: 0; }  /* (its name gives way first: the chips below name them) */
+  .pref-btn span { min-width: 0; }
+  .pref-btn, #count { font-size: 14px; }
+  .fit-btn { font-size: 12px; }
+  #sort { width: 40px; padding: 0; border-color: transparent; color: transparent; background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4'/></svg>")
+    no-repeat center / 20px; }
+  #sort option { color: var(--text); }
+}
 @container (max-width: 359px) {
-  .card > a { grid-template-columns: minmax(0, 1fr); }  /* the photo on top, full width */
+  .card > a { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }  /* a small photo: the price in sight */
 }
 @container (max-width: 599px) {
   /* the quick chips and the conditions in one row that swipes, the list in sight */

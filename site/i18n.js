@@ -5,7 +5,7 @@ window.I18N = {
   ja: {
     lang: "ja", title: "物件さがし", brand: "物件さがし",
     search: "駅名・地名", searchLabel: "駅・町名・物件名で検索",
-    filters: "条件", filtersOpen: "条件を変更", filtersShow: "条件を表示", filtersHide: "条件を隠す", close: "閉じる", clearAll: "すべてクリア", show: (n) => `${n}件を表示`,
+    filters: "条件", filtersOpen: "条件を変更", filtersShow: "条件を表示", filtersHide: "条件を隠す", close: "閉じる", clearAll: "すべてクリア", clear: "クリア", show: (n) => `${n}件を表示`,
     favorites: "お気に入り", saved: "保存済み", settings: "設定", openSuumo: "SUUMOで見る",
     loading: "読み込み中…", railLayer: "路線", closeTab: (l) => `${l} を閉じる`, closeAll: "すべて閉じる", compareTab: "比較", railCredit: "鉄道: 国土数値情報・ODPT", railShow: "路線を表示", railAll: "すべて表示", railNone: "すべて非表示", stationHomes: (n) => `この駅の物件 ${n}件`, quickNew: "新着", quickDrop: "値下げ", sinceVisit: "前回の訪問以降",
     hoursAgo: (n) => (n < 1 ? "1時間以内" : `${n}時間前`),
@@ -83,7 +83,7 @@ window.I18N = {
   en: {
     lang: "en", title: "Home Search", brand: "Home Search",
     search: "Station, area", searchLabel: "Search by station, area or building name",
-    filters: "Filters", filtersOpen: "Change filters", filtersShow: "Show filters", filtersHide: "Hide filters", close: "Close", clearAll: "Clear all", show: (n) => `Show ${n}`,
+    filters: "Filters", filtersOpen: "Change filters", filtersShow: "Show filters", filtersHide: "Hide filters", close: "Close", clearAll: "Clear all", clear: "Clear", show: (n) => `Show ${n}`,
     favorites: "Favorites", saved: "Saved", settings: "Settings", openSuumo: "View on SUUMO",
     loading: "Loading…", railLayer: "Lines", closeTab: (l) => `Close ${l}`, closeAll: "Close all", compareTab: "Compare", railCredit: "Rail: MLIT, ODPT", railShow: "Show lines", railAll: "Show all", railNone: "Hide all", stationHomes: (n) => `${n} homes near this station`, quickNew: "New", quickDrop: "Price cuts", sinceVisit: "Since your last visit",
     hoursAgo: (n) => (n < 1 ? "just now" : `${n}h ago`),

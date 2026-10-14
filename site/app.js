@@ -305,7 +305,8 @@
   function listResults(moved = false) {
     const here = mode === "search" && !!view;
     hits = here ? inArea(mapHits, view) : mapHits;
-    $("count").textContent = mode === "favorites" ? t("favBanner", num(hits.length)) : t(here ? "inView" : "count", num(hits.length));
+    const short = $("panel").clientWidth < 480;  // a narrow list: "1,234件 / 全5,678件" (style.css: the head in one row)
+    $("count").textContent = mode === "favorites" ? t("favBanner", num(hits.length)) : t(here && !short ? "inView" : "count", num(hits.length));
     // said aloud once the conditions changed (and the map followed them), not on every pan
     if (!moved && !sayTimer) sayTimer = setTimeout(() => { $("count-live").textContent = $("count").textContent; sayTimer = null; }, 700);
     $("fit").hidden = !here;
