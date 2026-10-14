@@ -12,7 +12,6 @@ window.I18N = {
     areaNote: "地図を動かすと一覧が変わります", areaEmpty: "この範囲に条件に合う物件はありません",
     savedSearches: "保存した条件", allListings: "すべて", freshN: (n) => `+${n}`, keepSearch: "この条件を保存",
     unkeepSearch: "保存した条件から外す", searchKept: "この条件を保存しました", searchRemoved: "保存した条件から外しました",
-   
     dailyEmpty: ["新着はまだありません", "毎時更新されます。新しく掲載された物件が日ごとにここに並びます。"],
     skip: "結果へ移動", skipFilters: "条件へ移動", skipMap: "地図へ移動", map: "地図", list: "リスト", sort: "並び替え", count: (n) => `${n}件`,
     remove: (label) => `${label}を外す`, paren: (s) => `（${s}）`, updated: (d) => `データ更新: ${d}`,
@@ -34,11 +33,9 @@ window.I18N = {
     chipText: (s) => `「${s}」`, station: (s) => `${s}駅`,
     emptyTitle: "条件に合う物件がありません", emptyHint: "条件をひとつ外すと見つかるかもしれません。",
     favEmpty: ["お気に入りはまだありません", "物件のハートを押してGitHubで送信すると、みんなのお気に入りに保存されます。掲載が終わっても残ります。"],
-   
     favBanner: (n) => `お気に入り ${n}件`,
     compare: "比較する", showCards: "一覧で見る", save: "保存", useStation: (s) => `${s}駅で絞り込む`, useArea: (a) => `${a}で絞り込む`,
     walkFromNearest: "最寄駅から", walkFromChosen: "選んだ駅から", moreTags: "ほかのこだわり",
-   
     favFor: (price, layout, town) => `お気に入り: ${[price, layout, town].filter(Boolean).join(" ")}`,
     favAdded: "GitHubで送信すると保存されます（GitHubアカウントが必要・反映まで数分）", favRemoved: "GitHubで送信すると外れます（反映まで数分）",
     issueBody: (url) => `この物件を共有のお気に入りに反映します。そのまま「Create」を押してください。\n\n${url}`,
@@ -62,7 +59,6 @@ window.I18N = {
     unitsN: (n) => `${n}戸`, yes: "あり", excludesBuilding: "建物価格別",
     perM2: (k) => `${(k / 10).toFixed(1)}万円/㎡`, perTsubo: (k) => `坪${Math.round(k / 10)}万円`, tsubo: (v) => `${v}坪`,
     width: (v) => `幅${v}m`, walkMin: (n) => `徒歩${n}分`, busMin: (n) => `バス${n}分`, stopWalk: (n) => `停歩${n}分`,
-    values: {},
     // settings
     theme: "テーマ", themes: { auto: "システム", light: "ライト", dark: "ダーク" }, language: "言語",
   },
@@ -76,7 +72,6 @@ window.I18N = {
     areaNote: "Move the map to change the list", areaEmpty: "No matching homes in this area",
     savedSearches: "Saved searches", allListings: "All", freshN: (n) => `+${n}`, keepSearch: "Save this search",
     unkeepSearch: "Remove this saved search", searchKept: "Search saved", searchRemoved: "Saved search removed",
-   
     dailyEmpty: ["No new listings yet", "Updated hourly: newly listed homes appear here, grouped by day."],
     skip: "Skip to results", skipFilters: "Skip to filters", skipMap: "Skip to map", map: "Map", list: "List", sort: "Sort", count: (n) => `${n} ${n === "1" ? "home" : "homes"}`,
     remove: (label) => `Remove ${label}`, paren: (s) => ` (${s})`, updated: (d) => `Data updated ${d}`,
@@ -98,11 +93,9 @@ window.I18N = {
     chipText: (s) => `“${s}”`, station: (s) => s,
     emptyTitle: "No homes match", emptyHint: "Removing one filter may help.",
     favEmpty: ["No favorites yet", "Tap the heart on a listing and submit the GitHub issue: it's saved for everyone, and kept after the listing ends."],
-   
     favBanner: (n) => `${n} ${n === "1" ? "favorite" : "favorites"}`,
     compare: "Compare", showCards: "Show as cards", save: "Save", useStation: (s) => `Filter by ${s} Station`, useArea: (a) => `Filter by ${a}`,
     walkFromNearest: "From the nearest station", walkFromChosen: "From the chosen stations", moreTags: "More features",
-   
     favFor: (price, layout, town) => `Favorite: ${[price, layout, town].filter(Boolean).join(" ")}`,
     favAdded: "Saved once you submit the GitHub issue (needs a GitHub account; a few minutes)", favRemoved: "Removed once the GitHub issue is submitted (a few minutes)",
     issueBody: (url) => `Applies this listing to the shared favorites. Just press "Create".\n\n${url}`,

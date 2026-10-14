@@ -10,6 +10,7 @@
 
   const stored = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
   const settings = { lang: "ja", theme: "auto", ...stored("suumo.settings", {}) };
+  const saveSettings = () => localStorage.setItem("suumo.settings", JSON.stringify(settings));
   if (!I18N[settings.lang]) settings.lang = "ja";
   let S = I18N[settings.lang] || I18N.ja;
   const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
@@ -31,7 +32,6 @@
     const dark = settings.theme === "dark" || (settings.theme === "auto" && DARK.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--surface");
-    localStorage.setItem("suumo.settings", JSON.stringify(settings));
   }
 
   function applyLanguage() {
@@ -44,7 +44,6 @@
     $("sort").innerHTML = Object.entries(t("sorts")).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
     $("filters-body").innerHTML = "";  // rebuilt in the new language
     $("sort").value = q.sort;
-    localStorage.setItem("suumo.settings", JSON.stringify(settings));
   }
 
   function renderSettings() {
@@ -91,8 +90,8 @@
   let showMap = false;
   let compare = false;          // favorites as a side-by-side table
   let area = null;              // [south, west, north, east]: the map view, listing what's in the visible area
-  let mapHits = [];
-  let byDay = false;            // the list has a heading per day (what's new, newest first)             // what the map shows: the results (in the map area view, before the area cut)
+  let mapHits = [];             // what the map shows: the results (in the map area view, before the area cut)
+  let byDay = false;            // the list has a heading per day (what's new, newest first)
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
@@ -231,7 +230,9 @@
   }
 
   function update(top = true) {
-    history.replaceState(null, "", hashFor());
+    // the phone sheet's entry stays one (closing it goes back to the page, keeping the changes); a view's doesn't
+    // (switching back would undo the changes)
+    history.replaceState(history.state?.sheet ? history.state : null, "", hashFor());
     if (mode === "search") localStorage.setItem("suumo.last", location.hash);  // reopened later: the same search
     render();
     if (top && !WIDE.matches) window.scrollTo({ top: 0 });
@@ -261,8 +262,6 @@
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
     $("filters-n").textContent = set;
-    $("favs-n").hidden = !favs.size;
-    $("favs-n").textContent = favs.size;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
     const offers = mode === "search" ? suggestions() : [];
@@ -371,14 +370,10 @@
       <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
 
-  function renderBanner() {
+  function renderBanner() {  // favorites: the compare switch
     const b = $("banner");
-    b.hidden = mode === "search";
-    const cmp = hits.length > 1 ? `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>` : "";
-    if (mode === "favorites") {
-      b.innerHTML = cmp;
-      b.hidden = !cmp;
-    }
+    b.hidden = mode !== "favorites" || hits.length < 2;
+    if (!b.hidden) b.innerHTML = `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>`;
   }
 
   function applySuggestion(field, v) {  // the typed name becomes a condition
@@ -525,7 +520,7 @@
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);
     const flagsShown = FLAGS.filter((f) => f !== "post1981" && (q[f] || (facets[f] && narrows(facets[f]))));
     sec("extra", !flagsShown.length && !shownTags.length ? "" : `${h3("extra")}<div class="opts">${flagsShown.map((f) =>
-      flag(f, facets[f])).join("")}</div><div class="opts" style="margin-top:10px">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
+      flag(f, facets[f])).join("")}</div><div class="opts">${shownTags.slice(0, 12).map(tagChip).join("")}</div>${
       shownTags.length > 12 ? `<details class="group"><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.slice(12).map(tagChip).join("")}</div></details>` : ""}`);
     $("apply").textContent = t("show", num(facets.total));
     $("clear").disabled = !activeConditions().length;
@@ -700,6 +695,8 @@
     }
     return d;
   }).catch(() => { railData = null; return null; }));
+  const stationDot = (latlng, name, renderer) => L.circleMarker(latlng, { renderer, radius: 4, color: "#3a3f48", weight: 1.5,
+    fillColor: "#fff", fillOpacity: 1 }).bindTooltip(name, { direction: "top", offset: [0, -4] });
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
   const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
@@ -712,8 +709,7 @@
     const canvas = L.canvas({ padding: 0.3 });
     railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
     railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
-      L.circleMarker([lat, lng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
-        .bindTooltip(name, { direction: "top", offset: [0, -4] }).bindPopup(() => stationPopup(name, lines))));
+      stationDot([lat, lng], name, canvas).bindPopup(() => stationPopup(name, lines))));
     map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
     const open = document.createElement("button"), panel = document.createElement("div");
     open.className = "rail-btn";
@@ -725,7 +721,7 @@
       if (op == null) settings.rail = e.target.checked;
       else if (e.target.checked) hiddenOps.delete(op); else hiddenOps.add(op);
       settings.railHidden = [...hiddenOps];
-      localStorage.setItem("suumo.settings", JSON.stringify(settings));
+      saveSettings();
       showRail();
     });
     panel.addEventListener("click", (e) => {
@@ -800,8 +796,7 @@
     }
     for (const [name, slat, slng] of data.stations) {
       if (Math.abs(slat - lat) < 0.03 && Math.abs(slng - lng) < 0.03) {
-        L.circleMarker([slat, slng], { renderer: canvas, radius: 4, color: "#3a3f48", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
-          .bindTooltip(name, { direction: "top", offset: [0, -4] }).addTo(target);
+        stationDot([slat, slng], name, canvas).addTo(target);
       }
     }
   }
@@ -1173,6 +1168,7 @@
       const b = e.target.closest("[data-setting]");
       if (!b) return;
       settings[b.dataset.setting] = b.dataset.value;
+      saveSettings();
       if (b.dataset.setting === "theme") applyTheme();
       else { applyLanguage(); render(); if (openKey) showDetail(openKey); }
       renderSettings();
@@ -1266,7 +1262,7 @@
     WIDE.addEventListener("change", () => { render(); showSide(); });
     $("map-toggle").addEventListener("click", () => {  // desktop: the map in the side panel, or more room for the list
       settings.map = !mapOn();
-      localStorage.setItem("suumo.settings", JSON.stringify(settings));
+      saveSettings();
       showSide(mapOn() ? "map" : sideTab);
     });
     new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "800px" }).observe($("sentinel"));
