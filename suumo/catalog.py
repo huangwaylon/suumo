@@ -83,6 +83,29 @@ def is_bus(st, railway=None):
     return railway is not None and station_key(st["name"]) not in railway
 
 
+def unify_station_names(items):
+    """One spelling per station: every name is replaced by the most common spelling of its station_key among the
+    listings of the same prefecture (荻窪駅 -> 荻窪, 市ヶ谷 -> 市ケ谷, 駒澤大学 -> 駒沢大学 when those are the usual
+    ones; ties: the first in code-point order). Per prefecture, because the same key can be two stations: Tokyo's 霞ケ関
+    and Saitama's 霞ヶ関, 自由が丘 and Fukuoka's 自由ケ丘. SUUMO's own disambiguated names (藤沢（長野県）) stay as they
+    are. Rewrites the items' stations, bus and car access, and the station names in their records."""
+    seen = Counter((i.pref, name) for i in items for name, _ in i.stations if "（" not in name)
+    best = {}
+    for pref, name in sorted(seen, key=lambda pn: (-seen[pn], pn)):
+        best.setdefault((pref, station_key(name)), name)
+    rename = {pn: best[pn[0], station_key(pn[1])] for pn in seen if best[pn[0], station_key(pn[1])] != pn[1]}
+    for i in items:
+        new = {name: rename[i.pref, name] for name, _ in i.stations if (i.pref, name) in rename}
+        if not new:
+            continue
+        stops = {name for name, _ in i.stops}
+        i.stations = [(new.get(name, name), walk) for name, walk in i.stations]
+        i.bus = {new.get(k, k): v for k, v in i.bus.items()}
+        i.car = {new.get(k, k): v for k, v in i.car.items()}
+        i.rec = {**i.rec, "stations": [{**s, "name": new[s["name"]]} if s.get("name") in new and s["name"] not in stops
+                                       else s for s in i.rec["stations"]]}
+
+
 def _age_months(rec, today):
     """Whole months since it was built (new homes: 0)."""
     if rec["type"] in NEW_TYPES:
@@ -223,4 +246,5 @@ def load(data_dir, today: date, saved=(), rail_stations=()):
                     drops[key] = (at, old, new)
     for i in items:
         i.saved = i.key in saved
+    unify_station_names(items)
     return Snapshot(items, areas, dict(history), new_at, drops, today)

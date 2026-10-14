@@ -74,3 +74,15 @@ def test_bus_stops_are_told_from_stations_by_the_railway_nearby(tmp_path):
     item = load(tmp_path, TODAY, rail_stations=rail).items[0]
     assert item.stations == [("新静岡", 9)] and item.stops == [("丸子橋入口", 7), ("体育館前", 3)]
     assert load(tmp_path, TODAY).items[0].stops == []  # no railway data: only SUUMO's own バス marks count
+
+
+def test_one_spelling_per_station(tmp_path):
+    st = lambda *names: [{"line": "線", "name": n, "walk": 5} for n in names]  # noqa: E731
+    s = snap(tmp_path, rec(1, stations=st("荻窪", "市ケ谷")), rec(2, stations=st("荻窪駅", "市ヶ谷")),
+             rec(3, stations=st("荻窪", "藤沢（長野県）")), rec(4, stations=st("市ケ谷", "藤沢")),
+             rec(5, stations=[{"line": "JR中央線", "name": "荻窪駅", "bus": 8}]))
+    by_id = {i.rec["id"]: i for i in s.items}
+    assert by_id["2"].stations == [("荻窪", 5), ("市ケ谷", 5)]
+    assert [st["name"] for st in by_id["2"].rec["stations"]] == ["荻窪", "市ケ谷"]   # the listing page's names too
+    assert by_id["3"].stations == [("荻窪", 5), ("藤沢（長野県）", 5)]                # SUUMO's own split name stays
+    assert by_id["5"].bus == {"荻窪": 8}

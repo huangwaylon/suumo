@@ -84,7 +84,7 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   in `tests/test_site.py` build a site from synthetic records and run queries through filter.js in Node.
 - **Rules the site shows:** duplicates (`dup_key`) are folded at build time (`site.representatives`: the listing
   with its page fetched and most tags; the others become `others` links). Land
-  listed under both `new_house` and `land` is kept once, as land. Stations are identified by name. A building
+  listed under both `new_house` and `land` is kept once, as land. Stations are identified by name, one spelling per prefecture (`catalog.unify_station_names`: 荻窪駅 → 荻窪). A building
   condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly. 新着 = a new/relisted
   event within 7 days, 値下げ = a drop within 30 days.
 - **Public repo:** nothing secret in git (no `.env`, no tokens); commits use the GitHub noreply address
