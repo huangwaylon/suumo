@@ -171,13 +171,20 @@
   const typeName = (type) => t("types")[type];
   const safeUrl = (u) => (/^https:\/\//.test(u || "") ? u : "#");
   const areaName = (code) => place(areaNames.get(code) || code);
-  const planLabel = (v) => PLANS.find(([p]) => p === v)?.[1] ?? "";
+  // a plan rank (rooms × 3 + K 0 / DK 1 / LDK 2, see catalog.plan_rank) as written: 11 -> "3LDK"
+  const planLabel = (v) => PLANS.find(([p]) => p === v)?.[1] ?? `${Math.floor(v / 3)}${["K", "DK", "LDK"][v % 3]}`;
+  const ageLabel = (v) => t("ages")[v] ?? t("ageWithin", v);
 
   // ---------- URL <-> state ----------
 
   const KEYS = { q: "text", t: "types", a: "areas", st: "stations", f: "features", w: "walk", pmin: "priceMin",
     pmax: "priceMax", plan: "plan", s: "sizeMin", lm: "landMin", g: "ageMax", quake: "post1981", fh: "freehold",
     nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort" };
+
+  // Thresholds can be any sensible number (a link, a typed search), not only the offered choices.
+  const RANGE = { priceMin: [0, 1e11], priceMax: [0, 1e11], plan: [3, 30], sizeMin: [1, 2000], landMin: [1, 10000],
+    ageMax: [0, 100], walk: [1, 120], feesMax: [0, 200000] };
+  const within = (f, v) => v !== "" && Number.isFinite(+v) && RANGE[f] && +v >= RANGE[f][0] && +v <= RANGE[f][1];
 
   // URL parameters -> a query (unknown values dropped)
   function queryFrom(p) {
@@ -188,7 +195,7 @@
       if (Array.isArray(d)) out[f] = v ? v.split(",") : [];
       else if (typeof d === "boolean") out[f] = v === "1";
       else if (f === "since") out[f] = /^\d{10}$/.test(v) ? +v : null;
-      else if (d === null) out[f] = CHOICES[f].includes(+v) ? +v : null;
+      else if (d === null) out[f] = within(f, v) ? +v : null;
       else out[f] = v;
     }
     if (!Object.hasOwn(t("sorts"), out.sort)) out.sort = "new";
@@ -468,7 +475,7 @@
     if (of.plan != null) out.push([t("chipPlan", planLabel(of.plan)), reset("plan"), "plan"]);
     if (of.sizeMin != null) out.push([t("sizeMin", of.sizeMin), reset("sizeMin"), "size"]);
     if (of.landMin != null) out.push([t("chipLand", of.landMin), reset("landMin"), "size"]);
-    if (of.ageMax != null) out.push([t("ages")[of.ageMax] ?? t("ageYears", of.ageMax), reset("ageMax"), "age"]);
+    if (of.ageMax != null) out.push([ageLabel(of.ageMax), reset("ageMax"), "age"]);
     for (const s of of.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
     if (of.walk != null) out.push([t("walkWithin", of.walk), reset("walk"), "stations"]);
     for (const f of FLAGS) {
@@ -492,10 +499,13 @@
   const many = (field, v, label, n) => chipBtn(`data-many="${field}" data-value="${esc(v)}"`, label, n, q[field].includes(v));
   const one = (field, v, label, n) => chipBtn(`data-one="${field}" data-value="${v}"`, label, n, q[field] === v);
   const flag = (field, n) => chipBtn(`data-flag="${field}"`, t("flags")[field], n, q[field]);
+  // A value set by a link or a typed search that isn't one of the choices: shown as an extra choice (no count).
+  const withExtra = (field, values) => (q[field] == null || values.includes(q[field]) ? values : [...values, q[field]].sort((a, b) => a - b));
   function select(field, label, values, fmt) {
-    return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${values.map((v) =>
-      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}${esc(t("paren", num(facets[field][v] || 0)))}</option>`).join("")}</select></label>`;
+    return `<label class="field"><span>${esc(label)}</span><select class="select" data-num="${field}"><option value="">${esc(t("any"))}</option>${withExtra(field, values).map((v) =>
+      `<option value="${v}"${q[field] === v ? " selected" : ""}>${esc(fmt(v))}${values.includes(v) ? esc(t("paren", num(facets[field][v] || 0))) : ""}</option>`).join("")}</select></label>`;
   }
+  const count = (field, v) => (CHOICES[field].includes(v) ? facets[field][v] || 0 : null);  // none for an extra value
 
   function renderFilters() {
     const key = JSON.stringify({ ...q, sort: "" });  // the sort doesn't change any count
@@ -519,16 +529,16 @@
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
     sec("areas", `${h3("areas")}${areaGroups()}`);
     sec("price", `${h3("price")}${select("priceMin", t("min"), PRICES, (v) => t("priceMin", money(v)))}<p id="price-max">${esc(t("max"))}</p><div class="opts">${
-      PRICE_CHIPS.map((v) => one("priceMax", v, t("priceMax", money(v)), facets.priceMax[v] || 0)).join("")}</div>`);
-    sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${PLANS.map(([v, l]) =>
-      one("plan", v, t("planFrom", l), facets.plan[v] || 0)).join("")}</div>`);
+      withExtra("priceMax", PRICE_CHIPS).map((v) => one("priceMax", v, t("priceMax", money(v)), count("priceMax", v))).join("")}</div>`);
+    sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${withExtra("plan", CHOICES.plan).map((v) =>
+      one("plan", v, t("planFrom", planLabel(v)), count("plan", v))).join("")}</div>`);
     sec("size", `${h3("size")}${isLand ? "" : select("sizeMin", t("floorArea"), SIZES, (v) => t("sizeMin", v))}${
       q.types.length && q.types.every(isCondo) ? "" : select("landMin", t("landArea"), LANDS, (v) => t("landMin", v, Math.round(v / TSUBO)))}`);
-    sec("age", isLand ? "" : `${h3("age")}<div class="opts">${AGES.map((v) => one("ageMax", v, t("ages")[v], facets.ageMax[v] || 0)).join("")}${
+    sec("age", isLand ? "" : `${h3("age")}<div class="opts">${withExtra("ageMax", AGES).map((v) => one("ageMax", v, ageLabel(v), count("ageMax", v))).join("")}${
       flag("post1981", facets.post1981)}</div>`);
     stationList();
     $("walk-from").textContent = t(q.stations.length ? "walkFromChosen" : "walkFromNearest");
-    $("walk-list").innerHTML = WALKS.filter((w) => q.walk === w || narrows(facets.walk[w] || 0)).map((w) => one("walk", w, t("walkWithin", w), facets.walk[w] || 0)).join("");
+    $("walk-list").innerHTML = withExtra("walk", WALKS).filter((w) => q.walk === w || narrows(facets.walk[w] || 0)).map((w) => one("walk", w, t("walkWithin", w), count("walk", w))).join("");
     const tagNames = Object.keys(facets.features).sort((a, b) => facets.features[b] - facets.features[a]);
     const shownTags = [...q.features, ...tagNames.filter((f) => !q.features.includes(f) && narrows(facets.features[f])).slice(0, 30)];
     const tagChip = (f) => many("features", f, feature(f), facets.features[f] || 0);

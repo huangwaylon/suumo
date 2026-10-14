@@ -44,7 +44,7 @@ window.I18N = {
     usd: (s) => `≈ ${s}`, usdRate: (r, d) => `1ドル = ${r}円（${d}の為替レート、欧州中央銀行）`, gone: "この物件は掲載が終わりました", others: (n) => `ほか${n}社も掲載`,
     tag: { pending: "保存待ち（GitHubで送信）", pendingRemove: "解除待ち", gone: "掲載終了", relisted: "再掲載", new: "新着", dropped: "値下げ", leasehold: "借地権", conditional: "建築条件付" },
     undecided: "価格未定",
-    newBuild: "新築", ageUnder1: "築1年未満", ageYears: (n) => `築${n}年`,
+    newBuild: "新築", ageUnder1: "築1年未満", ageYears: (n) => `築${n}年`, ageWithin: (n) => `${n}年以内`,
     walk: (s, w) => `${s}駅 徒歩${w}分`, stopWalkTo: (s, w) => `${s}バス停${w != null ? ` 徒歩${w}分` : ""}`, busStop: (s) => `${s}バス停`, bus: (s, m) => `${s}駅 バス${m ? `${m}分` : ""}`, car: (s, km) => `${s}駅 車${km}km`, carKm: (km) => `車${km}km`, land: "土地", building: "建物",
     date: (y, m, d) => `${y}年${m}月${d}日`, month: (y, m) => `${y}年${m}月`,
     // listing
@@ -105,7 +105,7 @@ window.I18N = {
     usd: (s) => `≈ ${s}`, usdRate: (r, d) => `1 USD = ${r} JPY (ECB reference rate, ${d})`, gone: "This listing has ended", others: (n) => `+${n} more agent${n > 1 ? "s" : ""}`,
     tag: { pending: "Pending (submit on GitHub)", pendingRemove: "Removal pending", gone: "Ended", relisted: "Relisted", new: "New", dropped: "Price cut", leasehold: "Leasehold", conditional: "Build condition" },
     undecided: "Price TBD",
-    newBuild: "New", ageUnder1: "< 1 yr old", ageYears: (n) => `${n} ${n === 1 ? "yr" : "yrs"} old`,
+    newBuild: "New", ageUnder1: "< 1 yr old", ageYears: (n) => `${n} ${n === 1 ? "yr" : "yrs"} old`, ageWithin: (n) => `≤ ${n} yrs`,
     walk: (s, w) => `${s} · ${w} min walk`, stopWalkTo: (s, w) => `${s} bus stop${w != null ? ` · ${w} min walk` : ""}`, busStop: (s) => `${s} bus stop`, bus: (s, m) => `${s} · ${m ? `${m} min ` : ""}bus`, car: (s, km) => `${s} · ${km} km by car`, carKm: (km) => `${km} km by car`, land: "Land", building: "Bldg",
     date: (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, month: (y, m) => `${y}-${String(m).padStart(2, "0")}`,
     d: { layout: "Layout", floor: "Floor area", building: "Building", balcony: "Balcony", land: "Land", age: "Age", station: "Station", stop: "Bus stop",
