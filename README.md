@@ -15,7 +15,7 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 | Wide (≥1024px) | map · a divider (drag, or arrow keys) · the list; filters as a side sheet |
 | Desktop (≥1280px) | filters rail (« hides it) · map · divider · list |
 
-On every size the list is what's in the map's view (「この範囲 N件 / 全M件」; 全M件 fits the map to all results),
+On every size the list is what's in the map's view (「この範囲 N件 / 全M件」, 「N件 / 全M件」 when narrow; 全M件 fits the map to all results),
 in 1–3 columns of cards as the list's width allows. A listing opens as a tab of the list (on phones the sheet goes
 full height; back returns to the list): opened listings stay open as tabs (up to 12; × or すべて閉じる), and with
 two or more 比較 shows them side by side. The listing has a sticky 「お気に入り / SUUMOで見る」 bar at the bottom.
