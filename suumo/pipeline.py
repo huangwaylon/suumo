@@ -143,6 +143,18 @@ class Pipeline:
                    and hits < prev_hits * (1 - SUSPECT_DROP))
         counts = {"new": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
         held = {r["id"]: r for r in self.db.area_listings(pref, type_key, a["code"])}
+        # one listing page per property: another agent's listing of one that has (or is getting) its page isn't queued;
+        # only listings seen in this crawl count (a missing one may be ending, and a copy should take over)
+        claimed = {dup_key({**json.loads(r["list_json"]), "type": type_key})
+                   for r in held.values() if r["detail_json"] and r["id"] in recs} - {None}
+
+        def wanted(rec):
+            k = dup_key({**rec, "type": type_key})
+            if k in claimed:
+                return False
+            if k:
+                claimed.add(k)
+            return True
 
         for lid, rec in recs.items():
             row = held.get(lid) or self.db.listing(type_key, lid)  # fallback: moved from another area
@@ -153,9 +165,10 @@ class Pipeline:
                           type_key, lid, pref, a["code"], a["name"], dumps(rec), self.today, self.ts)
                 if baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
-                    self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
+                    if wanted(rec):
+                        self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
                     counts["new"] += 1
-                else:
+                elif wanted(rec):
                     self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
                 continue
 
@@ -167,8 +180,11 @@ class Pipeline:
                 counts["price_changed"] += 1
                 self.db.add_event(self.run_id, "price_changed", ident,
                                   {"price": rec.get("price"), "old_price": old.get("price")})
-            if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch)
-                self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+            if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch), unless it's a copy
+                if wanted(rec):
+                    self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                else:
+                    self.db.dequeue(type_key, lid)
             self.db.x("""UPDATE listings SET list_json=?, area_code=?, area_name=?, pref=?, status='active',
                          removed_at=NULL, missed=0, last_seen=? WHERE type=? AND id=?""",
                       dumps(rec), a["code"], a["name"], pref, self.ts, type_key, lid)

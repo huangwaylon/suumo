@@ -274,3 +274,18 @@ def test_area_crawl_requests_allowed_paths_and_archives_every_page(env, monkeypa
     assert [f.name for f in archive.list_pages("tokyo", "20261005", "used_condo")] == \
         ["sc_komae_p1.html.gz", "sc_komae_p2.html.gz"]
     assert (out["status"], out["hits"], out["parsed"]) == ("complete", 67, 67)
+
+
+def test_only_one_listing_per_property_is_queued(env):
+    db, _, _, crawl, _ = env
+    same = {"name": "狛江ハイツ", "built": "2005-04"}   # the same property listed by several agents (dup_key)
+    queued = lambda: [r["id"] for r in db.x("SELECT id FROM queue ORDER BY id")]  # noqa: E731
+    crawl(0, [rec(1, **same), rec(2, **same), rec(4)])
+    assert queued() == ["1", "4"]                                       # 2 is another agent's copy of 1
+    db.x("UPDATE listings SET detail_json='{}' WHERE id='1'")
+    db.dequeue("used_condo", "1")
+    crawl(1, [rec(1, **same), rec(2, **same), rec(3, **same), rec(4)])
+    assert queued() == ["4"] and ("new", "3") in events(db)             # a new copy: an event, no page fetch
+    crawl(2, [rec(2, **same), rec(3, **same), rec(4)])
+    crawl(3, [rec(2, **same), rec(3, **same), rec(4)])                  # 1 ended (2 misses): a copy takes over
+    assert status(db, 1) == "deleted" and queued() == ["2", "4"]
