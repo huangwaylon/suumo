@@ -31,6 +31,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `site/app.js`, `index.html`, `style.css` | The page: URL state, one filter panel (rail on desktop, sheet elsewhere), results, lazily loaded Leaflet map, listing view, favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests; compare table `cmp=1`), last search (localStorage `suumo.last`). Views and overlays are history entries, so back closes them. Layout by CSS breakpoints: <700 phone, <1280 tablet, desktop |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (hourly at :05, `run --budget 45m --push`) |
+| `~/suumo-refresh/all.sh` (not in git) | The one-off driver for the nationwide sweep and backfill (nohup + caffeinate): sweep, geocode, then 1 h listing-page runs with the stepped delay, the 04:00 crawl at 1.5 s. Replace with `local.suumo.plist` once the backfill is done |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
 Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo`/`site` →
