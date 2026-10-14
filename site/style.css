@@ -115,9 +115,8 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 #keep[aria-pressed="true"] .i { fill: currentColor; }
 .day { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; font-size: 16px; }
 .day span { color: var(--muted); font-size: 13px; font-weight: 400; }
-.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }  /* a wide table scrolls inside */
-.grid > :is(.day, .empty, .compare, .skeleton:only-child) { grid-column: 1 / -1; }
+.grid > :is(.day, .empty, .skeleton:only-child) { grid-column: 1 / -1; }
 /* favorites side by side: one column per listing, labels stay in view */
 .compare { width: max-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .compare table { border-collapse: collapse; font-size: 14px; }
@@ -462,10 +461,6 @@ body:has(#panel:not([data-tab="list"])) .fab { display: none; }
   body.listmode .layout { --rail: 0px; }
   body.listmode .filters { visibility: hidden; overflow: hidden; border-right: 0; }
   body.listmode #filters-open { visibility: hidden; }
-  body.comparing .layout { grid-template-columns: 0 minmax(0, 1fr); }
-  body.comparing .map { display: none; }
-  body.comparing .compare :is(th, td) { min-width: 200px; }
-  body.comparing .compare th { min-width: 8em; }
   body:not(.rail-off) .chips .chip.ghost { display: none; }  /* the rail has its own clear all */
   .results { padding-bottom: 32px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }

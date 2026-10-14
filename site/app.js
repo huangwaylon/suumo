@@ -93,7 +93,6 @@
   let mode = "search";          // search | favorites (the shared saved list)
   let hits = [], shown = 0;
   let showMap = false;
-  let compare = false;          // favorites as a side-by-side table
   let area = null;              // [south, west, north, east]: the map view, listing what's in the visible area
   let mapHits = [];             // what the map shows: the results (in the map area view, before the area cut)
   let byDay = false;            // the list has a heading per day (what's new, newest first)
@@ -236,8 +235,7 @@
     area = p.get("view") === "area" && b.length === 4 && b.every(Number.isFinite) ? b : null;
     showMap = p.get("view") === "map";
     if (area) showMap = false;
-    compare = mode !== "search" && p.get("cmp") === "1";
-    return p.get("id");
+    return p;
   }
 
   function hashFor(extra = {}, full = true) {  // full: with the open listing
@@ -246,8 +244,8 @@
     if (mode === "favorites") p.set("fav", "1");
     if (showMap) p.set("view", "map");
     if (area) { p.set("view", "area"); p.set("b", area.map((v) => v.toFixed(4)).join(",")); }
-    if (compare && mode !== "search") p.set("cmp", "1");
     if (full && isListing()) p.set("id", tab);
+    if (full && tab === "compare" && mode === "favorites") p.set("cmp", "1");  // (the open tabs: not in a link)
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
@@ -272,7 +270,6 @@
   }
 
   function render() {
-    if (mode === "search") compare = false;  // compare is for the saved list only
     renderedFor = hashFor({}, false);
     if (document.body.classList.contains("show-filters") && !WIDE.matches) {
       listStale = true;  // only the sheet is visible: its counts are enough until it closes
@@ -288,14 +285,14 @@
     $("sort").value = q.sort;
     $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : "count", num(hits.length));
     byDay = mode === "search" && q.sort === "new" && !!(q.newOnly || q.since);  // what's new: a heading per day
-    $("sort").hidden = hits.length < 2 || compare;
-    $("view").hidden = (!hits.length && !showMap) || compare || !!area;
+    $("sort").hidden = hits.length < 2;
+    $("compare").hidden = mode !== "favorites" || hits.length < 2;
+    $("view").hidden = (!hits.length && !showMap) || !!area;
     const active = activeConditions(), set = mode === "search" ? active.filter(([, , s]) => s !== "text").length : 0;
     $("filters-n").hidden = !set;  // the text has its own box
     $("filters-n").textContent = set;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
-    document.body.classList.toggle("comparing", compare && mode !== "search");
     renderPrefBar();
     renderQuick();
     renderSearches();
@@ -306,17 +303,16 @@
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button>${swap(ref)}<button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
       (ignoredNote.length ? `<span class="chip muted">${esc(t("ignored", ignoredNote.join("・")))}<button class="chip-x" data-ignored-x="1" aria-label="${esc(t("close"))}">${icon("x")}</button></span>` : "") +
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
-    renderBanner();
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
     document.body.classList.toggle("mapbar", showMap && !area);
     if (!showMap || area) $("area-go").hidden = true;  // (drawMap shows it once the map has its view)
     // the same cards as already drawn (a sheet closed, a view switched back): kept as they are, with their place
-    const sig = [S.lang, mode, compare, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.map((it) => it.key)].join("|");
-    if (sig !== listSig || compare || !hits.length) {
+    const sig = [S.lang, mode, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.map((it) => it.key)].join("|");
+    if (sig !== listSig || !hits.length) {
       listSig = sig;
       $("list").innerHTML = hits.length ? "" : emptyState(active);
       shown = 0;
-      if (compare && hits.length) renderCompare(); else more();
+      more();
     }
     if (mapVisible()) drawMap();
     if (filtersVisible()) renderFilters();
@@ -340,7 +336,7 @@
   }
 
   function more() {
-    if (shown >= hits.length || compare) return;
+    if (shown >= hits.length) return;
     let html = "";
     for (let i = shown; i < Math.min(shown + PAGE, hits.length); i++) {
       const d = hits[i].newDate;
@@ -421,13 +417,6 @@
       ? `<button class="chip" data-remove="${i}">${esc(t("remove", label))}<span class="n">${t("count", num(counts[i]))}</span></button>` : "")).join("");
     return `<div class="empty"><h3>${esc(t("emptyTitle"))}</h3><p>${esc(t("emptyHint"))}</p>
       <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
-  }
-
-  function renderBanner() {  // favorites: the compare switch (and the columns taken out of it)
-    const b = $("banner"), out = compare ? hits.filter((it) => cmpHidden.has(it.key)).length : 0;
-    b.hidden = mode !== "favorites" || hits.length < 2;
-    if (!b.hidden) b.innerHTML = `<button class="btn" data-compare="1" aria-pressed="${compare}">${esc(t(compare ? "showCards" : "compare"))}</button>${
-      out ? `<button class="btn ghost" data-cmp-all="1">${esc(t("cmpShowAll", out))}</button>` : ""}`;
   }
 
   const freshCounts = new Map();
@@ -1144,18 +1133,9 @@
 
   // ---------- compare ----------
 
-  const cmpHidden = new Set();  // columns taken out of the favorites' comparison (this view only; never unsaved)
-  async function renderCompare() {
-    const forKey = renderedFor;
-    $("list").innerHTML = '<div class="skeleton"></div>';
-    const html = await compareHtml(hits.filter((it) => !cmpHidden.has(it.key)).slice(0, 12), true);
-    if (renderedFor === forKey) $("list").innerHTML = html;
-    renderBanner();
-  }
-
-  // Listings side by side: a row per fact, a column per listing (favorites, and the side panel's 比較). A numeric
-  // row marks its best value (lowest price, largest area...); hideable: each column has an × (favorites).
-  async function compareHtml(list, hideable = false) {
+  // Listings side by side (the 比較 tab: the open listings): a row per fact, a column per listing (× closes its tab).
+  // A numeric row marks its best value (lowest price, largest area...).
+  async function compareHtml(list) {
     const recs = await Promise.all(list.map((it) => record(it.key).catch(() => null)));
     const cols = list.map((it, i) => [it, recs[i] || {}]);
     const yen = (v) => (v ? t("yen", num(v)) : "");
@@ -1165,7 +1145,7 @@
     // [label, cell html, best: [value of a column, "min" | "max"]]
     const ROWS = [
       ["", ([it]) => `<div class="cmp-top"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div></a>${
-        hideable ? `<button class="cmp-x" data-cmp-hide="${esc(it.key)}" aria-label="${esc(t("cmpHide", money(it.price)))}">${icon("x")}</button>` : ""}</div>`],
+        `<button class="cmp-x" data-tab-close="${esc(it.key)}" aria-label="${esc(t("cmpHide", money(it.price)))}">${icon("x")}</button>`}</div>`],
       ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
       ["price", ([it]) => `<span class="num">${price(it, true)}</span>${usd(it)}`, [([it]) => it.price, "min"]],
       ["unit", ([it]) => esc(it.unit ? t("perM2", it.unit) : ""), [([it]) => it.unit, "min"]],
@@ -1364,6 +1344,12 @@
     if (from === "list") openedFrom = key;
     showTab(key);
     if (from === "list") history.pushState({ tab: 1 }, "", hashFor()); else history.replaceState(history.state, "", hashFor());
+  }
+  // Favorites side by side: they open as tabs (the newest twelve), shown in 比較.
+  function compareFavs(push = true) {
+    for (const it of hits.slice(0, MAX_TABS)) if (!tabs.includes(it.key)) tabs.push(it.key);
+    tabs.splice(0, Math.max(0, tabs.length - MAX_TABS));
+    if (push) openTab("compare"); else showTab("compare");
   }
   // drawn again (another language, USD on or off)
   function rerenderTab() {
@@ -1614,6 +1600,7 @@
       toast(t(i >= 0 ? "searchRemoved" : "searchKept"));
       renderSearches();
     });
+    $("compare").addEventListener("click", () => compareFavs());
     $("favs").addEventListener("click", () => switchView("favorites", () => { mode = mode === "favorites" ? "search" : "favorites"; }));
     $("view").addEventListener("click", () => switchView("map", () => { showMap = !showMap; }));
     $("area-go").addEventListener("click", () => switchView("area", () => { area = boundsOf(map); showMap = false; }));
@@ -1666,9 +1653,7 @@
         q.stations = [b.dataset.stationPick];
         map?.closePopup();
         update(false);
-      } else if (b.dataset.compare) switchView("compare", () => { compare = !compare; cmpHidden.clear(); });
-      else if (b.dataset.cmpHide) { cmpHidden.add(b.dataset.cmpHide); renderCompare(); }
-      else if (b.dataset.cmpAll) { cmpHidden.clear(); renderCompare(); }
+      }
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
@@ -1778,13 +1763,14 @@
       return;
     }
     if (want.join() !== chosen.join()) choosePrefs(want);
-    const key = readHash();
+    const p = readHash(), key = p.get("id");
     if (hashFor({}, false) !== renderedFor) render();
     if (key) {  // a listing: the tab (opened when it isn't, as from a link)
       if (!tabs.includes(key)) tabs.push(key);
       if (tabs.length > MAX_TABS) tabs.shift();
       showTab(key);
-    } else if (tab !== "list") showTab("list");
+    } else if (p.get("cmp") === "1" && mode === "favorites") compareFavs(false);
+    else if (tab !== "list") showTab("list");
   }
 
   async function start() {
