@@ -284,6 +284,7 @@
     $("filters-n").textContent = set;
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
+    setPanel(settings.panel ?? PANEL);  // (the rail comes and goes with the favorites)
     renderPrefBar();
     renderSearches();
     // a ward read from the search text that is also a station (or the other way round) can be switched
@@ -864,6 +865,7 @@
     history.replaceState(history.state, "", hashFor());
     saveLast();
     if (autopan) { autopan = false; return; }
+    if (document.body.classList.contains("resizing")) return;  // (the divider: once it's let go)
     if (document.body.classList.contains("show-filters") && !WIDE.matches) listStale = true; else listResults(true);
   }
 
@@ -1440,6 +1442,44 @@
     strip.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
+  // ---------- the divider between the map and the list (wide screens): drag, arrow keys, double click ----------
+
+  const PANEL = 440, PANEL_MIN = 340, MAP_MIN = 360;  // px
+  function setPanel(px, save = false) {
+    const layout = document.querySelector(".layout"), rail = railOn() && mode === "search" ? 280 : 0;
+    const max = Math.max(PANEL_MIN, layout.clientWidth - rail - 8 - MAP_MIN), w = Math.round(Math.min(max, Math.max(PANEL_MIN, px)));
+    layout.style.setProperty("--panel", `${w}px`);
+    $("split").setAttribute("aria-valuemin", PANEL_MIN);
+    $("split").setAttribute("aria-valuemax", max);
+    $("split").setAttribute("aria-valuenow", w);
+    if (save) { settings.panel = w; saveSettings(); }
+  }
+  function wireSplit() {
+    const split = $("split");
+    split.addEventListener("pointerdown", (e) => {
+      const x0 = e.clientX, w0 = $("panel").offsetWidth;
+      let frame = 0;
+      const move = (ev) => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => setPanel(w0 + x0 - ev.clientX)); };
+      split.setPointerCapture(e.pointerId);
+      document.body.classList.add("resizing");
+      split.addEventListener("pointermove", move);
+      split.addEventListener("lostpointercapture", () => {
+        split.removeEventListener("pointermove", move);
+        document.body.classList.remove("resizing");
+        setPanel($("panel").offsetWidth, true);
+        if (map) onMapMove();  // the list follows once
+      }, { once: true });
+    });
+    split.addEventListener("keydown", (e) => {
+      const w = $("panel").offsetWidth, step = e.shiftKey ? 120 : 40;  // (the list is on the right: ← widens it)
+      const to = { ArrowLeft: w + step, ArrowRight: w - step, Home: PANEL_MIN, End: Infinity, Enter: PANEL }[e.key];
+      if (to != null) { e.preventDefault(); setPanel(to, true); }
+    });
+    split.addEventListener("dblclick", () => setPanel(PANEL, true));
+    addEventListener("resize", () => setPanel(settings.panel ?? PANEL));
+    setPanel(settings.panel ?? PANEL);
+  }
+
   // ---------- favorites ----------
 
   // favs from the site's saved list and this browser's pending requests (dropped once the list shows them).
@@ -1512,6 +1552,7 @@
     for (const el of [document.querySelector(".bar"), $("panel"), $("map")]) el.inert = open;
     // desktop: the rail can be hidden, giving its width to the results
     document.body.classList.toggle("rail-off", WIDE.matches && !railOn());
+    setPanel(settings.panel ?? PANEL);
     $("filters-open").setAttribute("aria-label", t(WIDE.matches ? (railOn() ? "filtersHide" : "filtersShow") : "filtersOpen"));
     $("filters-close").setAttribute("aria-label", t(WIDE.matches ? "filtersHide" : "close"));
   }
@@ -1560,6 +1601,7 @@
 
   function wire() {
     wireSearch();
+    wireSplit();
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(!railOn()));
     $("filters-close").addEventListener("click", () => openFilters(false));

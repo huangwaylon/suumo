@@ -64,7 +64,6 @@
     <main class="panel" id="panel" data-tab="list">
       <div id="tabs" class="tabs" role="tablist" hidden></div>
       <div class="results" id="results" role="tabpanel" tabindex="-1">
-        <div id="searches" class="searches" hidden></div>
         <div class="toolbar">
           <span class="toolbar-start">
             <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
@@ -78,13 +77,14 @@
           </span>
         </div>
         <div id="pref-chips" class="chips"></div>
-        <div id="quick" class="chips quick"></div>
-        <div id="chips" class="chips"></div>
+        <div id="searches" class="searches" hidden></div>
+        <div class="chip-row"><div id="quick" class="chips quick"></div><div id="chips" class="chips"></div></div>
         <div id="list" class="grid"></div>
         <div id="sentinel"></div>
       </div>
       <div id="panel-body" class="panel-body" role="tabpanel" tabindex="-1" hidden></div>
     </main>
+    <div id="split" class="split" role="separator" aria-orientation="vertical" aria-controls="panel" tabindex="0" data-t-label="resizePanel"></div>
 
     <aside id="filters" class="filters" data-t-label="filters">
       <div class="sheet-head">
