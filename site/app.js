@@ -309,7 +309,7 @@
     $("count").textContent = mode === "favorites" ? t("favBanner", num(hits.length)) : t(here && !short ? "inView" : "count", num(hits.length));
     // said aloud once the conditions changed (and the map followed them), not on every pan
     if (!moved && !sayTimer) sayTimer = setTimeout(() => { $("count-live").textContent = $("count").textContent; sayTimer = null; }, 700);
-    $("fit").hidden = !here;
+    $("fit").hidden = !here || !mapHits.length;
     $("fit").textContent = t("fitAll", num(mapHits.length));
     $("sort").hidden = hits.length < 2;
     $("compare").hidden = mode !== "favorites" || hits.length < 2;
@@ -1429,9 +1429,9 @@
       renderListing(body, key).then((r) => {
         if (body.dataset.key !== key) return;
         const ended = !r || allByKey.get(key)?.flags & db.flags.gone;  // ended: SUUMO's page is gone too
-        body.insertAdjacentHTML("beforeend", `<div class="actions">
+        if (!ended || favs.has(key)) body.insertAdjacentHTML("beforeend", `<div class="actions">
           <button class="btn fav-btn" data-fav="${esc(key)}" aria-pressed="${favs.has(key)}">${icon("heart")}<span>${esc(t(favs.has(key) ? "saved" : "save"))}</span></button>
-          ${ended ? "" : `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>`}</div>`);
+          ${ended ? "" : `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>`}</div>`);  // (ended: only unsaved)
         body.querySelector("h2")?.focus({ preventScroll: true });
       });
     }
@@ -1447,10 +1447,10 @@
       <button role="tab" aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${
       id === "list" ? icon("back") : ""}${esc(label)}</button>${
       x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
-    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "listTab")} ${num(hits.length)}`) +
+    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : view ? "listTab" : "listAll")} ${num(hits.length)}`) +
       tabs.map((key) => {
         const it = allByKey.get(key);
-        return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key, true);
+        return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : typeName(key.split(":")[0]) || key, true);
       }).join("") + (tabs.length > 1 ? button("compare", t("compareTab")) : "") +
       `<button class="tab-all" data-tab-close="all">${esc(t("closeAll"))}</button>`;
     strip.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
