@@ -52,6 +52,10 @@ const db = Filter.combine(manifest.prefs.map(([slug]) =>
 const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved, counts, suggest,
                                                                         parse, opts}) => {
   if (suggest != null) return Filter.suggest(db, suggest, opts);
+  if (parse != null && query) {
+    const applied = Filter.applyParse(Object.assign(Filter.emptyQuery(), query), Filter.parse(parse, db, opts));
+    return {query: applied, ids: Filter.search(db, applied).map((it) => it.id)};
+  }
   if (parse != null) return Filter.parse(parse, db, opts);
   if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
@@ -70,7 +74,7 @@ def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY,
     """Build the site from recs and run requests through site/filter.js in Node: {query} -> {ids, others, count},
     {query, choices} -> the choice counts (Filter.facets), {query, counts: patches} -> Filter.counts,
     {station: typed} -> the matching stations, best first, {suggest: text, opts} -> Filter.suggest,
-    {parse: text, opts} -> Filter.parse.
+    {parse: text, opts} -> Filter.parse, {parse, opts, query} -> the query with it applied and its {query, ids}.
     stations: the station-name cache ({name: [kana, english]})."""
     data, out = tmp_path / "data", tmp_path / "site"
     write(data, recs, areas, events)

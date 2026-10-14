@@ -392,9 +392,9 @@ def test_counts_of_variants_in_one_pass(tmp_path):
 
 
 # Natural search: a few wards and stations, in kanji, kana and English
-NL_AREAS = {"13113": "渋谷区", "13112": "世田谷区", "13103": "港区", "13104": "新宿区"}
+NL_AREAS = {"13113": "渋谷区", "13112": "世田谷区", "13103": "港区", "13104": "新宿区", "14103": "横浜市西区"}
 NL_STATIONS = {"渋谷": ["しぶや", "Shibuya"], "新宿": ["しんじゅく", "Shinjuku"],
-               "二子玉川": ["ふたこたまがわ", "Futako-Tamagawa"], "自由が丘": ["じゆうがおか", "Jiyugaoka"],
+               "二子玉川": ["ふたこたまがわ", "Futako-Tamagawa"], "自由ケ丘": ["じゆうがおか", "Jiyugaoka"],
                "勝どき": ["かちどき", "Kachidoki"]}
 NL_OPTS = {"places": {"渋谷区": "Shibuya", "世田谷区": "Setagaya", "港区": "Minato", "新宿区": "Shinjuku"},
            "features": {"ペット相談": "Pets negotiable", "角住戸": "Corner unit", "角地": "Corner lot"}, "year": 2026}
@@ -412,7 +412,8 @@ def nl_records():
             rec(7, "land", area_code="13112", area="世田谷区", stations=st("二子玉川"), land_m2=200.0,
                 features=["角地"], **LAND),
             rec(8, "used_house", area_code="13112", area="世田谷区", stations=st("自由が丘"), layout="4LDK",
-                floor_m2=None, building_m2=100.0, land_m2=170.0)]
+                floor_m2=None, building_m2=100.0, land_m2=170.0),
+            rec(9, area_code="14103", area="横浜市西区", stations=st("横浜"))]
 
 
 def nl(tmp_path, requests):
@@ -433,3 +434,71 @@ def test_suggestions(tmp_path):
     assert brief["x"] == [] and brief["自由が丘 "] == []                    # too short; nothing typed yet
     assert brief["minato"] == [("area", "13103", 1)]                        # English area names
     assert out["勝どき"][0] == {"kind": "station", "value": "勝どき", "label": "勝どき", "count": 1}
+
+
+CONDOS, HOUSES = {"used_condo", "new_condo"}, {"used_house", "new_house"}
+SHIBUYA_STATION = {"field": "stations", "value": "渋谷", "label": "渋谷"}
+NL_CASES = [  # text, patch (types as sets), and where it matters: alt of the first area token, rest, ignored
+    ("渋谷 3LDK 6000万以下 駅徒歩10分 ペット可 築10年以内",
+     {"areas": ["13113"], "plan": 11, "priceMax": 60_000_000, "walk": 10, "features": ["ペット相談"], "ageMax": 10},
+     {"alt": SHIBUYA_STATION}),
+    ("世田谷区 戸建て 土地50坪以上", {"areas": ["13112"], "types": HOUSES, "landMin": 165}, {}),
+    ("3LDK under 8000万 near Shibuya pet",
+     {"plan": 11, "priceMax": 80_000_000, "stations": ["渋谷"], "features": ["ペット相談"]}, {}),
+    ("new condo Minato 2LDK", {"types": {"new_condo"}, "areas": ["13103"], "plan": 8}, {}),
+    ("南向き 角部屋 タワマン", {"south": True, "features": ["角住戸"], "tower": True, "types": CONDOS}, {}),
+    ("渋谷駅 徒歩5分", {"stations": ["渋谷"], "walk": 5}, {}),
+    ("5000万〜8000万", {"priceMin": 50_000_000, "priceMax": 80_000_000}, {}),
+    ("5000〜8000万円", {"priceMin": 50_000_000, "priceMax": 80_000_000}, {}),
+    ("1億2000万以下", {"priceMax": 120_000_000}, {}),
+    ("1.5億まで", {"priceMax": 150_000_000}, {}),
+    ("8000万から", {"priceMin": 80_000_000}, {}),
+    ("70㎡以上 2LDK", {"sizeMin": 70, "plan": 8}, {}),
+    ("over 100 sqm", {"sizeMin": 100}, {}),
+    ("築浅 マンション", {"ageMax": 5, "types": CONDOS}, {}),
+    ("新築 戸建て 世田谷", {"types": {"new_house"}, "areas": ["13112"]}, {}),
+    ("中古マンション 1981年以降", {"types": {"used_condo"}, "post1981": True}, {}),
+    ("2000年以降 中古", {"types": {"used_condo", "used_house"}}, {"ignored": ["2000年以降"]}),
+    ("ふたこたまがわ 駅近", {"stations": ["二子玉川"], "walk": 5}, {}),
+    ("jiyugaoka 2ldk", {"stations": ["自由が丘"], "plan": 8}, {}),
+    ("パークタワー勝どき", {}, {"rest": "パークタワー勝どき"}),
+    ("勝どき パークタワー", {"stations": ["勝どき"]}, {"rest": "パークタワー"}),
+    ("新宿区 1LDK 仲介手数料なし 即入居", {"areas": ["13104"], "plan": 5, "nofee": True, "ready": True}, {}),
+    ("2ldk under 5000万 10 min walk", {"plan": 8, "priceMax": 50_000_000, "walk": 10}, {}),
+    ("築30年以上", {}, {"ignored": ["築30年以上"]}),
+    ("土地 30坪 渋谷区", {"types": {"land"}, "landMin": 99, "areas": ["13113"]}, {}),
+    ("港区・渋谷区 6000以下", {"areas": ["13103", "13113"], "priceMax": 60_000_000}, {}),
+    ("Shibuya-ku 80m2", {"areas": ["13113"], "sizeMin": 80}, {}),
+    ("新宿", {"areas": ["13104"]}, {"alt": {"field": "stations", "value": "新宿", "label": "新宿"}}),
+    # beyond the table: a later number wins, kana is a station, English names like kanji, a corner of land
+    ("徒歩10分 徒歩7分", {"walk": 7}, {"ignored": ["徒歩10分"]}),
+    ("しぶや", {"stations": ["渋谷"]}, {}),
+    ("shibuya", {"areas": ["13113"]}, {"alt": SHIBUYA_STATION}),
+    ("土地 角地", {"types": {"land"}, "features": ["角地"]}, {}),
+    ("横浜", {"areas": ["14103"]}, {"alt": {"field": "stations", "value": "横浜", "label": "横浜"}}),  # the city
+    ("8000万〜5000万 バス10分", {"priceMin": 50_000_000, "priceMax": 80_000_000}, {"ignored": ["バス10分"]}),
+]
+
+
+@needs_node
+def test_natural_search(tmp_path):
+    out = nl(tmp_path, [{"parse": text} for text, _, _ in NL_CASES])
+    for (text, patch, extra), got in zip(NL_CASES, out, strict=True):
+        p = {k: set(v) if k == "types" else v for k, v in got["patch"].items()}
+        assert p == patch, text
+        assert got["rest"] == extra.get("rest", ""), text
+        assert got["ignored"] == extra.get("ignored", []), text
+        if "alt" in extra:
+            assert next(t for t in got["tokens"] if t["field"] == "areas")["alt"] == extra["alt"], text
+
+
+@needs_node
+def test_a_parse_applied_to_the_query(tmp_path):
+    before = {"types": ["used_condo", "land"], "areas": ["13103"], "features": ["角住戸"], "walk": 20, "text": "x"}
+    [a, b] = nl(tmp_path, [{"parse": "世田谷 戸建て 徒歩9分 ペット パーク", "query": before},
+                           {"parse": "渋谷 徒歩7分", "query": {}}])
+    q = a["query"]
+    assert set(q["types"]) == HOUSES                             # types are replaced
+    assert q["areas"] == ["13103", "13112"] and q["features"] == ["角住戸", "ペット相談"]   # sets add up
+    assert q["walk"] == 9 and q["text"] == "パーク"              # any number; text = what wasn't understood
+    assert b["ids"] == ["1"]                                     # 渋谷区 within 7 min (2 is 12 min away)

@@ -486,14 +486,18 @@
     }
     const meanings = new Map(), add = (key, m) => { if (key) (meanings.get(key) || meanings.set(key, []).get(key)).push(m); };
     const candidates = [];
-    ix.areas.forEach(([code, name], k) => {
+    ix.areas.forEach(([code, name, , group], k) => {
       const keys = areaKeys(name, opts);
       for (const key of keys) add(key, { kind: "area", value: code, label: name });
+      // a designated city's name means all its wards (横浜, 横浜市 -> 横浜市西区, 横浜市中区, ...)
+      if (group && !["ku", "shi", "gun"].includes(group)) {
+        for (const key of areaKeys(group, opts)) add(key, { kind: "area", value: code, label: name });
+      }
       candidates.push({ kind: "area", value: code, label: name, keys, count: areaN[k] });
     });
     ix.stations.forEach((name, k) => {
       const readings = ix.stationNames?.[k], keys = stationKeys(name, readings);
-      keys.forEach((key, j) => add(key, { kind: "station", value: name, label: name, reading: j > 0 && !hasKanji(key) }));
+      keys.forEach((key, j) => add(key, { kind: "station", value: name, label: name, reading: j > 0 && /^[\u30a0-\u30ff]+$/.test(key) }));  // kana
       candidates.push({ kind: "station", value: name, label: name, keys, count: stationN[k] });
     });
     const tags = new Map(ix.features.map((f, k) => [f, tagN[k]]));
@@ -549,6 +553,244 @@
     return out;
   }
 
+  // What each name key can mean in these prefectures (cached per combined db and opts).
+  function meaningsOf(db, opts) {
+    const parts = db.parts || [db];
+    if (parts.length === 1) return nameTables(parts[0], opts).meanings;
+    if (db.meanings && db.meanings.opts === opts) return db.meanings.map;
+    const map = new Map();
+    for (const part of parts) {
+      for (const [key, ms] of nameTables(part, opts).meanings) {
+        const list = map.get(key) || map.set(key, []).get(key);
+        for (const m of ms) if (!list.some((x) => x.kind === m.kind && x.value === m.value && x.label === m.label)) list.push(m);
+      }
+    }
+    db.meanings = { opts, map };
+    return map;
+  }
+
+  const NUM = "(\\d[\\d,]*(?:\\.\\d+)?)";
+  const num = (s) => parseFloat(s.replace(/,/g, ""));
+  const MAX_WORDS = "以下|まで|未満|以内", MIN_WORDS = "以上|から|超";
+  const SIZE = new RegExp(`(?:(土地|敷地|land|lot)(\\s*))?(?:(over|above|at least|from|min|under|below|up to|max|less than)\\s*)?(?<![\\d.])${NUM}\\s*(m2|平米|平方メートル|sqm|sq\\s?m|坪)(?![a-z\\d])\\s*(${MAX_WORDS}|${MIN_WORDS})?`, "g");
+  const LAYOUT = /(?<![a-z\d.])(\d+)\s*(sldk|ldk|sdk|slk|dk|lk|sk|k|r)(?:\s*\+\s*\d*s)?(?![a-z])(?:\s*以上)?|ワンルーム|studio/g;
+  const LAYOUT_KIND = { r: 0, k: 0, sk: 0, dk: 1, sdk: 1, lk: 1, slk: 1, ldk: 2, sldk: 2 };
+  const WALK = /(駅)?\s*(徒歩|歩いて)\s*(\d+)\s*分\s*(?:以内|以下|まで)?|駅\s*(\d+)\s*分\s*(?:以内|以下|まで)?|(?<![\d.])(\d+)\s*(?:min|mins|minutes?)\s*(?:walk|on foot)|walk(?:ing)?\s*(\d+)\s*(?:min|mins|minutes?)/g;
+  const AGE = /築\s*(\d+)\s*年\s*(?:以内|未満|以下|まで)?|(?<![\d.])(\d+)\s*years?\s*old|((?:19|20)\d\d)\s*年\s*(?:築\s*)?(?:以降|以後|から)/g;
+  const AMOUNT = `${NUM}\\s*(?:(億)\\s*(?:(\\d[\\d,]*)\\s*万)?|(万))?\\s*(円)?`;
+  const MONEY = new RegExp(`(?<![\\d.a-z])(?:(under|below|up to|less than|within|max|over|above|from|at least|more than|min)\\s*)?${AMOUNT}(?:\\s*(?:〜|-|から)\\s*${AMOUNT})?\\s*(${MAX_WORDS}|${MIN_WORDS})?`, "g");
+  const IGNORED = /築\s*\d+\s*年\s*(?:以上|超)|(?:バス|bus)\s*\d+\s*(?:分|min\w*)|\d+\s*分\s*(?:以上|超)|\d[\d,.]*\s*(?:億|万)\s*円?\s*台/g;
+  const isMax = (w) => /^(under|below|up to|less than|within|max|以下|まで|未満|以内)$/.test(w || "");
+  const isMin = (w) => /^(over|above|from|at least|more than|min|以上|から|超)$/.test(w || "");
+  const SCALARS = ["walk", "priceMin", "priceMax", "plan", "sizeMin", "landMin", "ageMax"];
+  const QUAKE_YEAR = 1981;
+
+  // A search box text -> query conditions. Pure (reads db's names only): returns
+  //   patch: the conditions recognised ({types, areas, stations, features, walk, priceMin, priceMax, plan, sizeMin,
+  //          landMin, ageMax} and flags like south: true), never text;
+  //   tokens: [{field, value, label?, alt?, text}] in the order typed (alt: {field, value, label}, another reading:
+  //          a ward named like a station);
+  //   rest: what wasn't understood, for the text search; ignored: phrases understood but not usable (築30年以上,
+  //          バス10分, or a value overridden by a later one).
+  // opts: {places: area name -> English, features: tag -> English, year}.
+  function parse(text, db, opts = {}) {
+    const meanings = meaningsOf(db, opts), tags = new Set((db.parts || [db]).flatMap((p) => p.index.features));
+    const orig = (text || "").normalize("NFKC");
+    let low = orig.toLowerCase();
+    if (low.length !== orig.length) low = orig;  // (lower-casing never changes lengths in practice)
+    low = low.replace(/[〜～~]/g, "〜");
+    const used = new Uint8Array(low.length), found = [], ignored = [], rest = [], markers = new Set();
+    const masked = () => low.replace(/[^]/g, (c, i) => (used[i] ? "\u0000" : c));
+    const mark = (a, b) => used.fill(1, a, b);
+    const spanText = (a, b) => orig.slice(a, b).trim();
+    const emit = (start, end, field, value, extra = {}) => found.push({ start, field, value, text: spanText(start, end), ...extra });
+    // run a pattern over the text not used yet; fn returns false to leave a match, or [start, end] to use part of it
+    const pass = (re, fn) => {
+      for (const m of masked().matchAll(re)) {
+        const r = fn(m);
+        if (r === false) continue;
+        const [a, b] = Array.isArray(r) ? r : [m.index, m.index + m[0].length];
+        mark(a, b);
+      }
+    };
+    pass(IGNORED, (m) => { ignored.push({ start: m.index, text: spanText(m.index, m.index + m[0].length) }); });
+    // sizes before prices (80m2 isn't 80 million); 坪 -> ㎡; land when said so or when only land is asked for
+    const onlyLand = /土地|敷地|\bland\b|\blot\b/.test(low) && !/マンション|戸建|一軒家|condo|apartment|house/.test(low);
+    pass(SIZE, (m) => {
+      const [, landWord, gap, pre, n, unit, post] = m, end = m.index + m[0].length;
+      const start = landWord && gap ? m.index + landWord.length + gap.length : m.index;  // "土地 30坪": 土地 is a type too
+      if (isMax(pre) || isMax(post)) { ignored.push({ start, text: spanText(start, end) }); return [start, end]; }
+      const v = unit === "坪" ? Math.round(num(n) * 3.30578) : num(n);
+      emit(start, end, landWord || onlyLand ? "landMin" : "sizeMin", v);
+      return [start, end];
+    });
+    pass(LAYOUT, (m) => {
+      const rank = m[1] ? +m[1] * 3 + LAYOUT_KIND[m[2]] : 3;
+      emit(m.index, m.index + m[0].length, "plan", rank);
+    });
+    pass(WALK, (m) => {
+      if (m[1] || m[2]) markers.add(m.index);  // "渋谷駅徒歩5分", "渋谷 徒歩5分": the name before is a station
+      emit(m.index, m.index + m[0].length, "walk", +(m[3] || m[4] || m[5] || m[6]));
+    });
+    pass(AGE, (m) => {
+      const end = m.index + m[0].length;
+      if (m[3]) {
+        if (+m[3] <= QUAKE_YEAR) emit(m.index, end, "post1981", true);
+        else ignored.push({ start: m.index, text: spanText(m.index, end) });
+      } else emit(m.index, end, "ageMax", +(m[1] || m[2]));
+    });
+    pass(/(\d+)\s*階\s*以上/g, (m) => {
+      if (+m[1] === 2) emit(m.index, m.index + m[0].length, "upper", true);
+      else ignored.push({ start: m.index, text: spanText(m.index, m.index + m[0].length) });
+    });
+    pass(/(?:仲介)?手数料\s*0\s*円?/g, (m) => { emit(m.index, m.index + m[0].length, "nofee", true); });
+    pass(MONEY, (m) => {
+      const [, pre, n1, oku1, man1b, man1, yen1, n2, oku2, man2b, man2, yen2, post] = m;
+      const amount = (n, oku, manB, man, yen) => (oku ? num(n) * 1e8 + (manB ? num(manB) * 1e4 : 0) : man ? num(n) * 1e4 : yen ? num(n) : null);
+      const end = m.index + m[0].length;
+      let a = amount(n1, oku1, man1b, man1, yen1);
+      if (n2 != null) {  // a range: a bare first number takes the second one's unit (5000〜8000万)
+        let b = amount(n2, oku2, man2b, man2, yen2);
+        if (a == null && b != null) a = num(n1) * (oku2 ? 1e8 : man2 ? 1e4 : 1);
+        if (a == null && b == null && num(n1) >= 100 && num(n2) >= 100) { a = num(n1) * 1e4; b = num(n2) * 1e4; }
+        if (a == null || b == null) return false;
+        emit(m.index, end, "priceMin", Math.round(Math.min(a, b)));
+        emit(m.index, end, "priceMax", Math.round(Math.max(a, b)));
+        return undefined;
+      }
+      const q = isMax(pre) || isMax(post) ? "priceMax" : isMin(pre) || isMin(post) ? "priceMin" : null;
+      if (a == null) {  // a bare number is 万 only next to a qualifier (6000以下)
+        if (!q || num(n1) < 100) return false;
+        a = num(n1) * 1e4;
+      }
+      emit(m.index, end, q || "priceMax", Math.round(a));
+      return undefined;
+    });
+
+    // what's left, chunk by chunk: names and words, all of a chunk or none of it
+    const segments = [];
+    const work = masked();
+    for (const m of work.matchAll(/[^\s\u0000、,，/／]+/g)) {
+      const chunk = m[0], start = m.index, latin = /^[a-z0-9\-'.&]+$/.test(chunk);
+      const segs = latin ? latinChunk(chunk, meanings) : cjkChunk(chunk, meanings);
+      if (segs) for (const sg of segs) segments.push({ ...sg, start: start + sg.start, end: start + sg.end });
+      else rest.push({ start, text: spanText(start, start + chunk.length) });
+    }
+    const between = (a, b) => low.slice(a, b).replace(/\u0000/g, "").trim() === "";
+    const nextMarker = (k) => {
+      const sg = segments[k], next = segments[k + 1];
+      if (next && next.meanings.some((x) => x.marker) && between(sg.end, next.start)) return true;
+      const after = low.slice(sg.end).search(/\S/);
+      return after >= 0 && markers.has(sg.end + after);
+    };
+    const cats = new Set(), ages = new Set(), typeWords = [];
+    let corner = null, tower = false;
+    segments.forEach((sg, k) => {
+      const text = spanText(sg.start, sg.end), word = sg.meanings.find((x) => x.kind === "word");
+      if (word) {
+        if (word.cat) { cats.add(word.cat); typeWords.push(sg); }
+        else if (word.age) { ages.add(word.age); typeWords.push(sg); }
+        else if (word.flag) { emit(sg.start, sg.end, word.flag, true); if (word.flag === "tower") tower = true; }
+        else if (word.corner) corner = sg;
+        else if (word.tag) {
+          if (tags.has(word.tag)) emit(sg.start, sg.end, "features", word.tag, { label: word.tag });
+          else rest.push({ start: sg.start, text });
+        } else if (word.scalar) emit(sg.start, sg.end, word.scalar[0], word.scalar[1]);
+        return;  // stop words and markers: nothing
+      }
+      const areas = sg.meanings.filter((x) => x.kind === "area"), stations = sg.meanings.filter((x) => x.kind === "station");
+      // a ward named like a station (渋谷, 新宿) is the ward, with the station as the other reading, unless 駅/徒歩
+      // follows or "near" comes before; a kana reading is a station
+      const prev = segments[k - 1], uniq = (list) => [...new Map(list.map((x) => [x.value, x])).values()];
+      const near = prev && prev.meanings.some((x) => x.near) && between(prev.end, sg.start);
+      if (stations.length && (!areas.length || near || nextMarker(k) || stations.every((x) => x.reading))) {
+        for (const x of uniq(stations)) emit(sg.start, sg.end, "stations", x.value, { label: x.label });
+      } else {
+        const alt = stations.length ? { field: "stations", value: stations[0].value, label: stations[0].label } : undefined;
+        for (const x of uniq(areas)) emit(sg.start, sg.end, "areas", x.value, { label: x.label, ...(alt && { alt }) });
+      }
+    });
+
+    // property types: the kinds named, each new and/or used as said (land is neither); tower means condos
+    if (tower && !cats.size && !ages.size) cats.add("condo");
+    const kinds = cats.size ? [...cats] : ages.size ? ["condo", "house"] : [];
+    const when = ages.size ? [...ages] : ["new", "used"];
+    const want = new Set(kinds.flatMap((c) => (c === "land" ? ["land"] : when.map((a) => `${a}_${c}`))));
+    const types = (db.index.types || []).filter((t) => want.has(t));
+    if (types.length) {
+      const sg = typeWords[0] || { start: 0, end: 0 };
+      found.push({ start: sg.start, field: "types", value: types, text: typeWords.map((t) => spanText(t.start, t.end)).join(" ") });
+    }
+    if (corner) {  // a corner: 角地 for land, 角住戸 for a flat
+      const tag = types.length && types.every((t) => t === "land") ? "角地" : "角住戸";
+      if (tags.has(tag)) emit(corner.start, corner.end, "features", tag, { label: tag });
+      else rest.push({ start: corner.start, text: spanText(corner.start, corner.end) });
+    }
+
+    // the patch: sets add up; for a number, the last one said wins (the others are ignored)
+    found.sort((a, b) => a.start - b.start);
+    const patch = {}, last = {};
+    for (const t of found) if (SCALARS.includes(t.field)) last[t.field] = t;
+    const tokens = [];
+    for (const t of found) {
+      if (SCALARS.includes(t.field) && last[t.field] !== t) {
+        if (!ignored.some((x) => x.start === t.start)) ignored.push({ start: t.start, text: t.text });
+        continue;
+      }
+      if (t.field === "types") patch.types = t.value;
+      else if (["areas", "stations", "features"].includes(t.field)) {
+        (patch[t.field] ||= []).includes(t.value) || patch[t.field].push(t.value);
+      } else patch[t.field] = t.value;
+      const { start, ...token } = t;
+      tokens.push(token);
+    }
+    if (patch.priceMin != null && patch.priceMax != null && patch.priceMin > patch.priceMax) {
+      [patch.priceMin, patch.priceMax] = [patch.priceMax, patch.priceMin];
+    }
+    const byStart = (list) => list.sort((a, b) => a.start - b.start).map((x) => x.text);
+    return { patch, tokens, rest: byStart(rest).join(" "), ignored: [...new Set(byStart(ignored))] };
+  }
+
+  // A latin word: the whole word only ("shibuya", "shibuya-ku", "jiyugaoka").
+  function latinChunk(chunk, meanings) {
+    const ms = meanings.get(nameKey(chunk));
+    return ms ? [{ start: 0, end: chunk.length, meanings: ms }] : null;
+  }
+  // A run of kanji and kana: cut into known names and words, all of it, in as few pieces as possible
+  // (「渋谷駅」 = 渋谷 + 駅, 「港区・渋谷区」); 「パークタワー勝どき」 stays text (パークタワー is nothing known).
+  const LONGEST = 24;
+  function cjkChunk(chunk, meanings) {
+    const n = chunk.length, best = new Array(n + 1).fill(Infinity), next = new Array(n + 1);
+    best[n] = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = Math.min(n, i + LONGEST); j > i; j--) {
+        const key = nameKey(chunk.slice(i, j)), cost = key === "" ? 0 : meanings.has(key) ? 1 : Infinity;
+        if (best[j] + cost < best[i]) { best[i] = best[j] + cost; next[i] = [j, key]; }
+      }
+    }
+    if (best[0] === Infinity) return null;
+    const out = [];
+    for (let i = 0; i < n;) {
+      const [j, key] = next[i];
+      if (key) out.push({ start: i, end: j, meanings: meanings.get(key) });
+      i = j;
+    }
+    return out;
+  }
+
+  // A query with a parse applied: types replaced, areas/stations/features added, numbers and flags set,
+  // text = what wasn't understood.
+  function applyParse(q, parsed) {
+    const out = { ...q };
+    for (const [k, v] of Object.entries(parsed.patch)) {
+      if (k === "types") out.types = [...v];
+      else if (Array.isArray(out[k])) out[k] = [...new Set([...out[k], ...v])];
+      else out[k] = v;
+    }
+    out.text = parsed.rest;
+    return out;
+  }
+
   return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch,
-    suggest, nameKey };
+    suggest, parse, applyParse, nameKey };
 });
