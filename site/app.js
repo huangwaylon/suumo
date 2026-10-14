@@ -1074,11 +1074,17 @@
   }
 
   let toastTimer = null;
-  function toast(text) {
+  // action: [label, onclick] for a button in it (shown longer)
+  function toast(text, action) {
     $("toast").textContent = text;
+    if (action) {
+      const b = Object.assign(document.createElement("button"), { className: "toast-btn", textContent: action[0] });
+      b.addEventListener("click", () => { $("toast").classList.remove("on"); action[1](); });
+      $("toast").append(b);
+    }
     $("toast").classList.add("on");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => $("toast").classList.remove("on"), 2200);
+    toastTimer = setTimeout(() => $("toast").classList.remove("on"), action ? 12000 : 2200);
   }
 
   // ---------- events ----------
@@ -1304,6 +1310,35 @@
       loaded.set(slug, part);
     }));
     allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
+    offerNewer();
+  }
+
+  // The service worker (sw.js) shows a prefecture's index from this browser's cache, then fetches it again; when the
+  // new copy differs it says so here, and the newer data can be loaded in place.
+  function watchUpdates() {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      const slug = e.data?.type === "updated" && /\/data\/p\/([^/]+)\.json$/.exec(new URL(e.data.url).pathname)?.[1];
+      if (slug) { newer.add(slug); offerNewer(); }
+    });
+  }
+
+  const newer = new Set();  // prefectures with a newer index than the one shown (it can come before ours is loaded)
+  function offerNewer() {
+    const ready = [...newer].filter((s) => loaded.has(s));
+    if (!ready.length) return;
+    for (const s of ready) newer.delete(s);
+    toast(t("dataUpdated"), [t("refresh"), () => ready.forEach(reloadPref)]);
+  }
+
+  async function reloadPref(slug) {
+    for (const it of loaded.get(slug).items) for (const [s] of it.stations) stationHomes.set(s, stationHomes.get(s) - 1);
+    loaded.delete(slug);
+    await loadPrefs([slug]);
+    choosePrefs(chosen);
+    renderedFor = null;
+    render();
   }
 
   function choosePrefs(slugs) {
@@ -1330,6 +1365,7 @@
   }
 
   async function start() {
+    watchUpdates();
     applyTheme();
     applyLanguage();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);

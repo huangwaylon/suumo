@@ -10,6 +10,7 @@ as its best-documented listing; the others are linked from its record. The trick
 walk times, flags) are computed here, so site/filter.js only compares values. The output is not committed:
 GitHub Actions builds it on every push.
 """
+import hashlib
 import json
 import re
 import shutil
@@ -253,6 +254,9 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
+    # the service worker's version: the page's files, so a new page never reads data cached for an old one
+    version = hashlib.sha1(b"".join(f.read_bytes() for f in sorted(STATIC.glob("*")) if f.is_file())).hexdigest()[:12]
+    (out / "sw.js").write_text((STATIC / "sw.js").read_text().replace("__VERSION__", version))
     (out / ".nojekyll").write_text("")
     readings = station_names(stations_cache) if stations_cache else {}
     towns, updated = load_cache(geo_cache), _updated(Path(data_dir))

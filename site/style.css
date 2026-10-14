@@ -279,6 +279,8 @@ details.group .opts { padding-bottom: 12px; }
   padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 14px; box-shadow: var(--shadow);
   transition: opacity .2s; }
 .toast:not(.on) { opacity: 0; pointer-events: none; }  /* kept rendered: a live region */
+.toast-btn { margin-left: 12px; padding: 4px 10px; border: 0; border-radius: 6px; background: var(--bg); color: var(--text);
+  font: inherit; font-weight: 600; cursor: pointer; }
 
 /* Desktop side panel: tabs (地図, opened listings, 比較) over the map or a listing ------------------- */
 .side-tabs { flex: none; display: flex; align-items: center; gap: 4px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none;
