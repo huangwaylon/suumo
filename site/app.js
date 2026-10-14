@@ -253,7 +253,7 @@
     document.body.classList.toggle("areamode", !!area);
     sideLayout();
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
-    $("q").value = q.text;
+    if ($("q").value.trim() !== q.text) $("q").value = q.text;  // (a space being typed stays)
     $("sort").value = q.sort;
     $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : "count", num(hits.length));
     byDay = mode === "search" && q.sort === "new" && !!(q.newOnly || q.since);  // what's new: a heading per day
@@ -875,7 +875,7 @@
     $("detail").hidden = false;
     document.body.style.overflow = "hidden";
     $("detail-back").focus();
-    setFavButton();
+    setFavButtons(key);
     $("detail-link").removeAttribute("href");
     const r = await renderListing($("detail-body"), key);
     if (openKey !== key) return;
@@ -883,13 +883,13 @@
     $("detail-link").hidden = !r || !!(it && it.flags & db.flags.gone);  // ended: SUUMO's page is gone too
   }
 
+  const dropMap = (box) => { box.leaflet?.remove(); box.leaflet = null; };  // a listing's small map, when it goes
   // A listing's page into box (the full-page view, or a tab of the side panel), with its small map.
   // Resolves to the record, or null when it couldn't be loaded (ended, offline) or box moved on to another.
   async function renderListing(box, key) {
     const it = allByKey.get(key);
     box.dataset.key = key;
-    box.leaflet?.remove();
-    box.leaflet = null;
+    dropMap(box);
     box.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
     try {
@@ -958,8 +958,7 @@
 
   function hideDetail() {
     openKey = null;
-    $("detail-body").leaflet?.remove();
-    $("detail-body").leaflet = null;
+    dropMap($("detail-body"));
     $("detail").hidden = true;
     document.body.style.overflow = "";
     lastFocus?.focus();
@@ -1019,7 +1018,7 @@
     $("side-tabs").querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
     document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", sideTabs.includes(c.querySelector("[data-key]")?.dataset.key)));
     const body = $("side-body");
-    if (tab === "map") { body.leaflet?.remove(); body.leaflet = null; body.dataset.key = ""; drawMap(); }
+    if (tab === "map") { dropMap(body); body.dataset.key = ""; drawMap(); }
     else if (tab === "compare") {
       body.dataset.key = "compare";
       compareHtml(sideTabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
@@ -1057,16 +1056,19 @@
       "_blank", "noopener");
     pending[key] = [save, Date.now()];
     refreshFavs();
-    document.querySelectorAll(`.fav[data-fav="${CSS.escape(key)}"], .fav-btn[data-fav="${CSS.escape(key)}"]`).forEach((b) => b.setAttribute("aria-pressed", favs.has(key)));
-    if (openKey === key) setFavButton();
-    document.querySelectorAll(`.fav-btn[data-fav="${CSS.escape(key)}"] span`).forEach((s) => { s.textContent = t(favs.has(key) ? "saved" : "save"); });
+    setFavButtons(key);
     toast(t(save ? "favAdded" : "favRemoved"));
     if (mode === "favorites") render();
   }
 
-  function setFavButton() {
-    $("detail-fav").setAttribute("aria-pressed", favs.has(openKey));
-    $("detail-fav").querySelector("span").textContent = t(favs.has(openKey) ? "saved" : "save");
+  // Every heart for the listing (cards, the listing view's, the side panel's) says whether it's saved.
+  function setFavButtons(key) {
+    for (const b of document.querySelectorAll("[data-fav]")) {
+      if ((b.dataset.fav || openKey) !== key) continue;  // the listing view's button is for the open listing
+      b.setAttribute("aria-pressed", favs.has(key));
+      const label = b.querySelector("span");
+      if (label) label.textContent = t(favs.has(key) ? "saved" : "save");
+    }
   }
 
   let toastTimer = null;
