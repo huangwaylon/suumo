@@ -133,8 +133,10 @@ def build_rail(sections, stations, lines_info, operators_en):
     out_stations = [[g["name"], round(sum(y for _, y in g["points"]) / len(g["points"]), 5),
                      round(sum(x for x, _ in g["points"]) / len(g["points"]), 5), sorted(g["lines"])]
                     for _, g in sorted(groups.items())]
-    operators = [[o, *(operators_en.get(o) or (None, None))[:1], OPERATOR_COLOURS.get(o, OTHER),
-                  SHORT.get(o) or (operators_en.get(o) or (None, o))[1]] for o in ops]
+    operators = []
+    for o in ops:
+        english, short = operators_en.get(o) or (None, o)
+        operators.append([o, english, OPERATOR_COLOURS.get(o, OTHER), SHORT.get(o) or short])
     return {"attribution": ATTRIBUTION, "operators": operators, "lines": lines, "stations": out_stations}
 
 

@@ -26,8 +26,6 @@ jobs:
           node-version: 22
       - name: Lint and test
         run: |
-          git config --global user.email ci@example.com
-          git config --global user.name ci
           uv run ruff check suumo tests
           uv run pytest -q
       - name: Build site

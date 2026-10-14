@@ -14,6 +14,7 @@ TYPES = {
     "new_condo": "ms/shinchiku",
 }
 PAGE_SIZE = 100
+_M2_FIELDS = {"専有面積": "floor_m2", "バルコニー": "balcony_m2", "土地面積": "land_m2", "建物面積": "building_m2"}
 
 _ws = re.compile(r"\s+")
 _price = re.compile(r"(?:(\d+(?:\.\d+)?)億)?(?:(\d+(?:\.\d+)?)万)?(\d+)?円")
@@ -179,18 +180,12 @@ def _standard_unit(u, area):
         elif k == "沿線・駅":
             st = parse_station(v)
             r["stations"] = [st] if st else []
-        elif k == "専有面積":
-            _m2_into(r, "floor_m2", v)
+        elif k in _M2_FIELDS:
+            _m2_into(r, _M2_FIELDS[k], v)
         elif k == "間取り":
             r["layout"] = v
-        elif k == "バルコニー":
-            _m2_into(r, "balcony_m2", v)
         elif k == "築年月":
             r["built"] = parse_built(v)
-        elif k == "土地面積":
-            _m2_into(r, "land_m2", v)
-        elif k == "建物面積":
-            _m2_into(r, "building_m2", v)
     r["agent"] = text(u.select_one(".shopmore-title"))
     r["image"] = _image(u)
     return clean(r)

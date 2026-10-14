@@ -1,18 +1,16 @@
 """Parsers against real SUUMO pages saved in tests/fixtures (Komae, 2026-10-05)."""
-from pathlib import Path
-
 import pytest
 
 from suumo.archive import Archive
 from suumo.detail import parse_detail
 from suumo.parse import parse_areas, parse_list_page
+from tests.helpers import FIXTURES
 
-FIX = Path(__file__).parent / "fixtures"
 KOMAE = {"code": "13219", "name": "狛江市"}
 
 
 def page(name):
-    return Archive.read(FIX / name)
+    return Archive.read(FIXTURES / name)
 
 
 def test_area_page_counts_include_comma_formatted_numbers():

@@ -10,6 +10,11 @@ from bs4 import BeautifulSoup
 from .parse import clean, parse_built, parse_m2, parse_prices, parse_station, text, yen
 
 _num = re.compile(r"\d+(?:\.\d+)?")
+_TEXT_FIELDS = (  # field, spec labels: values kept as written
+    ("direction", ("向き",)), ("zoning", ("用途地域",)), ("land_status", ("土地状況",)), ("land_category", ("地目",)),
+    ("builder", ("施工",)), ("handover", ("引渡可能時期", "引き渡し時期")), ("energy", ("エネルギー消費性能",)),
+    ("insulation", ("断熱性能",)), ("restrictions", ("その他制限事項",)), ("top_price_band", ("最多価格帯",)),
+)
 
 
 def spec_table(soup):
@@ -150,8 +155,6 @@ def parse_detail(html):
         r["floor"] = _floor(v)
     if (v := g("構造・階建て", "構造・工法", "所在階/構造・階建")):
         r["structure"], r["floors_above"], r["floors_below"] = _structure(v)
-    if (v := g("向き")):
-        r["direction"] = v
     if (v := g("総戸数", "総区画数")):
         r["total_units"] = _int(v)
     if (v := g("販売戸数", "販売区画数")):
@@ -160,44 +163,28 @@ def parse_detail(html):
         r["land_rights"] = _tenure(v)
         if v != r["land_rights"]:
             r["land_rights_note"] = v
-    if (v := g("用途地域")):
-        r["zoning"] = v
     if (v := g("建ぺい率・容積率", "建ぺい率･容積率")):
         r["coverage_pct"], r["far_pct"] = _ratios(v)
     r["parking"] = _parking(g("駐車場"), notes)
     if (v := g("敷地面積")):
         r["site_m2"] = parse_m2(v)[0]
     r["road"] = _road(g("私道負担・道路"))
-    if (v := g("土地状況")):
-        r["land_status"] = v
     if (v := g("建築条件")):
         r["build_condition"] = v.startswith("付")
-    if (v := g("地目")):
-        r["land_category"] = v
-    if (v := g("施工")):
-        r["builder"] = v
     if (v := g("リフォーム")):
         r["reform"] = clean({"date": parse_built(v), "text": v.split("※")[0].strip()})
     if (v := g("完成時期(築年月)", "完成時期（築年月）")):
         r["built"] = parse_built(v)
         if "予定" in v:
             r["built_planned"] = True
-    if (v := g("引渡可能時期", "引き渡し時期")):
-        r["handover"] = v
-    if (v := g("エネルギー消費性能")):
-        r["energy"] = v
-    if (v := g("断熱性能")):
-        r["insulation"] = v
-    if (v := g("その他制限事項")):
-        r["restrictions"] = v
     if notes:
         m = re.search(r"設備：([^、]+(?:、(?!担当者|駐車場|建築確認)[^、：]+)*)", notes)
         if m:
             r["utilities"] = m.group(1)
     if (v := g("販売スケジュール")) and len(v) < 120:
         r["sale_schedule"] = v
-    if (v := g("最多価格帯")):
-        r["top_price_band"] = v
+    for key, labels in _TEXT_FIELDS:
+        r[key] = g(*labels)
     r["features"] = _features(soup)
     m = re.search(r"取引態様：\s*＜([^＞]+)＞", text(soup))
     r["deal_type"] = m.group(1) if m else None
