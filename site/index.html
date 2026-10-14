@@ -19,7 +19,7 @@
       // Tokyo) start downloading now rather than after the scripts and data/index.json.
       let p = "";
       try { p = new URLSearchParams((location.hash || localStorage.getItem("suumo.last") || "").slice(1)).get("p") || ""; } catch {}
-      for (const slug of (p || "tokyo").split(",").filter((x) => /^[a-z]+$/.test(x))) {
+      for (const slug of (p || "tokyo").split(",").filter((x) => /^[a-z_]+$/.test(x))) {
         document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "fetch", crossOrigin: "anonymous", href: `data/p/${slug}.json` }));
       }
     })();
