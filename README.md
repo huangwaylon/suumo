@@ -11,35 +11,40 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 
 | Screen | Layout |
 |---|---|
-| Phone | search bar with filter and favorites buttons; full-screen filter sheet; list or full-screen map (floating switch); listing as a full page with a fixed 「お気に入り / SUUMOで見る」 bar |
-| Tablet | tile grid; filters and listing as side sheets |
-| Desktop (≥1280px) | filters rail · results · a side panel with tabs: 地図, every listing opened from the list (kept open for comparing until closed; × or すべて閉じる), and 比較 (the open listings side by side); the toolbar's 「地図」 hides the map, giving the list the room unless listings are open |
+| Phone, tablet (<1024px) | the map full screen under a bottom sheet with the list: peek (the count), half or full; drag its head or tap the handle; full-screen filter sheet (side sheet from 700px) |
+| Wide (≥1024px) | map · a divider (drag, or arrow keys) · the list; filters as a side sheet |
+| Desktop (≥1280px) | filters rail (« hides it) · map · divider · list |
+
+On every size the list is what's in the map's view (「この範囲 N件 / 全M件」; 全M件 fits the map to all results),
+in 1–3 columns of cards as the list's width allows. A listing opens as a tab of the list (on phones the sheet goes
+full height; back returns to the list): opened listings stay open as tabs (up to 12; × or すべて閉じる), and with
+two or more 比較 shows them side by side. The listing has a sticky 「お気に入り / SUUMOで見る」 bar at the bottom.
 
 - **Search**: station, town or building name; several words narrow down; hiragana, katakana, half-width kana and
   romaji match (station readings from Wikidata). Typing a station or ward name offers it as a filter in one tap.
 - **Filters** (one panel, every choice shows its count): 種別, 価格, 間取り（以上: 2LDK〜…）, 広さ, 土地, 築年数,
   新耐震, 駅 (search by name) and 徒歩, エリア (by prefecture and 区部/市部/町村), こだわり (所有権のみ, 建築条件なし,
   新着, 値下げ, SUUMO's tags). Active conditions show as chips under the count: the label opens the filters at that
-  condition, × removes it. The last search comes back when the site is reopened; browser back closes the filter
-  sheet, settings, the map view and the listing.
-- **Results**: cards with photo, price, layout, size, age, nearest station, town; 8 sort orders (incl.
-  値下げ率が大きい順); more load as you scroll. The map follows the results (pins by town, 丁目 level). No results →
-  the conditions to drop, with counts.
+  condition, × removes it. The last search (and where the map was) comes back when the site is reopened; browser
+  back closes the filter sheet, settings, the prefecture picker and a listing's tab.
+- **Results**: cards with photo, price, layout, size, age, nearest station, town; 9 sort orders (incl.
+  値下げ率が大きい順); more load as you scroll. Pins by town (丁目 level), clusters when zoomed out, price tags from zoom 15; a town's
+  pin lists its homes. The map moves only when asked: a prefecture, an area or a station named (from the filters,
+  the search box or a suggestion), a saved search, 全M件; filter changes keep the view. Nothing in view →
+  「全体を表示」; no results at all → the conditions to drop, with counts. Results without coordinates are folded
+  at the end of the list (「地図に表示できない物件」).
 - **What's new**: 新着 tags say when (3時間前, 10/6), 再掲載 marks relisted homes, 値下げ tags show the cut (−8%).
   Above the results, one-tap 新着 / 値下げ / 前回の訪問以降 chips with counts under the current conditions (a visit
   is a new data version, remembered in the browser); with 新着 or 前回の訪問以降 on, the list is grouped by day.
   A property another agent already listed doesn't count as new.
 - **Saved searches** (this browser): the star saves the current conditions; each shows how many listings are new
   or cheaper since it was last opened (+N), and opening it shows those first.
-- **Railway lines and stations** on the maps, the whole country: every operator's lines in their colours; from
-  zoom 12 the stations, each opening its lines and 「この駅の物件 N件」 (filters by it). 「路線」 switches lines
-  off, or operator by operator. A chosen station's lines are highlighted. Each listing's map shows the lines and
-  stations around it. Data: 国土数値情報（鉄道データ）（国土交通省, CC BY 4.0）; line colours and English names from
+- **Railway lines and stations** on the map, the whole country: every operator's lines in their colours; from
+  zoom 11 the stations (names from 14), each opening its lines and 「この駅の物件 N件」 (filters by it, the map
+  stays). 「路線」 switches lines off, or operator by operator. A chosen station's lines are highlighted. Data: 国土数値情報（鉄道データ）（国土交通省, CC BY 4.0）; line colours and English names from
   公共交通オープンデータセンター (ODPT; the challenge datasets are licensed for the ODPT challenge only).
-- **Map area view**: 「この範囲の物件を見る」 on the map lists only what's visible (under the current conditions)
-  and follows panning and zooming; desktop shows conditions | map | list, phones the map above the list.
-- **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, other agents' listings, its town on a
-  map, a link to SUUMO.
+- **Listing**: photo, key facts, 交通, 費用, 建物, 土地・法規, 特徴, 価格の推移, 相場感, other agents' listings, a
+  link to SUUMO; its town is ringed on the map and 「地図で見る」 takes the map there.
 - **Settings** (gear icon): language 日本語 (default) or English, and theme システム / ライト / ダーク, saved in the
   browser. In English the interface, units, prices (¥49.9M) and fixed values (land rights, deal type) are
   translated, and so are ward and station names and common tags; towns, building names and free text stay as
@@ -47,8 +52,9 @@ Plain HTML/CSS/JS (no framework, no build step), in Japanese, rebuilt by GitHub 
 - **Favorites** are one shared list (`saved.json`): the heart opens a pre-filled GitHub issue
   (`save used_condo:123`); submitting it (a GitHub account is needed) runs the Saved workflow, which updates the
   list and rebuilds the site in a few minutes. Saved listings are kept after they leave SUUMO, marked 掲載終了.
-  「比較する」 shows them side by side (price, size, age, station, monthly costs, floor, land rights).
-  Conditions live in the URL, so any search or listing can be shared.
+  The favorites view shows all of them (the map fits to them; back returns to the search where it was), and
+  「比較する」 opens them as tabs side by side (price, size, age, station, monthly costs, floor, land rights).
+  Conditions live in the URL (and the map's place, `m=lat,lng,zoom`), so any search or listing can be shared.
 
 One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
 「ほかN社も掲載」. 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings

@@ -97,9 +97,9 @@
   let lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
-  let listStale = false;
+  let listStale = false;        // the list is drawn when it's in sight again (the phone filter sheet, another tab)
   let sayTimer = null;          // the count is said aloud shortly after the conditions change
-  let listSig = null;           // what the drawn cards show (render skips redrawing the same)        // the phone filter sheet covers the list: it's redrawn when the sheet closes
+  let listSig = null;           // what the drawn cards show (render skips redrawing the same)
   let areaNames = new Map();
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
   let dataHour = null;             // YYYYMMDDHH of the data shown now
@@ -909,31 +909,30 @@
 
   // Moves the map as fitNext says, once it's there.
   function placeMap() {
-    const how = fitNext, it = how?.id && allByKey.get(how.id), pad = { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()] };
+    const how = fitNext, it = how?.id && allByKey.get(how.id), [lat, lng, z] = how?.m?.split(",").map(Number) ?? [];
     if (!map || !how) return;
     fitNext = null;
-    if (how.m) map.setView(centreFor(how.m.split(",").slice(0, 2).map(Number), +how.m.split(",")[2]), +how.m.split(",")[2]);
+    if (how.m) map.setView(centreFor([lat, lng], z), z);
     else if (how.b) map.fitBounds([[how.b[0], how.b[1]], [how.b[2], how.b[3]]], { paddingBottomRight: [0, hidden()] });
     else if (it?.lat != null) map.setView(centreFor([it.lat, it.lng], 15), 15);
     else {  // the results (none: the prefectures)
       const placed = mapHits.filter((x) => x.lat != null).map((x) => [x.lat, x.lng]);
       const points = placed.length ? placed : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
-      if (points.length) map.fitBounds(coreBounds(points), { ...pad, maxZoom: 15 });
+      if (points.length) map.fitBounds(coreBounds(points), { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()], maxZoom: 15 });
     }
     onMapMove();  // (also when it was there already)
   }
 
-  function loadLeaflet() {
+  // Leaflet loaded (true) or not available (false; retried next time).
+  function mapReady() {
     leaflet ||= Promise.all(LEAFLET.map(([kind, url, integrity]) => new Promise((ok, fail) => {
       const el = document.createElement(kind === "css" ? "link" : "script");
       Object.assign(el, kind === "css" ? { rel: "stylesheet", href: url } : { src: url, async: false });
       Object.assign(el, { integrity, crossOrigin: "", onload: ok, onerror: fail });
       document.head.append(el);
-    })));
+    }))).then(() => true, () => { leaflet = null; return false; });
     return leaflet;
   }
-  // Leaflet loaded (true) or not available (false; retried next time).
-  const mapReady = () => loadLeaflet().then(() => true, () => { leaflet = null; return false; });
 
   // Markers: a town (丁目) is a pill with its count, or from PRICE_ZOOM a price tag (its lowest price, and how many);
   // a cluster of towns is a filled circle sized by its count (a tap zooms in). Icons are reused across redraws.
@@ -989,10 +988,8 @@
 
   async function drawMap() {
     if (!(await mapReady())) {  // (unpkg unreachable) everything is listed
-      waiting = false;
       $("map").innerHTML = `<p class="map-failed">${esc(t("mapFailed"))}</p>`;
-      listResults();
-      return;
+      return listResults((waiting = false));
     }
     if (!map) createMap();
     const towns = new Map();
@@ -1021,9 +1018,6 @@
     }
     return d;
   }).catch(() => { railData = null; return null; }));
-  // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
-  const stationDot = (latlng, name, renderer, lines) => L.circleMarker(latlng, { renderer, radius: 4, color: "#1d2026",
-    weight: 2, fillColor: "#fff", fillOpacity: 1, lines }).bindTooltip(name, { direction: "top", offset: [0, -5] });
   const stationRadius = (z, lines) => (z < 13 ? 3 : z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
   const halo = () => (document.documentElement.dataset.theme === "dark" ? "#0d0f13" : "#ffffff");  // under each line
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
@@ -1038,8 +1032,10 @@
     const canvas = L.canvas({ padding: 0.3 });
     railHalos = rail.lines.map(([, , , , parts]) => L.polyline(latlngs(parts), { renderer: canvas, interactive: false }));
     railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
-    railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) =>
-      stationDot([lat, lng], name, canvas, lines.length).bindPopup(() => stationPopup(name, lines))));
+    // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
+    railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) => L.circleMarker([lat, lng], { renderer: canvas, radius: 4,
+      color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1, lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] })
+      .bindPopup(() => stationPopup(name, lines))));
     railLabels = L.layerGroup();
     map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
     const open = document.createElement("button"), panel = document.createElement("div");
@@ -1358,12 +1354,12 @@
   let openedFrom = null;    // the card whose listing is open (focus returns to it)
   const listY = {};         // the list's scroll position per mode (search, favorites)
   const isListing = (k = tab) => k !== "list" && k !== "compare";
+  const addTabs = (keys) => { for (const k of keys) if (!tabs.includes(k)) tabs.push(k); tabs.splice(0, Math.max(0, tabs.length - MAX_TABS)); };
 
   // A listing (from a card, the map, the strip) or 比較.
   function openTab(key) {
     if (key === "list") return toList();
-    if (isListing(key) && !tabs.includes(key)) tabs.push(key);
-    if (tabs.length > MAX_TABS) tabs.shift();
+    if (isListing(key)) addTabs([key]);
     const from = tab;
     if (from === "list") openedFrom = key;
     showTab(key);
@@ -1371,8 +1367,7 @@
   }
   // Favorites side by side: they open as tabs (the newest twelve), shown in 比較.
   function compareFavs(push = true) {
-    for (const it of hits.slice(0, MAX_TABS)) if (!tabs.includes(it.key)) tabs.push(it.key);
-    tabs.splice(0, Math.max(0, tabs.length - MAX_TABS));
+    addTabs(hits.slice(0, MAX_TABS).map((it) => it.key));
     if (push) openTab("compare"); else showTab("compare");
   }
   // drawn again (another language, USD on or off)
@@ -1445,11 +1440,11 @@
     document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", tabs.includes(c.querySelector("[data-key]")?.dataset.key)));
     strip.hidden = !tabs.length;
     if (strip.hidden) return;
-    const button = (id, label, x, cls = "") => `<span class="tab${tab === id ? " on" : ""}" role="presentation">
-      <button role="tab"${cls} aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${esc(label)}</button>${
+    const button = (id, label, x) => `<span class="tab${tab === id ? " on" : ""}" role="presentation">
+      <button role="tab" aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${
+      id === "list" ? icon("back") : ""}${esc(label)}</button>${
       x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
-    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "listTab")} ${num(hits.length)}`, false, ' class="tab-list"')
-      .replace('data-tab-show="list">', `data-tab-show="list">${icon("back")}`) +
+    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : "listTab")} ${num(hits.length)}`) +
       tabs.map((key) => {
         const it = allByKey.get(key);
         return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : key, true);
@@ -1515,9 +1510,7 @@
     const layout = document.querySelector(".layout"), rail = railOn() && mode === "search" ? 280 : 0;
     const max = Math.max(PANEL_MIN, layout.clientWidth - rail - 8 - MAP_MIN), w = Math.round(Math.min(max, Math.max(PANEL_MIN, px)));
     layout.style.setProperty("--panel", `${w}px`);
-    $("split").setAttribute("aria-valuemin", PANEL_MIN);
-    $("split").setAttribute("aria-valuemax", max);
-    $("split").setAttribute("aria-valuenow", w);
+    for (const [k, v] of Object.entries({ min: PANEL_MIN, max, now: w })) $("split").setAttribute(`aria-value${k}`, v);
     if (save) { settings.panel = w; saveSettings(); }
   }
   function wireSplit() {
@@ -1574,13 +1567,11 @@
     if (mode === "favorites") render();
   }
 
-  // Every heart for the listing (cards, the listing view's, the side panel's) says whether it's saved.
+  // Every heart for the listing (its card's, its tab's) says whether it's saved.
   function setFavButtons(key) {
-    for (const b of document.querySelectorAll("[data-fav]")) {
-      if (b.dataset.fav !== key) continue;
+    for (const b of document.querySelectorAll(`[data-fav="${CSS.escape(key)}"]`)) {
       b.setAttribute("aria-pressed", favs.has(key));
-      const label = b.querySelector("span");
-      if (label) label.textContent = t(favs.has(key) ? "saved" : "save");
+      b.querySelector("span")?.replaceChildren(t(favs.has(key) ? "saved" : "save"));
     }
   }
 
@@ -1899,18 +1890,15 @@
     const before = mode, p = readHash(), key = p.get("id");
     modeChanged(before);
     if (conditionsHash() !== renderedFor) render(); else placeMap();
-    if (key) {  // a listing: the tab (opened when it isn't, as from a link)
-      if (!tabs.includes(key)) tabs.push(key);
-      if (tabs.length > MAX_TABS) tabs.shift();
-      showTab(key);
-    } else if (p.get("cmp") === "1" && mode === "favorites") compareFavs(false);
+    if (key) { addTabs([key]); showTab(key); }  // a listing: its tab (opened when it isn't, as from a link)
+    else if (p.get("cmp") === "1" && mode === "favorites") compareFavs(false);
     else if (tab !== "list") showTab("list");
   }
 
   async function start() {
     history.scrollRestoration = "manual";  // the list keeps its place itself (per tab and view)
     watchUpdates();
-    loadLeaflet().catch(() => {});  // the map, while the listings load
+    mapReady();  // the map loads while the listings do
     setTimeout(() => { if (waiting) { waiting = false; if (renderedFor) listResults(); } }, MAP_WAIT);  // or list them all
     applyTheme();
     applyLanguage();

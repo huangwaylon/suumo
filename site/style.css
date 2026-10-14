@@ -118,7 +118,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 #panel:not([data-tab="list"]) .toolbar { display: none; }
 .sheet-handle { display: none; }
 .toolbar-end { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: auto; }
-#count { margin: 0; font-size: 15px; white-space: nowrap; }
+#count { flex: none; margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; }
 #count:focus { outline: none; }
 #sort { max-width: 11em; }
 #keep[aria-pressed="true"] { color: var(--warn); }
@@ -127,8 +127,8 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .day span { color: var(--muted); font-size: 13px; font-weight: 400; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }  /* a wide table scrolls inside */
 .grid > :is(.day, .empty, .skeleton:only-child) { grid-column: 1 / -1; }
-/* favorites side by side: one column per listing, labels stay in view */
-.compare { width: max-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+/* 比較: one column per listing, the labels stay in view */
+.compare { width: max-content; max-width: calc(100% - 24px); margin: 12px; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .compare table { border-collapse: collapse; font-size: 14px; }
 .compare th, .compare td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; min-width: 150px; }
 .compare th { position: sticky; left: 0; z-index: 1; min-width: 6.5em; background: var(--surface); color: var(--muted); font-weight: 400; font-size: 13px; }
@@ -148,7 +148,7 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .card > a { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
 .card > a:focus-visible { outline: none; }
 .card:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.card.open { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }  /* open in the side panel */
+.card.open { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }  /* open in a tab */
 .ph { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--surface)
   url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab0bb' stroke-width='1.5'><path d='M4 11l8-7 8 7v9h-5v-6h-6v6H4z'/></svg>") no-repeat center / 28px; }
 .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -247,23 +247,18 @@ body.show-filters .filters { transform: none; visibility: visible; transition: t
 .opts + .opts { margin-top: 10px; }
 .field { display: grid; grid-template-columns: 4.5em 1fr; align-items: center; gap: 8px; margin-top: 8px; }
 .field span { color: var(--muted); font-size: 14px; }
-.field .select { width: 100%; height: 44px; font-size: 15px; }
+.field .select, .field-pair .select { width: 100%; height: 44px; font-size: 15px; }
 .text-input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px;
   background: var(--bg); font-size: 16px; margin-bottom: 10px; }
 #walk-from { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
 /* price: two selects side by side */
 .field-pair { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
-.field-pair .select { width: 100%; height: 44px; font-size: 15px; }
 .field-pair span { color: var(--muted); }
 /* sections that open on demand (エリア, こだわり): the summary says what's chosen */
 .fold > summary { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; list-style: none; }
-.fold > summary::-webkit-details-marker { display: none; }
 .fold > summary h3 { margin: 0; flex: none; }
 .fold-sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; color: var(--faint); font-size: 14px; }
 .fold-sum.on { color: var(--accent); font-weight: 600; }
-.fold > summary::after { content: ""; flex: none; width: 8px; height: 8px; margin: -4px 4px 0 0; border: solid var(--muted);
-  border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform .15s; }
-.fold[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .fold-body { padding-top: 8px; }
 .fold-body > .opts + .field { margin-top: 14px; grid-template-columns: 1fr; gap: 4px; }  /* the label above */
 .hint.share { margin: 0 0 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg); color: var(--muted); font-size: 13px; }
@@ -272,10 +267,11 @@ body.show-filters .filters { transform: none; visibility: visible; transition: t
 details.group { border-top: 1px solid var(--line); }
 details.group:first-of-type { border-top: 0; }
 details.group summary { display: flex; justify-content: space-between; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; list-style: none; }
-details.group summary::-webkit-details-marker { display: none; }
-details.group summary::after { content: ""; width: 8px; height: 8px; margin: -4px 4px 0 0; border: solid var(--muted);
+/* folds open and close with a chevron */
+:is(.fold, details.group) > summary::-webkit-details-marker { display: none; }
+:is(.fold, details.group) > summary::after { content: ""; flex: none; width: 8px; height: 8px; margin: -4px 4px 0 0; border: solid var(--muted);
   border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform .15s; }
-details.group[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+:is(.fold, details.group)[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
 details.group .opts { padding-bottom: 12px; }
 
 /* Prefecture picker: a sheet (phones, tablets), a popover under its button (desktop) */
@@ -284,7 +280,6 @@ details.group .opts { padding-bottom: 12px; }
 .pref-btn span { overflow: hidden; text-overflow: ellipsis; }
 .pref-btn .i { width: 16px; height: 16px; color: var(--muted); }
 .pref-btn:not([hidden]) + #count::before { content: "·"; margin-right: 6px; color: var(--faint); font-weight: 400; }
-#count { flex: none; font-weight: 600; }
 .fit-btn { min-height: 44px; padding: 0 4px; color: var(--muted); font-size: 13px; text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
 .fit-btn::before { content: "/"; margin-right: 4px; color: var(--faint); }
 .prefs { position: fixed; inset: 0; z-index: 56; display: flex; align-items: flex-end; justify-content: center; background: rgb(0 0 0 / .35); }
@@ -381,7 +376,6 @@ details.group .opts { padding-bottom: 12px; }
 .panel-body { background: var(--surface); }
 .panel-body::after { content: ""; display: block; height: var(--sheet-y, 0px); }  /* (phones: the end above the screen's) */
 .panel-body:focus { outline: none; }
-.panel-body .compare { margin: 12px; max-width: calc(100% - 24px); }
 .d-head h2:focus { outline: none; }
 
 /* Small phones -------------------------------------------------------------------------------------- */
@@ -454,9 +448,9 @@ body.resizing { user-select: none; cursor: col-resize; }
   .tabs { touch-action: pan-x; }
   .sheet-handle { display: block; width: 100%; height: 20px; }
   .sheet-handle::before { content: ""; display: block; width: 36px; height: 4px; margin: 8px auto; border-radius: 2px; background: var(--faint); opacity: .6; }
-  .tab-list .i { width: 16px; height: 16px; margin: 0 2px -3px -4px; }  /* ‹ この範囲: back to the list */
+  [data-tab-show="list"] .i { width: 16px; height: 16px; margin: 0 2px -3px -4px; }  /* ‹ この範囲: back to the list */
 }
-@media (min-width: 1024px) { .tab-list .i { display: none; } }
+@media (min-width: 1024px) { [data-tab-show="list"] .i { display: none; } }
 
 /* Wide: the map, the list of what's in view beside it --------------------------------------------- */
 @media (min-width: 1024px) {
