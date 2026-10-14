@@ -1245,11 +1245,8 @@
     }));
     window.addEventListener("popstate", () => {
       if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
-        document.body.classList.remove("show-filters");
-        sheetSemantics();
         history.replaceState(null, "", hashFor());
-        if (listStale) render();
-        $("filters-open").focus();
+        openFilters(false);
         return;
       }
       if (!$("settings").hidden) { openSettings(false, true); return; }
