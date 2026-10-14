@@ -103,7 +103,7 @@ request. Run it in a Terminal on a Mac that stays awake and on power (`caffeinat
 ```sh
 uv run python -m suumo --delay 1.0 run --budget 0                    # search results only, ~20 min: all listings known
 caffeinate -i uv run python -m suumo --delay 1.0 run --no-crawl --budget 40h 2>&1 | tee -a logs/backfill.log
-uv run python -m suumo geocode                                       # map coordinates for every town, a few hours
+uv run python -m suumo geocode                                       # map coordinates for every town, about a minute
 ```
 
 Follow it with `tail -f logs/backfill.log` (a progress line every 200 pages: done/total, s/page, ETA, current
@@ -146,7 +146,7 @@ agent/Keychain); a failed push is logged and retried next run. To stop it:
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
 | `uv run python -m suumo reparse` | re-run the parsers over `archive/` and re-export (no requests) |
 | `uv run python -m suumo seed` | rebuild `state.db` for in-scope prefectures it holds nothing of from `data/` (no requests) |
-| `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet, and station names (kana, English) for prefectures not in `geo/stations.json` once their towns are all geocoded |
+| `uv run python -m suumo geocode` | look up coordinates for towns not in `geo/towns.json` yet (MLIT's 位置参照情報 files, then the address search for the rest), and station names (kana, English) for prefectures not in `geo/stations.json` |
 | `uv run python -m suumo rail` | rebuild `geo/rail.json` (railway lines and stations for the map) from MLIT N02 and ODPT colours; `ODPT_TOKEN` and `ODPT_CHALLENGE_TOKEN` in `.env` (ODPT keys, never committed) |
 | `uv run python -m suumo site [--out _site]` | build the site locally (`cd _site && python3 -m http.server` to view it) |
 
@@ -183,7 +183,8 @@ and names are in `data/<pref>/areas.json` after a run.
    run rows 90 days.
 5. **Export**: `data/` is rewritten deterministically (an unchanged day is an empty git diff) and the run's
    events go to `data/events/<run_id>.json` (the site's 新着, 値下げ and price history come from them).
-6. **Geocoding**: towns of new listings are looked up (国土地理院 address search, ≤30 min per run).
+6. **Geocoding**: towns of new listings are placed from MLIT's 位置参照情報 (大字・町丁目 points, one download per
+   prefecture), the few it doesn't know from 国土地理院's address search (one request a second, ≤10 min per run).
 
 ## Files
 
@@ -235,7 +236,7 @@ IDs are per agent listing; `dup_key` groups the same property listed by several 
 | `parse failures: N` in `status` | fix the parser, then `reparse` (the pages are already archived) |
 | An area shows `incomplete` or `suspect` | transient on SUUMO's side; no listings are removed for it; the next run retries |
 | The site didn't update | Actions tab on GitHub: the `Site` workflow runs tests first; a failing test blocks the deploy |
-| 「地図に表示できない物件が…」 on the map | towns not geocoded yet (`uv run python -m suumo geocode`), or not found by the address search |
+| 「地図に表示できない物件が…」 on the map | towns not geocoded yet (`uv run python -m suumo geocode`), or found by neither 位置参照情報 nor the address search |
 
 ## Tests
 

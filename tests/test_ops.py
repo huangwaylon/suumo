@@ -1,14 +1,16 @@
 """Maintenance commands, the run lock, git data commits, polite fetching and long runs (no network)."""
 import fcntl
+import io
 import json
 import subprocess
+import zipfile
 from datetime import date, datetime
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from suumo import http, pipeline, saved
+from suumo import geo, http, pipeline, saved
 from suumo.archive import Archive
 from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
@@ -265,3 +267,42 @@ def test_a_second_geocoder_skips(tmp_path):
         fcntl.flock(held, fcntl.LOCK_EX)
         assert geocode(tmp_path / "data", cache, log=QUIET) == 0  # would need the network otherwise
     assert not cache.exists()
+
+
+PLACES_CSV = """都道府県名,市区町村名,大字町丁目名,緯度,経度
+茨城県,水戸市,赤塚一丁目,36.38,140.41
+茨城県,水戸市,赤塚二丁目,36.39,140.42
+茨城県,東茨城郡茨城町,大字網掛,36.28,140.35
+茨城県,つくば市,島名,36.06,140.04
+茨城県,水戸市,南町十二丁目,36.37,140.47
+茨城県,水戸市,見和一一丁目,36.40,140.44
+"""  # MLIT's file has more columns; these are the ones read
+
+
+def test_places_match_suumo_town_names():
+    places = geo.Places()
+    places.add(PLACES_CSV)
+    assert places.find("茨城県水戸市赤塚２") == [36.39, 140.42]             # １ ↔ 一丁目
+    assert places.find("茨城県水戸市赤塚２丁目") == [36.39, 140.42]
+    assert places.find("茨城県水戸市南町１２") == [36.37, 140.47]           # 十二丁目
+    assert places.find("茨城県水戸市見和１１") == [36.40, 140.44]           # 一一丁目, digit by digit
+    assert places.find("茨城県東茨城郡茨城町網掛") == [36.28, 140.35]       # 郡, 大字 dropped on both sides
+    assert places.find("茨城県つくば市島名字薬師台") == [36.06, 140.04]     # a 小字 after the 大字: the 大字
+    assert places.find("茨城県水戸市赤塚") == [36.385, 140.415]             # no 丁目 given: the middle of its 丁目s
+    assert places.find("茨城県水戸市見川３") is None and places.find("茨城県水戸市") is None
+
+
+def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    write(data, [rec(1, address="茨城県水戸市赤塚１"), rec(2, address="茨城県水戸市見川３")], pref="ibaraki")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("08000-19.0b/08_2025.csv", PLACES_CSV.encode("cp932"))
+    monkeypatch.setattr(geo.requests, "get", lambda url, timeout: MagicMock(content=buf.getvalue()))
+    asked = []
+    monkeypatch.setattr(geo, "lookup", lambda session, town: asked.append(town) or [36.4, 140.4])
+    monkeypatch.setattr(geo, "GEO_DELAY", 0)
+    cache = tmp_path / "towns.json"
+    assert geocode(data, cache, log=QUIET) == 2
+    assert asked == ["茨城県水戸市見川３"]
+    assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}

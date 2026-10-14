@@ -31,7 +31,7 @@ GEO_CACHE = "geo/towns.json"
 STATIONS_CACHE = "geo/stations.json"
 RAIL = "geo/rail.json"  # railway lines and stations for the map (`rail`)
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
-GEO_BUDGET = 600  # seconds a run spends geocoding new towns (a new prefecture fills over a few runs; or run `geocode`)
+GEO_BUDGET = 600  # seconds a run spends on the address search, for towns 位置参照情報 doesn't place
 ROOT = Path(__file__).resolve().parent.parent
 
 

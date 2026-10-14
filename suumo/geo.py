@@ -1,13 +1,20 @@
-"""Map coordinates for listings, at town (丁目) level, from 国土地理院's address search.
+"""Map coordinates for listings, at town (丁目) level: MLIT 位置参照情報 in bulk, else 国土地理院's address search.
 
 Listings carry addresses, not coordinates, and SUUMO shows most only to the 丁目 ("東京都狛江市岩戸北３"). Each
 distinct town is looked up once and cached in geo/towns.json (git-tracked, sorted): {town: [lat, lng] or null}.
-Later runs only look up towns they haven't seen. One request at a time, GEO_DELAY apart.
+Later runs only look up towns they haven't seen: first in MLIT's 大字・町丁目レベル位置参照情報 (one file per
+prefecture with every 丁目's representative point; the address search gives the same points), then the few left
+in the address search, one request at a time, GEO_DELAY apart.
 """
+import csv
 import fcntl
+import io
 import json
 import re
 import time
+import unicodedata
+import zipfile
+from collections import defaultdict
 from pathlib import Path
 
 import requests
@@ -19,6 +26,8 @@ from .scope import PREFS
 API = "https://msearch.gsi.go.jp/address-search/AddressSearch"
 GEO_DELAY = 1.0
 SAVE_EVERY = 100  # towns between cache saves (an interrupted fill keeps its progress)
+# 大字・町丁目レベル位置参照情報 (MLIT, free): a new version every spring; 'b' is the 大字・町丁目 level
+PLACES_URL = "https://nlftp.mlit.go.jp/isj/dls/data/19.0b/{code:02d}000-19.0b.zip"
 
 _block = re.compile(r"[0-9][0-9\-－]*.*$")   # 番地 / 号 in ASCII digits after the 丁目 (full-width digit)
 _wide_block = re.compile(r"([０-９])[\-－‐番].*$")  # ...or in full-width digits: 下連雀３-４１－１２ -> 下連雀３
@@ -97,11 +106,84 @@ def geocode(data_dir, cache_path, budget_seconds=None, log=print):
         return _geocode(data_dir, cache_path, budget_seconds, log)
 
 
+_KANJI = {c: i for i, c in enumerate("〇一二三四五六七八九")}
+
+
+def _number(kanji):
+    """'三' -> 3, '十二' -> 12, '二十' -> 20, '一一' -> 11 (digit by digit)."""
+    if "十" not in kanji:
+        return int("".join(str(_KANJI[c]) for c in kanji))
+    tens, _, ones = kanji.partition("十")
+    return (_KANJI[tens] if tens else 1) * 10 + (_KANJI[ones] if ones else 0)
+
+
+def place_key(town):
+    """The form towns are matched in: SUUMO's '千葉県印旛郡酒々井町飯積２' and MLIT's '千葉県' + '印旛郡酒々井町' +
+    '飯積二丁目' -> '千葉県酒々井町飯積2'; '大字' / '字' before the name dropped, ヶ as ケ."""
+    s = unicodedata.normalize("NFKC", town).replace("ヶ", "ケ").replace("ヵ", "ケ")
+    s = re.sub(r"^(.+?[都道府県]).+?郡", r"\1", s)
+    s = re.sub(r"^(.+?[都道府県].+?[市区町村])大?字", r"\1", s)
+    s = re.sub(r"([〇一二三四五六七八九十]+)丁目$", lambda m: str(_number(m.group(1))), s)
+    return re.sub(r"(\d+)丁目$", r"\1", s)
+
+
+class Places:
+    """MLIT's 丁目 points by place_key; a name without its 丁目 ('赤塚', with 赤塚一〜三丁目) is their middle."""
+
+    def __init__(self):
+        self.points, self.chome = {}, defaultdict(list)
+
+    def add(self, csv_text):
+        for r in csv.DictReader(io.StringIO(csv_text)):
+            key = place_key(r["都道府県名"] + r["市区町村名"] + r["大字町丁目名"])
+            self.points[key] = point = [float(r["緯度"]), float(r["経度"])]
+            self.chome[re.sub(r"\d+$", "", key)].append(point)
+
+    def _at(self, key):
+        if key in self.points:
+            return self.points[key]
+        ps = [] if re.search(r"\d$", key) else self.chome.get(key)
+        return [round(sum(p[0] for p in ps) / len(ps), 6), round(sum(p[1] for p in ps) / len(ps), 6)] if ps else None
+
+    def find(self, town):
+        """[lat, lng] of the town, else of the longest place its name starts with (SUUMO adds 小字, lot notes:
+        '静岡県裾野市須山主要地' -> 須山); None when nothing past the municipality matches."""
+        key = place_key(town)
+        city = re.match(r".+?[都道府県].+?[市区町村]", key)
+        for n in range(len(key), city.end() if city else len(key) - 1, -1):
+            if point := self._at(key[:n]):
+                return point
+        return None
+
+
+def bulk(towns, log=print):
+    """{town: [lat, lng]} for the towns MLIT's files place (one download per prefecture they're in)."""
+    codes = {name: i for i, name in enumerate(PREFS.values(), 1)}  # PREFS is in JIS order
+    places = Places()
+    for name in sorted({n for t in towns for n in codes if t.startswith(n)}):
+        try:
+            r = requests.get(PLACES_URL.format(code=codes[name]), timeout=120)
+            r.raise_for_status()
+            with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+                places.add(z.read(next(n for n in z.namelist() if n.endswith(".csv"))).decode("cp932"))
+        except (requests.RequestException, zipfile.BadZipFile, StopIteration) as e:
+            log(f"  ! 位置参照情報 for {name}: {e!r} (the address search covers it)")
+    return {t: p for t in towns if (p := places.find(t))}
+
+
 def _geocode(data_dir, cache_path, budget_seconds, log):
     cache = load_cache(cache_path)
     todo = sorted(towns_in(data_dir) - set(cache))
     if not todo:
         return 0
+    found = bulk(todo, log)
+    if found:
+        cache.update(found)
+        save_cache(cache_path, cache)
+        log(f"位置参照情報: {len(found):,} of {len(todo):,} new towns")
+        todo = [t for t in todo if t not in found]
+        if not todo:
+            return len(found)
     log(f"geocoding {len(todo):,} new towns (~{len(todo) * GEO_DELAY / 60:.0f} min)")
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
@@ -126,4 +208,4 @@ def _geocode(data_dir, cache_path, budget_seconds, log):
     save_cache(cache_path, cache)
     missing = sum(1 for t in todo if t in cache and cache[t] is None)
     log(f"geocoded {done:,} towns ({missing} not found)")
-    return done
+    return len(found) + done
