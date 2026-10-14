@@ -99,7 +99,8 @@
   let openKey = null, pushed = false, lastFocus = null;
   let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
-  let listStale = false;        // the phone filter sheet covers the list: it's redrawn when the sheet closes
+  let listStale = false;
+  let listSig = null;           // what the drawn cards show (render skips redrawing the same)        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
   const stationHomes = new Map();  // station -> homes listing it
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
@@ -307,9 +308,14 @@
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
     document.body.classList.toggle("mapbar", showMap && !area);
     if (!showMap || area) $("area-go").hidden = true;  // (drawMap shows it once the map has its view)
-    $("list").innerHTML = hits.length ? "" : emptyState(active);
-    shown = 0;
-    if (compare && hits.length) renderCompare(); else more();
+    // the same cards as already drawn (a sheet closed, a view switched back): kept as they are, with their place
+    const sig = [S.lang, mode, compare, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), sideTabs, hits.map((it) => it.key)].join("|");
+    if (sig !== listSig || compare || !hits.length) {
+      listSig = sig;
+      $("list").innerHTML = hits.length ? "" : emptyState(active);
+      shown = 0;
+      if (compare && hits.length) renderCompare(); else more();
+    }
     if (mapVisible()) drawMap();
     if (filtersVisible()) renderFilters();
   }
@@ -401,10 +407,15 @@
       const [title, hint] = t(mode !== "search" ? "favEmpty" : "dailyEmpty");
       return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
     }
-    const loosen = active.map(([label, remove], i) => {
-      const n = Filter.count(db, remove(structuredClone(q)));
-      return n ? `<button class="chip" data-remove="${i}">${esc(t("remove", label))}<span class="n">${t("count", num(n))}</span></button>` : "";
-    }).join("");
+    // what each condition's removal would show, in one pass: each removal as the fields it changes
+    const patches = {};
+    active.forEach(([, remove], i) => {
+      const without = remove(structuredClone(q));
+      patches[i] = Object.fromEntries(Object.keys(q).filter((k) => JSON.stringify(q[k]) !== JSON.stringify(without[k])).map((k) => [k, without[k]]));
+    });
+    const counts = Filter.counts(db, q, patches);
+    const loosen = active.map(([label], i) => (counts[i]
+      ? `<button class="chip" data-remove="${i}">${esc(t("remove", label))}<span class="n">${t("count", num(counts[i]))}</span></button>` : "")).join("");
     return `<div class="empty"><h3>${esc(t("emptyTitle"))}</h3><p>${esc(t("emptyHint"))}</p>
       <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
@@ -452,8 +463,11 @@
     const box = $("quick");
     box.hidden = mode !== "search" || !!area;  // (its counts are for the whole list, not the map area)
     if (box.hidden) return;
+    const offers = { newOnly: true, dropsOnly: true, ...(lastVisit ? { since: lastVisit } : {}) }, patches = {};
+    for (const [f, v] of Object.entries(offers)) if (q[f] !== v) patches[f] = { [f]: v };
+    const counts = Filter.counts(db, q, patches);  // one pass for all of them
     const chip = (field, label, value) => {
-      const on = q[field] === value, n = on ? hits.length : Filter.count(db, { ...q, [field]: value });
+      const on = q[field] === value, n = on ? hits.length : counts[field];
       return n || on ? `<button class="chip" data-quick="${field}" aria-pressed="${on}">${esc(label)}<span class="n">${num(n)}</span></button>` : "";
     };
     box.innerHTML = chip("newOnly", t("quickNew"), true) + chip("dropsOnly", t("quickDrop"), true) +
@@ -756,6 +770,7 @@
       hits = inArea(mapHits);
       $("count").textContent = t("areaCount", num(hits.length));
       $("list").innerHTML = hits.length ? "" : `<div class="empty"><h3>${esc(t("areaEmpty"))}</h3></div>`;
+      listSig = null;
       shown = 0;
       more();
     }, 250);
@@ -1633,7 +1648,7 @@
     loaded.delete(slug);
     await loadPrefs([slug]);
     choosePrefs(chosen);
-    renderedFor = null;
+    renderedFor = listSig = null;  // the same listings may have changed
     render();
   }
 
