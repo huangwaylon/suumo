@@ -375,6 +375,12 @@ details.group .opts { padding-bottom: 12px; }
   body.areamode .side-tabs { display: none; }
   body.areamode .results { grid-area: 1 / 3; border-left: 1px solid var(--line); }
   body.areamode .grid { grid-template-columns: minmax(0, 1fr); }
+  body.areamode .map-toggle { display: none; }  /* the map is the view itself */
+  /* the narrow list beside the map: cards as rows (as on phones), more of them in sight */
+  body.areamode .card > a { grid-template-columns: 120px 1fr; gap: 12px; padding: 10px; }
+  body.areamode .card .ph { border-radius: 8px; }
+  body.areamode .card .body { padding: 0; }
+  body.areamode .fav { top: 16px; left: 16px; right: auto; }
 }
 
 /* Touch screens: larger chips; no zoom buttons on the map, so the lines button moves up */

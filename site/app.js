@@ -306,7 +306,7 @@
         for (let j = i; j < hits.length && hits[j].newDate === d; j++) n++;
         html += `<h3 class="day">${esc(d ? weekday(d) : t("tag.dropped"))}<span>${esc(t("count", num(n)))}</span></h3>`;
       }
-      html += card(hits[i]);
+      html += card(hits[i], i < 4);  // the first photos are in sight: not lazy
     }
     $("list").insertAdjacentHTML("beforeend", html);
     shown += PAGE;
@@ -343,10 +343,10 @@
     return out.join("");
   }
 
-  function card(it) {
+  function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card${sideTabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
-      <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>
+      <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}</div>
         <div class="spec">${spec}</div>
@@ -383,6 +383,7 @@
     update();
   }
 
+  const freshCounts = new Map();
   // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
   function renderSearches() {
     const box = $("searches"), key = searchKey(q), here = mode === "search" && !area;
@@ -392,7 +393,9 @@
       box.setAttribute("aria-label", t("savedSearches"));
       box.innerHTML = searches.map((s, i) => {
         const query = queryFrom(new URLSearchParams(s.c));
-        const n = s.seen ? Filter.count(db, { ...query, since: s.seen }) : 0;
+        const k = `${chosen}|${s.seen}|${s.c}`;  // the counts change only with the data and when it was seen
+        if (s.seen && !freshCounts.has(k)) freshCounts.set(k, Filter.count(db, { ...query, since: s.seen }));
+        const n = s.seen ? freshCounts.get(k) : 0;
         const name = label(query) || t("allListings");
         return `<span class="chip saved${s.c === key ? " on" : ""}"><button class="chip-label" data-saved-search="${i}">${esc(name)}</button>${
           n ? `<span class="n fresh">${esc(t("freshN", num(n)))}</span>` : ""}<button class="chip-x" data-unsave-search="${i}" aria-label="${esc(t("unkeepSearch"))}: ${esc(name)}">${icon("x")}</button></span>`;
@@ -1232,7 +1235,11 @@
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
       const id = a.getAttribute("href").slice(1);
-      if (id === "filters") openFilters(true); else $(id)?.focus();
+      if (id === "filters") openFilters(true);
+      else if (id === "map" && !mapVisible() && !WIDE.matches) {  // phones and tablets: open it
+        switchView("map", () => { showMap = true; });
+        $("map").focus();
+      } else $(id)?.focus();
     }));
     window.addEventListener("popstate", () => {
       if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
