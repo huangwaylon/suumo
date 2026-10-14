@@ -153,9 +153,8 @@ def station_prefectures(reps, rail_stations=()):
     return {name: prefs for name, prefs in used.items() if name in far}
 
 
-def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=None):
+def build_index(snap, reps, towns_cache, readings, station_prefs):
     """The search index of these listings (one prefecture's, on the site)."""
-    station_prefs = station_prefs if station_prefs is not None else station_prefectures(reps)
 
     def station(name, pref):
         return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
@@ -170,7 +169,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
                             "name", "layout", "image")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
-        r = i.rec
+        r, new, drop = i.rec, snap.new(i), snap.drop(i)
         town = town_of(r.get("address"), i.pref)
         row = {
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
@@ -182,12 +181,11 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
             "features": _mask(features(f) for f in i.features),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
-                      | FLAGS["dropped"] * snap.is_dropped(i) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
-                      | FLAGS["relisted"] * bool((snap.new(i) or (0, ""))[1] == "relisted")),
+                      | FLAGS["dropped"] * bool(drop) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
+                      | FLAGS["relisted"] * bool(new and new[1] == "relisted")),
             # when it was new (YYYYMMDDHH), and its latest drop [YYYYMMDDHH, old price]: for 新着, 値下げ and
             # "since your last visit"
-            "others": len(reps[i]), "newAt": (snap.new(i) or (None,))[0],
-            "drop": list(snap.drop(i)[:2]) if snap.drop(i) else None,
+            "others": len(reps[i]), "newAt": new[0] if new else None, "drop": list(drop[:2]) if drop else None,
             "firstSeen": _date_int(i.first_seen),
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
             "town": towns(town or None), "name": names(_name(r)), "layout": layouts(r.get("layout")),
@@ -197,12 +195,12 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
         for k, v in row.items():
             cols[k].append(v)
     return {
-        "updated": updated, "flags": FLAGS, "columns": cols, "types": types.values,
+        "flags": FLAGS, "columns": cols, "types": types.values,
         "areas": [[code, snap.areas.get(code, code), PREFS.get(pref, pref), _area_group(code, snap.areas.get(code, ""))]
                   for code, pref in areas.values],
         "stations": stations.values,
         # [kana, English] per station (null when unknown: bus stops), so either finds it
-        "stationNames": [(readings or {}).get(station_key(s)) for s in stations.values],
+        "stationNames": [readings.get(station_key(s)) for s in stations.values],
         "features": features.values, "names": names.values, "layouts": layouts.values,
         "towns": [[t, *(towns_cache.get(t) or [None, None])] for t in towns.values],
     }
@@ -236,8 +234,8 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
     (out / ".nojekyll").write_text("")
-    readings, towns, updated = station_names(stations_cache) if stations_cache else {}, load_cache(geo_cache), \
-        _updated(Path(data_dir))
+    readings = station_names(stations_cache) if stations_cache else {}
+    towns, updated = load_cache(geo_cache), _updated(Path(data_dir))
     (out / "data" / "p").mkdir(parents=True)
     by_pref = defaultdict(dict)
     for item, others in reps.items():
@@ -247,7 +245,7 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = {}
     for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
-        built[pref] = build_index(snap, by_pref[pref], towns, updated, readings, station_prefs)
+        built[pref] = build_index(snap, by_pref[pref], towns, readings, station_prefs)
         (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
     manifest = {"updated": updated,
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],

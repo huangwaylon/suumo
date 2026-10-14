@@ -126,9 +126,6 @@ class Snapshot:
         d = self.drops.get(item.key)
         return d if d and d[0] >= hour(self.today - timedelta(days=DROP_DAYS)) else None
 
-    def is_dropped(self, item):
-        return self.drop(item) is not None
-
 
 def _read_jsonl(path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]

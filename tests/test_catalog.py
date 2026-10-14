@@ -46,7 +46,7 @@ def test_new_drops_and_history_come_from_events(tmp_path):
     s = snap(tmp_path, rec(1), rec(2), rec(3), events=events)
     by_id = {i.rec["id"]: i for i in s.items}
     assert [s.is_new(by_id[k]) for k in "123"] == [False, True, False]   # 1 was new too long ago
-    assert [s.is_dropped(by_id[k]) for k in "123"] == [False, True, False]  # 3 went up
+    assert [bool(s.drop(by_id[k])) for k in "123"] == [False, True, False]  # 3 went up
     assert s.history["used_condo:2"] == [("2026-10-15", 50_000_000, 45_000_000)]
 
 
