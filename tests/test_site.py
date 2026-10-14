@@ -502,3 +502,44 @@ def test_a_parse_applied_to_the_query(tmp_path):
     assert q["areas"] == ["13103", "13112"] and q["features"] == ["角住戸", "ペット相談"]   # sets add up
     assert q["walk"] == 9 and q["text"] == "パーク"              # any number; text = what wasn't understood
     assert b["ids"] == ["1"]                                     # 渋谷区 within 7 min (2 is 12 min away)
+
+
+def hidden_recs():
+    return [rec(1, features=["南向き", "ペット相談"]), rec(2, features=["即引渡し可"], direction="北"),
+            rec(3, "land", land_m2=200.0, features=["建築条件なし", "土地50坪以上"], **LAND),
+            rec(4, features=["最上階・上階なし"]), rec(5, "land", land_m2=120.0, build_condition=True, **LAND)]
+
+
+@needs_node
+def test_tags_a_condition_covers_are_hidden_and_old_links_still_work(tmp_path):
+    old = [{"features": ["南向き"]}, {"features": ["即引渡可"]}, {"features": ["最上階・上階なし"]},
+           {"features": ["建築条件なし"], "types": ["land"]}, {"features": ["土地50坪以上"], "types": ["land"]}]
+    got = ids(tmp_path, hidden_recs(), *old)
+    assert got == [["1"], ["2"], ["4"], ["3"], ["3"]]     # a page older than the index: the tag's condition
+    index = json.loads((tmp_path / "site/data/p/tokyo.json").read_text())
+    assert index["features"] == ["ペット相談"]                    # only tags no condition covers are offered
+    assert "南向き" in json.loads((tmp_path / "site/data/l/used_condo/1.json").read_text())["features"]
+
+
+@needs_node
+def test_upgrade_turns_old_tags_into_conditions(tmp_path):
+    site_queries(tmp_path, [rec(1)], [])
+    script = """
+    const Filter = require(process.argv[1]);
+    const q = Object.assign(Filter.emptyQuery(), {features: ["全室南向き", "即引渡し可", "最上階・上階なし",
+      "建築条件なし", "土地100坪以上", "土地50坪以上", "ペット相談"], landMin: 200});
+    process.stdout.write(JSON.stringify(Filter.upgrade(q)));
+    """
+    out = json.loads(subprocess.run([NODE, "-e", script, str(FILTER_JS)], capture_output=True, text=True,
+                                    check=True).stdout)
+    assert out["features"] == ["ペット相談"] and out["landMin"] == 331
+    assert out["south"] and out["ready"] and out["top"] and out["noCondition"]
+
+
+@needs_node
+def test_conditions_on_an_index_older_than_the_page(tmp_path, monkeypatch):
+    import suumo.site as site
+    monkeypatch.setattr(site, "HIDDEN_TAGS", set())                # an old index: the tags, no flag bits
+    monkeypatch.setattr(site, "FLAGS", {**site.FLAGS, "south": 0, "ready": 0, "top": 0})
+    got = ids(tmp_path, hidden_recs(), {"south": True}, {"ready": True}, {"top": True}, {"features": ["南向き"]})
+    assert got == [["1"], ["2"], ["4"], ["1"]]

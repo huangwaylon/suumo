@@ -21,7 +21,7 @@ from pathlib import Path
 from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
-from .catalog import load, station_key
+from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, station_key
 from .geo import load_cache, town_of
 from .parse import TYPES
 from .scope import PREFS
@@ -34,6 +34,10 @@ IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
          "relisted": 128, "south": 256, "top": 512, "upper": 1024, "nofee": 2048, "ready": 4096, "tower": 8192,
          "parking": 16384}
+
+# tags a condition covers (南向き, 最上階, 即入居, 建築条件なし, 土地): not offered as tags (filter.js Filter.upgrade
+# turns old links' tags into the conditions); listing pages still show them
+HIDDEN_TAGS = {*SOUTH_TAGS, TOP_TAG, *READY_TAGS, "建築条件なし", "土地50坪以上", "土地100坪以上"}
 
 B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 _image_path = re.compile(r"^gazo/bukken/([^/]+)/([^/]+)/img/([^/]+)/(\d+)/\4_([^/]+)$")
@@ -177,7 +181,8 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
 
     types, areas, towns = Table(TYPES), Table(), Table()
     stations = Table.by_count(station(name, i.pref) for i in reps for name, _ in i.stations)
-    features = Table.by_count(f for i in reps for f in i.features)  # so each tag set is a short bit string
+    shown = {i: [f for f in i.features if f not in HIDDEN_TAGS] for i in reps}
+    features = Table.by_count(f for fs in shown.values() for f in fs)  # so each tag set is a short bit string
     names = Table.by_count(_name(i.rec) for i in reps)
     layouts = Table.by_count(i.rec.get("layout") for i in reps)
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
@@ -195,7 +200,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             "stations": [stations(station(name, i.pref)) for name, _ in i.stations],
             "access": [_access(walk, i.bus.get(name), i.car.get(name)) for name, walk in i.stations],
             "stop": list(min(i.stops, key=lambda s: s[1] if s[1] is not None else 999)) if i.stops else None,
-            "features": _mask(features(f) for f in i.features),
+            "features": _mask(features(f) for f in shown[i]),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
                       | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
                       | FLAGS["dropped"] * bool(drop) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone

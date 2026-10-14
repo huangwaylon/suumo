@@ -17,6 +17,43 @@
   // A flag bit of the index; 0 when the index predates it (a cached old index after a deploy): nothing has it.
   const bit = (db, name) => db.flags[name] || 0;
 
+  // Tags the site now offers as conditions (the index no longer carries them, site.HIDDEN_TAGS).
+  const SOUTH_TAGS = ["南向き", "全室南向き", "東南向き", "南西向き", "全室東南向き", "全室南西向き"];
+  const READY_TAGS = ["即引渡可", "即引渡し可"], TOP_TAG = "最上階・上階なし";
+  const TSUBO = 3.30578, LAND_TAGS = { 土地50坪以上: Math.round(50 * TSUBO), 土地100坪以上: Math.round(100 * TSUBO) };
+  // A query from an older link: those tags -> their conditions (land: at least the plot size the tag meant).
+  function upgrade(q) {
+    const out = { ...q, features: [] };
+    for (const f of q.features || []) {
+      if (SOUTH_TAGS.includes(f)) out.south = true;
+      else if (READY_TAGS.includes(f)) out.ready = true;
+      else if (f === TOP_TAG) out.top = true;
+      else if (f === "建築条件なし") out.noCondition = true;
+      else if (LAND_TAGS[f]) out.landMin = Math.max(out.landMin ?? 0, LAND_TAGS[f]);
+      else out.features.push(f);
+    }
+    return out;
+  }
+  // The same, as the safety net of a query still asking for such a tag (a page older than the index): the tag's
+  // condition stands in for it where the item's index doesn't carry the tag any more.
+  const TAG_RULES = {
+    ...Object.fromEntries(SOUTH_TAGS.map((t) => [t, (it) => flagOf(it, "south")])),
+    ...Object.fromEntries(READY_TAGS.map((t) => [t, (it) => flagOf(it, "ready")])),
+    [TOP_TAG]: (it) => flagOf(it, "top"),
+    建築条件なし: (it) => !(it.flags & bit(it.part, "conditional")),
+    ...Object.fromEntries(Object.entries(LAND_TAGS).map(([t, m2]) => [t, (it) => it.land != null && it.land >= m2])),
+  };
+  const tagSet = (part) => (part.tagSet ??= new Set(part.index.features));
+  const hasTag = (it, f) => it.features.has(f) || (!!TAG_RULES[f] && !tagSet(it.part).has(f) && TAG_RULES[f](it));
+  // A flag of an item, read from its own prefecture's index; an index older than the flag answers from the tags it
+  // still has (the other way round from TAG_RULES).
+  const FLAG_TAGS = { south: SOUTH_TAGS, ready: READY_TAGS, top: [TOP_TAG] };
+  function flagOf(it, name) {
+    const b = it.part.flags[name];
+    if (b) return !!(it.flags & b);
+    return (FLAG_TAGS[name] || []).some((t) => it.features.has(t));
+  }
+
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
   // all match, and so do "jiyugaoka" and "Jiyūgaoka".
   // (Accents are only stripped from strings that can have them: Latin, Greek, Cyrillic; kana's dakuten stay.)
@@ -158,20 +195,20 @@
     priceMax: (it, v) => v == null || (it.price != null && it.price <= v),
     priceMin: (it, v) => v == null || (it.priceHi != null && it.priceHi >= v),
     landMin: (it, v) => v == null || (it.land != null && it.land >= v),
-    features: (it, v) => v.every((f) => it.features.has(f)),
+    features: (it, v) => v.every((f) => hasTag(it, f)),
     freehold: (it, v, q, db) => !v || !(it.flags & db.flags.leasehold),
     noCondition: (it, v, q, db) => !v || !(it.flags & db.flags.conditional),
     newOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.new),
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
     // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
     since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
-    south: (it, v, q, db) => !v || !!(it.flags & bit(db, "south")),
-    top: (it, v, q, db) => !v || !!(it.flags & bit(db, "top")),            // condos only
-    upper: (it, v, q, db) => !v || !!(it.flags & bit(db, "upper")),        // condos only
-    nofee: (it, v, q, db) => !v || !!(it.flags & bit(db, "nofee")),
-    ready: (it, v, q, db) => !v || !!(it.flags & bit(db, "ready")),
-    tower: (it, v, q, db) => !v || !!(it.flags & bit(db, "tower")),
-    parking: (it, v, q, db) => !v || !!(it.flags & bit(db, "parking")),    // houses and land only
+    south: (it, v) => !v || flagOf(it, "south"),
+    top: (it, v) => !v || flagOf(it, "top"),            // condos only
+    upper: (it, v) => !v || flagOf(it, "upper"),        // condos only
+    nofee: (it, v) => !v || flagOf(it, "nofee"),
+    ready: (it, v) => !v || flagOf(it, "ready"),
+    tower: (it, v) => !v || flagOf(it, "tower"),
+    parking: (it, v) => !v || flagOf(it, "parking"),    // houses and land only
     // monthly fees (yen) of condos; houses and land have none and pass
     feesMax: (it, v) => v == null || !isCondo(it.type) || (it.fees != null && it.fees <= v),
     text: (it, v) => !v || textMatches(it, v),
@@ -312,7 +349,8 @@
         hist: new Int32Array(values.length) });
     }
     // flags as bit tests: [name, bit, passes when the bit is set (or when it isn't: freehold, noCondition)]
-    const flagBits = FLAGS.map((f) => [f, ...(FLAG_BITS[f] ? [bit(db, FLAG_BITS[f][0]), FLAG_BITS[f][1]] : [0, true])]);
+    const bitsOf = (p) => FLAGS.map((f) => [f, bit(p, FLAG_BITS[f][0]), FLAG_BITS[f][1]]);  // per prefecture's index
+    let flagBits = null;
     const flagN = new Int32Array(FLAGS.length);
     const tallies = new Map();  // prefecture -> its area, station and tag tallies
     const tallyOf = (part) => {
@@ -326,7 +364,7 @@
     for (const it of db.items) {
       const f = conds.length ? failing(db, it, q, conds) : none;
       if (f.length > 1) continue;
-      if (it.part !== part) { part = it.part; tally = tallyOf(part); }
+      if (it.part !== part) { part = it.part; tally = tallyOf(part); flagBits = bitsOf(part); }
       const only = f.length ? f[0] : null, free = only === null;
       if (free) {
         out.total++;
@@ -791,6 +829,6 @@
     return out;
   }
 
-  return { emptyQuery, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch,
+  return { emptyQuery, upgrade, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch,
     suggest, parse, applyParse, nameKey };
 });

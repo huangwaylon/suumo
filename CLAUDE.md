@@ -91,7 +91,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   売主/事業主/代理 without a broker, set when any agent of the property has it; 即入居 = handover 即… or the tag;
   駐車場 = houses/land with a car space or a 駐車 tag (condos never); 管理費等 = management + repair fund (+ other
   monthly costs) of condos, unknown unless both are stated (houses and land pass a fees limit). 坪単価順 puts houses
-  last unless only houses are chosen; 広い順 puts land last unless only land is chosen.
+  last unless only houses are chosen; 広い順 puts land last unless only land is chosen. Tags a condition covers
+  (`site.HIDDEN_TAGS`: south tags, 最上階・上階なし, 即引渡(し)可, 建築条件なし, 土地50/100坪以上) aren't offered as tags;
+  `Filter.upgrade` turns them into the conditions in old links.
 - **Public repo:** nothing secret in git (no `.env`, no tokens); commits use the GitHub noreply address
   (`git config user.email` is set in this repo). `uv.lock` isn't committed (it would pin the local package mirror).
 - **User-facing text lives in `site/i18n.js`**, in Japanese (default) and English; never hard-code it in app.js or
