@@ -3,11 +3,14 @@
 SUUMO names stations in kanji only ("二子玉川"), so kana and English searches find nothing. One SPARQL query per
 prefecture fetches every station and tram stop inside the box the stations named in its listings span (their
 places from rail.json), with the kana reading (P1814) and the English label; keeping only stations in the box makes
-白山 Tokyo's Hakusan, not a Shirayama elsewhere. The cache ({name: [kana, english]}) is filled once per prefecture;
-delete it to refresh. Bus stops aren't in Wikidata and stay kanji only.
+白山 Tokyo's Hakusan, not a Shirayama elsewhere. Boxes overlap, so a name can come back from several prefectures
+(上野 in Tokyo and in Mie): the cache ({name: [kana, english, n]}) keeps the reading from the prefecture whose listings
+mention the station most (n: those mentions), and never replaces a known value with nothing. It is filled once per
+prefecture; delete it to refresh. Bus stops aren't in Wikidata and stay kanji only.
 """
 import json
 import re
+import time
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -28,6 +31,7 @@ QUERY = """SELECT ?ja ?kana ?en WHERE {
   OPTIONAL { ?s wdt:P1814 ?kana } OPTIONAL { ?s rdfs:label ?en FILTER(lang(?en) = "en") }
 }"""
 USER_AGENT = "suumo-site/1.0 (https://github.com/huangwaylon/suumo)"  # Wikidata asks for a contact
+DELAY = 1.0  # seconds between queries
 
 
 def _english(label):
@@ -40,11 +44,28 @@ def _english(label):
     return name if latin and ":" not in name and re.search("[A-Za-z]", name) else None
 
 
-def area(rail_stations, data_dir, pref):
-    """The box the stations named in a prefecture's listings span (positions from rail.json), or None."""
-    keys = listing_station_keys(json.loads(line) for f in (Path(data_dir) / pref).glob("*/*.jsonl")
+def mentions(data_dir, pref):
+    """Counter of the station keys a prefecture's listings mention."""
+    return listing_station_keys(json.loads(line) for f in (Path(data_dir) / pref).glob("*/*.jsonl")
                                 for line in f.read_text(encoding="utf-8").splitlines())
+
+
+def area(rail_stations, keys):
+    """The box the stations named in a prefecture's listings (a Counter of keys) span (positions from rail.json),
+    or None."""
     return station_area([(lat, lng) for name, lat, lng, _ in rail_stations for _ in range(keys[key(name)])])
+
+
+def merge(cache, k, value, n):
+    """Add [kana, english] found for key k by a prefecture whose listings mention it n times: the entry from the
+    prefecture with more mentions wins (ties keep the one there), its gaps filled from the other."""
+    old = cache.get(k)
+    if not old:
+        cache[k] = [*value, n]
+        return
+    old_n = old[2] if len(old) > 2 else 0
+    best, other = (value, old) if n > old_n else (old, value)
+    cache[k] = [best[0] or other[0], best[1] or other[1], max(n, old_n)]
 
 
 def fetch(session, area):
@@ -72,16 +93,20 @@ def update(cache_path, rail_path, prefs, data_dir, log=print):
     rail_stations = json.loads(Path(rail_path).read_text())["stations"]
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
-    for pref in todo:
-        box = area(rail_stations, data_dir, pref)
+    for n, pref in enumerate(todo):
+        keys = mentions(data_dir, pref)
+        box = area(rail_stations, keys)
         if not box:
             continue  # no listings yet
+        if n:
+            time.sleep(DELAY)
         try:
             found = fetch(session, box)
         except (requests.RequestException, ValueError, KeyError) as e:
             log(f"  ! station names for {pref}: {e!r}")
             continue
-        cache.update(found)
+        for k, value in found.items():
+            merge(cache, k, value, keys[k])
         cache["_prefs"] = sorted({*cache.get("_prefs", []), pref})
         log(f"station names: {len(found):,} in {pref}")
     save_cache(cache_path, cache)
@@ -91,4 +116,4 @@ def names(cache_path):
     """{key: [kana, english]} from the cache (empty if there is none)."""
     cache = load_cache(cache_path)
     cache.pop("_prefs", None)
-    return cache
+    return {k: v[:2] for k, v in cache.items()}

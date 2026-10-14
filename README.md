@@ -199,7 +199,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `data/fx.json` | yes | yen per dollar (ECB reference rate, checked daily by `run`) for the site's USD prices |
 | `geo/towns.json` | yes | town (丁目) → [lat, lng], or null when not found |
 | `geo/rail.json` | yes | railway lines (colour, simplified geometry) and stations for the map, from MLIT 鉄道データ and ODPT; rebuilt with `python -m suumo rail` |
-| `geo/stations.json` | yes | station → [kana, English] from Wikidata (CC0); `_prefs` lists the prefectures fetched. Delete to refresh |
+| `geo/stations.json` | yes | station → [kana, English, n] from Wikidata (CC0): a name found in several prefectures keeps the reading from the one whose listings mention it most (n times), gaps filled from the others; `_prefs` lists the prefectures fetched. Delete to refresh |
 | `site/` | yes | the site's source (index.html, app.js, filter.js, style.css) |
 | `.github/workflows/pages.yml` | yes | tests, builds and deploys the site on every push |
 | `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs |
