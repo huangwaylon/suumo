@@ -274,6 +274,9 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     manifest = {"updated": updated,
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
+    fx = Path(data_dir) / "fx.json"  # the yen-dollar rate (fx.py): the page shows prices in USD too
+    if fx.exists():
+        manifest["fx"] = json.loads(fx.read_text())
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
     if rail:
         (out / "data" / "rail.json").write_text(_dump(rail), encoding="utf-8")

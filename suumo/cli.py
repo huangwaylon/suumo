@@ -18,6 +18,7 @@ from . import scope as scope_mod
 from .archive import Archive
 from .db import DB, exclusive
 from .export import export
+from .fx import update as update_fx
 from .geo import geocode
 from .gitdata import commit_data, pull
 from .http import Client
@@ -105,6 +106,7 @@ def cmd_run(c: Ctx):
         if not a.no_geocode:
             geocode(c.data, ROOT / GEO_CACHE, budget_seconds=GEO_BUDGET)
             update_stations(ROOT / STATIONS_CACHE, ROOT / RAIL, {t.pref for t in c.targets}, c.data)
+            update_fx(c.data / "fx.json")  # the day's yen-dollar rate, for the site's USD prices
     except Exception as e:
         print(f"geocoding failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))

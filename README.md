@@ -196,6 +196,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `saved.json` | yes | the shared saved list (`type:id` keys), changed only by the Saved workflow |
 | `data/<pref>/areas.json` | yes | area code → name |
 | `data/events/<run_id>.json` | yes | that run's events |
+| `data/fx.json` | yes | yen per dollar (ECB reference rate, checked daily by `run`) for the site's USD prices |
 | `geo/towns.json` | yes | town (丁目) → [lat, lng], or null when not found |
 | `geo/rail.json` | yes | railway lines (colour, simplified geometry) and stations for the map, from MLIT 鉄道データ and ODPT; rebuilt with `python -m suumo rail` |
 | `geo/stations.json` | yes | station → [kana, English] from Wikidata (CC0); `_prefs` lists the prefectures fetched. Delete to refresh |

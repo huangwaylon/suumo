@@ -2,6 +2,7 @@
 import fcntl
 import io
 import json
+import os
 import subprocess
 import zipfile
 from datetime import date, datetime
@@ -10,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from suumo import geo, http, pipeline, saved
+from suumo import fx, geo, http, pipeline, saved
 from suumo.archive import Archive
 from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
@@ -356,3 +357,18 @@ def test_queue_goes_by_prefecture_size_after_new_listings(tmp_path):
                 "JOIN listings l USING (type, id) ORDER BY q.id").fetchall()
     order = [r["id"] for r in Pipeline(db, None, None, [], NOW, "r", log=QUIET)._queue_order(rows)]
     assert order == ["4", "2", "3", "1"]   # new first, then the bigger prefecture
+
+
+def test_exchange_rate_is_checked_once_a_day_and_kept_on_errors(tmp_path, monkeypatch):
+    calls = []
+
+    def get(url, timeout):
+        calls.append(url)
+        return MagicMock(json=lambda: {"base": "USD", "date": "2026-10-13", "rates": {"JPY": 158.12}})
+    monkeypatch.setattr(fx.requests, "get", get)
+    path = tmp_path / "fx.json"
+    assert fx.update(path, log=QUIET) == {"jpy_per_usd": 158.12, "date": "2026-10-13"}
+    assert fx.update(path, log=QUIET)["jpy_per_usd"] == 158.12 and len(calls) == 1   # checked today: no request
+    os.utime(path, (0, 0))                                                         # a day later
+    monkeypatch.setattr(fx.requests, "get", lambda url, timeout: (_ for _ in ()).throw(fx.requests.ConnectionError()))
+    assert fx.update(path, log=QUIET)["jpy_per_usd"] == 158.12                     # offline: the last rate

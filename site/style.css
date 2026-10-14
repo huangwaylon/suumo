@@ -130,6 +130,8 @@ input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 .body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .price { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
 .price small { font-size: 13px; font-weight: 600; margin-left: 1px; }
+.usd, .price small.usd, .d-price small.usd { margin-left: 6px; color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.d-price small.usd { font-size: 15px; }
 .spec { display: flex; flex-wrap: wrap; column-gap: 10px; font-size: 14px; }
 .spec span { white-space: nowrap; }
 .spec span:first-child { white-space: normal; }  /* a long layout wraps instead of overflowing */

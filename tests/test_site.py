@@ -24,12 +24,14 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     geo = tmp_path / "towns.json"
     geo.write_text(json.dumps({"東京都狛江市岩戸北３": [35.63, 139.58]}, ensure_ascii=False))
     out = tmp_path / "site"
+    (data / "fx.json").write_text('{"date": "2026-10-13", "jpy_per_usd": 158.12}')
     built = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
     assets = {"index.html", "app.js", "filter.js", "i18n.js", "style.css", "sw.js", ".nojekyll"}
     assert assets <= {p.name for p in out.iterdir()}
     assert re.search(r'const VERSION = "[0-9a-f]{12}";', (out / "sw.js").read_text())  # stamped: a new page, new cache
     manifest, index = json.loads((out / "data/index.json").read_text()), built["tokyo"]
     assert manifest["prefs"] == [["tokyo", "東京都", len(index["columns"]["id"])]] and manifest["saved"] == {}
+    assert manifest["fx"] == {"date": "2026-10-13", "jpy_per_usd": 158.12}   # the page's USD prices
     assert json.loads((out / "data/p/tokyo.json").read_text()) == index   # one index per prefecture
     cols = index["columns"]
     assert len(cols["id"]) < 46                               # 46 listings, duplicates folded

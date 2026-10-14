@@ -126,6 +126,15 @@
   }
   const price = (it, html) => money(it.price, html) +
     (it.priceHi && it.priceHi !== it.price ? `${S.lang === "en" ? "–" : "〜"}${money(it.priceHi, html)}` : "");
+  // the price in dollars too, at the day's rate (manifest.fx, the ECB's); yen is the source of truth
+  function dollars(yen) {
+    const d = yen / manifest?.fx?.jpy_per_usd;
+    return !(d > 0) ? "" : d >= 1e6 ? `$${+(d / 1e6).toFixed(2)}M` : `$${Math.round(d / 1e3)}K`;
+  }
+  function usd(it) {
+    const lo = dollars(it.price), hi = it.priceHi && it.priceHi !== it.price ? dollars(it.priceHi) : "";
+    return lo && `<small class="usd" title="${esc(t("usdRate", manifest.fx.jpy_per_usd, day(manifest.fx.date)))}">${esc(t("usd", hi ? `${lo}–${hi}` : lo))}</small>`;
+  }
   const m2 = (v) => (v ? `${+v.toFixed(2)}㎡` : "");
   const tsubo = (v) => (v ? t("tsubo", (v / TSUBO).toFixed(1)) : "");
   const isCondo = (type) => type === "used_condo" || type === "new_condo";
@@ -349,7 +358,7 @@
     return `<article class="card${sideTabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
       <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
-        <div class="price num">${price(it, true)}</div>
+        <div class="price num">${price(it, true)}${usd(it)}</div>
         <div class="spec">${spec}</div>
         <div class="meta wrap">${esc(station(it))}</div>
         <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name].filter(Boolean).join(" · "))}</div>
@@ -646,6 +655,9 @@
     if (!map) {
       const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
       map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion });
+      // Leaflet measures its box only on window resizes; the layout also resizes it (the map area view, the filter rail,
+      // the side panel), and a stale size leaves part of the map without tiles
+      new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(map.getContainer());
       map.on("popupopen", (e) => e.popup.getElement()?.querySelector(".popup-list a")?.focus({ preventScroll: true }));
       map.on("popupopen popupclose", (e) => $("map").classList.toggle("popup-open", e.type === "popupopen"));
       map.on("moveend", onMapMove);
@@ -816,7 +828,7 @@
   function popup(town, list) {
     return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map((it) =>
       `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
-        <span><b class="num">${money(it.price)}</b><br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
+        <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
 
   // ---------- listing ----------
@@ -857,7 +869,7 @@
     const ROWS = [
       ["", ([it]) => `<a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy">` : ""}</div></a>`],
       ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
-      ["price", ([it]) => `<b class="num">${price(it, true)}</b>`],
+      ["price", ([it]) => `<b class="num">${price(it, true)}</b>${usd(it)}`],
       ["layout", ([it]) => esc(value(it.layout) || typeName(it.type))],
       [cols.every(([it]) => isCondo(it.type)) ? "floor" : cols.some(([it]) => isCondo(it.type)) ? "floorBoth" : "building",
         ([it]) => esc(it.size ? m2(it.size) : "")], ["land", ([it]) => esc(it.land ? m2(it.land) : "")],
@@ -934,7 +946,7 @@
       <div class="d-head">
         <h1 id="detail-title">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h1>
         <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
-        <div class="d-price num">${it ? price(it, true) : money(r.price, true)}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
+        <div class="d-price num">${it ? price(it, true) + usd(it) : money(r.price, true) + usd({ price: r.price })}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${v}</b></div>`).join("")}</div>
@@ -1117,7 +1129,6 @@
       settings.railOff = !open;
       saveSettings();
       sheetSemantics();
-      setTimeout(() => map?.invalidateSize(), 250);  // after the columns' transition
       if (!open) { $("filters-open").focus(); return; }
     }
     if (open && !WIDE.matches && !document.body.classList.contains("show-filters")) {
