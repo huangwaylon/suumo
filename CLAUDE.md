@@ -59,8 +59,9 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   `sort=` parameter are disallowed (robots.txt has no crawl-delay for `*`; its `Crawl-delay: 30` is bingbot's).
   Redirects aren't followed. One request at a time per crawler, `--delay` 1.5 s + up to 50% jitter for search
   results. Listing pages during a backfill (or a one-off sweep of new prefectures) may go down to 0.5 s, by the
-  owner's decision (2026-10-14): the driver lowers it step by step while SUUMO answers without pushback and goes
-  back to 1.0 s on any; never lower than 0.5 s. At most two crawlers at once, by the owner's decision: the
+  owner's decision (2026-10-14): the driver lowers it 0.1 s per clean run and goes back to 1.0 s for good on
+  throttling (any 429/403 — `Client.pushbacks` in the run report — or 3+ slow-downs in a run); a stray 5xx only
+  pauses the step-down. Never lower than 0.5 s. At most two crawlers at once, by the owner's decision: the
   hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml).
   `http.Client` slows itself down on 429/5xx/network errors/slow responses (doubling, max 10 s, honours
   `Retry-After`) and eases back; keep that behaviour.

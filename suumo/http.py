@@ -28,6 +28,7 @@ class Client:
         self.requests_made = 0
         self.bytes_downloaded = 0
         self.slowdowns = 0
+        self.pushbacks = 0    # 429 / 403: SUUMO asking us to slow down (a 5xx or a network error may be a hiccup)
 
     def _slow_down(self, why):
         new = min(MAX_DELAY, max(self.delay * 2, self.base * 2))
@@ -68,6 +69,7 @@ class Client:
                 if r.status_code in (404, 410) or 300 <= r.status_code < 400:
                     raise FileNotFoundError(url)
                 err = f"HTTP {r.status_code}"
+                self.pushbacks += r.status_code in (403, 429)
                 self._slow_down(err)  # 429, 403 (blocked?), 5xx: SUUMO is pushing back
                 retry_after = r.headers.get("Retry-After", "")
                 if retry_after.isdigit():

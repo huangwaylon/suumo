@@ -96,7 +96,7 @@ def cmd_run(c: Ctx):
         p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
     p.purge()
     p.report.update(export=export(c.db, c.targets, c.data, run_id), requests=client.requests_made,
-                    slowdowns=client.slowdowns,
+                    slowdowns=client.slowdowns, pushbacks=client.pushbacks,
                     seconds=round(time.monotonic() - t0), mb=round(client.bytes_downloaded / 1e6, 1))
     c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
            datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)

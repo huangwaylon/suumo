@@ -126,6 +126,7 @@ def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
     c.session.get = lambda url, timeout, allow_redirects: next(replies)
     assert c.get("/x/") == "<html/>"
     assert c.delay == pytest.approx(2.0 * 0.95) and c.slowdowns == 1   # doubled, then eased once
+    assert c.pushbacks == 1                                 # a 429: SUUMO asking us to slow down
     c.session.get = lambda url, timeout, allow_redirects: FakeResponse(200)
     for _ in range(200):
         c.get("/x/")
@@ -134,6 +135,7 @@ def test_client_slows_down_on_pushback_and_eases_back(monkeypatch):
     with pytest.raises(RuntimeError):
         c.get("/x/")
     assert c.delay == http.MAX_DELAY                        # doubled per failure, capped
+    assert c.pushbacks == 1                                 # 5xx: slowed down, but not counted as pushback
 
 
 def test_client_404_is_gone_not_an_error(monkeypatch):
