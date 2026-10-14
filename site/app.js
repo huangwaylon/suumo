@@ -819,7 +819,9 @@
 
   // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ; colours, English names from ODPT) ----------
   let railData = null;              // loading or loaded with the first map: {operators, lines, stations}
+  let railLoaded = null;            // ... and once loaded
   const loadRail = () => (railData ||= fetch("data/rail.json").then((r) => r.json()).then((d) => {
+    railLoaded = d;
     for (const line of d.lines) {    // each line's box, to find what's in view
       const pts = line[4].flat();
       line.box = [Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0]))];
@@ -1028,6 +1030,9 @@
     }
     if (box.dataset.key !== key) return null;
     box.innerHTML = detailHtml(r, it);
+    if (S.lang === "en" && r.stations?.length && !railLoaded) {  // line names in English once the rail data is in
+      loadRail().then(() => { const dd = box.querySelector(".d-access"); if (dd && box.dataset.key === key) dd.innerHTML = accessHtml(r); });
+    }
     const el = box.querySelector(".d-map");
     if (el && (await mapReady()) && box.dataset.key === key) {
       const m = (box.leaflet = L.map(el, { zoomControl: false, attributionControl: false, dragging: !L.Browser.mobile })
@@ -1047,16 +1052,19 @@
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
     const second = (main, sub) => esc(main) + (sub ? `<small>${esc(sub)}</small>` : "");  // 坪 on a line of its own
     const unit = it?.unit ? second(t("perM2", it.unit), !isCondo(type) && t("perTsubo", Math.round(it.unit * TSUBO))) : "";
-    const facts = [["layout", esc(value(r.layout) || "")], [isCondo(type) ? "floor" : "building", esc(m2(r.floor_m2 || r.building_m2))],
+    const monthly = it?.fees ?? (r.mgmt_fee && r.repair_fee ? r.mgmt_fee + r.repair_fee + (r.other_monthly || 0) : null);
+    // what matters most first: price per ㎡, monthly fees, the walk; then the home itself
+    const facts = [["unit", unit], ["feesMonthly", isCondo(type) && monthly ? esc(t("yen", num(monthly))) : ""],
+      [it && !it.stations.length && it.stop ? "stop" : "station", it ? nowrapWalk(station(it)) : ""],
+      ["layout", esc(value(r.layout) || "")], [isCondo(type) ? "floor" : "building", esc(m2(r.floor_m2 || r.building_m2))],
       [isCondo(type) ? "balcony" : "land", isCondo(type) ? esc(m2(r.balcony_m2)) : m2(r.land_m2) && second(m2(r.land_m2), tsubo(r.land_m2))],
-      ["age", it ? esc(age(it)) : ""], [it && !it.stations.length && it.stop ? "stop" : "station", it ? esc(station(it)) : ""], ["unit", unit]].filter(([, v]) => v);
+      ["age", it ? esc(age(it)) : ""]].filter(([, v]) => v);
     const changes = r.history?.length && r.history.map(([d, o, n]) => esc(`${day(d)} ${money(o)} → ${money(n)}`)).join("<br>");
     const parking = r.parking && [value(r.parking.status), r.parking.fee_min && t("perMonth", t("yen", num(r.parking.fee_min)))].filter(Boolean).join(" ");
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
-    const access = (r.stations || []).map((s) => esc([s.line, s.bus_stop ? t("busStop", s.name) : t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
-      : s.walk != null ? t("walkMin", s.walk) : s.car_km ? t("carKm", s.car_km_max ? `${s.car_km}–${s.car_km_max}` : s.car_km) : ""].filter(Boolean).join(" "))).join("<br>");
+    const access = accessHtml(r);
     return `
-      ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="">` : ""}
+      ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="" onerror="this.remove()">` : ""}
       <div class="d-head">
         <h1 id="detail-title">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h1>
         <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
@@ -1064,11 +1072,14 @@
         <div class="tags">${it ? tags(it) : ""}</div>
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${v}</b></div>`).join("")}</div>
-      ${changes ? sec("history", [["price", changes]]) : ""}
-      ${sec("access", [["nearest", access]])}
+      ${changes ? `<section class="d-sec"><h2>${esc(L_("history"))}</h2>${historyChart(r, it)}<dl>${rows([["price", changes]])}</dl></section>` : ""}
+      ${it ? market(it) : ""}
+      ${access ? `<section class="d-sec"><h2>${esc(L_("access"))}</h2><dl><dt>${esc(L_("nearest"))}</dt><dd class="d-access">${access}</dd></dl></section>` : ""}
       ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
-        ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))], ["repairOnce", yen(r.repair_fund_once)],
-        ["otherFees", txt(r.other_fees)], ["parking", txt(parking)]])}
+        ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))],
+        ["otherMonthly", yen(r.other_monthly) && t("perMonth", yen(r.other_monthly)) + (r.other_fees ? `<small>${esc(r.other_fees)}</small>` : "")],
+        ["feesTotal", isCondo(type) && monthly ? `<b>${t("perMonth", yen(monthly))}</b>` : null], ["repairOnce", yen(r.repair_fund_once)],
+        ["otherFees", r.other_monthly ? null : txt(r.other_fees)], ["parking", txt(parking)]])}
       ${sec("bldg", [["built", r.built && t("month", +r.built.slice(0, 4), +r.built.slice(5, 7)) + (r.built_planned ? t("planned") : "")],
         ["structure", txt(r.structure)], ["floors", txt([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
         ["units", isCondo(type) && r.total_units ? t("unitsN", num(r.total_units)) : null], ["direction", txt(r.direction)],
@@ -1082,6 +1093,76 @@
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
         ["seen", day(r.new_date || r.first_seen)]])}
       ${it?.lat != null ? `<section class="d-sec"><h2>${esc(L_("map"))}</h2><p class="meta">${esc(L_("mapNote"))}</p></section><div class="d-map"></div>` : ""}`;
+  }
+
+  // The stations of a listing: line, station, how far.
+  function accessHtml(r) {
+    return (r.stations || []).map((s) => nowrapWalk([lineLabel(s.line), s.bus_stop ? t("busStop", s.name) : t("station", stationName(s.name)), s.bus ? [t("busMin", s.bus), s.walk != null && t("stopWalk", s.walk)].filter(Boolean).join(" ")
+      : s.walk != null ? t("walkMin", s.walk) : s.car_km ? t("carKm", s.car_km_max ? `${s.car_km}–${s.car_km_max}` : s.car_km) : ""].filter(Boolean).join(" "))).join("<br>");
+  }
+
+  // A listing's line name in English when the rail data knows it ("ＪＲ東海道本線" -> "JR Tokaido Line"), else as
+  // written with full-width letters made plain ("JR東海道本線").
+  const lineNames = new Map();
+  function lineLabel(name) {
+    const plain = (name || "").normalize("NFKC");
+    if (S.lang !== "en" || !railLoaded || !plain) return S.lang === "en" ? plain : name;
+    if (!lineNames.has(plain)) {
+      const key = (n) => n.normalize("NFKC").replace(/本線$/, "線").replace(/[・\s]/g, "");
+      const short = (op) => (op[3] || op[0]).replace(/(電気鉄道|電鉄|鉄道|��式会社)$/, "");
+      let found = null;
+      for (const line of railLoaded.lines) {
+        const op = railLoaded.operators[line[0]], jr = /^JR/.test(op[3] || ""), prefix = jr ? "JR" : short(op);
+        const rest = plain.startsWith(prefix) ? plain.slice(prefix.length) : null;
+        if (line[2] && (key(line[1]) === key(plain) || (rest != null && (key(line[1]) === key(rest) || key(prefix + line[1]) === key(plain))))) {
+          found = `${jr && !/^JR/.test(line[2]) ? "JR " : ""}${line[2]}`;
+          break;
+        }
+      }
+      lineNames.set(plain, found || plain);
+    }
+    return lineNames.get(plain);
+  }
+
+  // The price over time: a step line with a dot per change (the text rows say the same).
+  function historyChart(r, it) {
+    const h = r.history || [];
+    if (!h.length) return "";
+    const pts = [[r.new_date || r.first_seen || h[0][0], h[0][1]], ...h.map(([d, , p]) => [d, p])];
+    const time = (d) => Date.parse(d), t0 = time(pts[0][0]);
+    const end = [(manifest.updated || "").slice(0, 10), pts.at(-1)[0]].sort().at(-1);  // the line runs to today
+    const t1 = Math.max(time(end) || 0, t0 + 864e5);
+    const prices = pts.map(([, p]) => p), lo = Math.min(...prices), hi = Math.max(...prices);
+    const X = (d) => (8 + ((time(d) - t0) / (t1 - t0)) * 264).toFixed(1);
+    const Y = (p) => (hi === lo ? 32 : 46 - ((p - lo) / (hi - lo)) * 26).toFixed(1);
+    let path = `M${X(pts[0][0])} ${Y(pts[0][1])}`;
+    for (const [d, p] of pts.slice(1)) path += `H${X(d)}V${Y(p)}`;
+    path += `H272`;
+    const first = money(pts[0][1]), last = money(it?.price ?? pts.at(-1)[1]);
+    return `<svg class="spark" viewBox="0 0 280 64" role="img" aria-label="${esc(t("historyChart", first, last))}">
+      <path d="${path}"/>${pts.map(([d, p]) => `<circle cx="${X(d)}" cy="${Y(p)}" r="3"/>`).join("")}
+      <text x="8" y="11">${esc(first)}</text><text x="272" y="11" text-anchor="end">${esc(last)}</text>
+      <text class="d" x="8" y="62">${esc(day(pts[0][0]))}</text><text class="d" x="272" y="62" text-anchor="end">${esc(day(end))}</text></svg>`;
+  }
+
+  // Where this listing's price per ㎡ sits among similar ones in the loaded data: same area and type (resale: built
+  // within 10 years of it). Condos and land only (a house's price per ㎡ of building is mostly its land).
+  function market(it) {
+    if (!it.unit || !(isCondo(it.type) || it.type === "land")) return "";
+    const band = it.type.startsWith("used") && it.ageMonths != null, units = [];
+    for (const o of (it.part || db).items) {
+      if (o.area === it.area && o.type === it.type && o.unit && (!band || (o.ageMonths != null && Math.abs(o.ageMonths - it.ageMonths) <= 120))) units.push(o.unit);
+    }
+    if (units.length < 10) return "";
+    units.sort((a, b) => a - b);
+    const at = (f) => units[Math.round(f * (units.length - 1))], lo = at(0.05), hi = at(0.95), mid = at(0.5);
+    const pos = (v) => Math.max(0, Math.min(100, hi > lo ? ((v - lo) / (hi - lo)) * 100 : 50)).toFixed(1);
+    const diff = Math.round((it.unit / mid - 1) * 100), where = place(it.areaName), kind = typeName(it.type);
+    return `<section class="d-sec market"><h2>${esc(t("market"))}</h2>
+      <div class="mbar" aria-hidden="true"><i style="left:${pos(at(0.25))}%"></i><i class="mid" style="left:${pos(mid)}%"></i><i style="left:${pos(at(0.75))}%"></i><b style="left:${pos(it.unit)}%"></b></div>
+      <div class="mscale" aria-hidden="true"><span>${esc(t("perM2", lo))}</span><span>${esc(t("perM2", hi))}</span></div>
+      <p>${esc(Math.abs(diff) < 3 ? t("marketSame", where, kind) : t("marketDiff", where, kind, Math.abs(diff), diff < 0))}</p>
+      <p class="meta">${esc(t("marketN", num(units.length), band))}</p></section>`;
   }
 
   function hideDetail() {

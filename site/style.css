@@ -294,11 +294,11 @@ details.group .opts { padding-bottom: 12px; }
 @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
 .detail-top { display: flex; align-items: center; height: var(--bar); padding: 0 4px; border-bottom: 1px solid var(--line); }
 .detail-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
-.detail-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 10px 16px calc(10px + var(--safe-b));
+.detail-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 5px 16px calc(6px + var(--safe-b));  /* 56px with the border */
   border-top: 1px solid var(--line); background: var(--surface); }
 .detail-actions .btn { white-space: nowrap; }
 :is(#detail-fav, .fav-btn)[aria-pressed="true"] .i { color: var(--fav); fill: currentColor; }  /* the heart red, the text readable */
-.hero { width: 100%; aspect-ratio: 4 / 3; max-height: 42vh; object-fit: cover; display: block; background: var(--surface); }
+.hero { width: 100%; aspect-ratio: 4 / 3; max-height: 42vh; object-fit: contain; display: block; background: var(--bg); }
 .d-head { padding: 16px; }
 .d-head h1 { margin: 0; font-size: 18px; line-height: 1.4; }
 .d-head .meta { white-space: normal; margin-top: 2px; }
@@ -308,7 +308,7 @@ details.group .opts { padding-bottom: 12px; }
 .facts { display: flex; flex-wrap: wrap; margin: 0 16px; border-radius: var(--radius);   /* the last row stretches */
   overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
 .fact { flex: 1 1 30%; min-width: 9em; padding: 10px 12px; box-shadow: 0 0 0 .5px var(--line); }
-.fact :is(span, small) { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+.fact > span, .fact small { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
 .fact b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .d-sec { padding: 20px 16px 4px; }
 .d-sec h2 { margin: 0 0 6px; font-size: 16px; }
@@ -318,6 +318,23 @@ details.group .opts { padding-bottom: 12px; }
 .d-sec dd a { color: var(--accent); }
 .d-sec .opts { gap: 4px; }
 .d-sec .tag { font-size: 12px; font-weight: 400; color: var(--text); }
+/* price history: a step line */
+.spark { display: block; width: 100%; max-width: 420px; height: auto; margin-top: 4px; overflow: visible; }
+.spark path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.spark circle { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.spark text { fill: var(--text); font-size: 11px; font-weight: 600; }
+.spark text.d { fill: var(--muted); font-weight: 400; font-size: 10px; }
+/* 相場感: quartiles of similar homes, this one as a dot */
+.mbar { position: relative; height: 10px; margin: 18px 6px 6px; border-radius: 5px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--new) 35%, var(--bg)), var(--bg) 50%, color-mix(in srgb, var(--drop) 35%, var(--bg))); }
+.mbar i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--faint); }
+.mbar i.mid { top: -6px; bottom: -6px; background: var(--text); }
+.mbar b { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--accent);
+  border: 3px solid var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .3); }
+.mscale { display: flex; justify-content: space-between; color: var(--faint); font-size: 12px; }
+.market p { margin: 6px 0 0; font-size: 14px; }
+.market p.meta { white-space: normal; font-size: 12px; margin-top: 2px; }
+.d-sec dd small { display: block; color: var(--muted); font-size: 12px; }
 .d-map { height: 220px; margin: 8px 16px 24px; border-radius: var(--radius); }
 
 .toast { width: max-content; max-width: calc(100vw - 32px); position: fixed; z-index: 60; left: 50%; top: calc(var(--bar) + 12px); transform: translateX(-50%);
