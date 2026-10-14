@@ -35,7 +35,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     assert {t: (lat, lng) for t, lat, lng in index["towns"]}["東京都狛江市岩戸北３"] == (35.63, 139.58)
     ids_ = [sum(cols["id"][:n + 1]) for n in range(len(cols["id"]))]   # stored as deltas
     row = ids_.index(20205670)
-    assert cols["image"][row] == "030/N010000/670/0004.jpg" and cols["price"][row] == 12_000_000
+    assert cols["image"][row] == 4 and cols["price"][row] == 12_000_000   # the usual photo path: its number
     detail = json.loads((out / "data/l/used_condo/20205670.json").read_text())
     assert detail["url"].startswith("https://suumo.jp/") and detail["land_rights"] == "定期借地権"
 
@@ -203,15 +203,31 @@ def test_stations_by_kana_and_english(tmp_path):
 def test_bus_and_car_access_keep_their_minutes_and_km(tmp_path):
     recs = [rec(1, stations=[{"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2},
                              {"line": "ＪＲ常磐線", "name": "牛久", "car_km": 2.4}])]
+    assert loaded(tmp_path, recs, "stations") == [[["喜多見", None, 8, None], ["牛久", None, None, 2.4]]]  # bus; car
+
+
+@needs_node
+def test_photo_paths_are_shortened_and_restored(tmp_path):
+    url = "https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2F030%2F{}%2Fimg%2F{}%2F{}%2F{}_{}&w=192&h=144"
+    recs = [rec(20205670, image=url.format("N010000", "670", 20205670, 20205670, "0004.jpg")),
+            rec(20205671, image=url.format("N001000", "71", 20205671, 20205671, "00015.jpg")),
+            rec(20205672, image="https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2Fsystem%2Fimg%2FNo.jpg"),
+            rec(20205673)]
+    assert loaded(tmp_path, recs, "image") == ["030/N010000/670/0004.jpg", "030/N001000/71/00015.jpg",
+                                               "gazo/bukken/system/img/No.jpg", None]
+
+
+def loaded(tmp_path, recs, field):
+    """One field of every item of the built Tokyo index, as filter.js loads it."""
     script = """
     const Filter = require(process.argv[1]);
     const db = Filter.load(JSON.parse(require("fs").readFileSync(process.argv[2], "utf8")));
-    process.stdout.write(JSON.stringify(db.items[0].stations));
+    process.stdout.write(JSON.stringify(db.items.map((it) => it[process.argv[3]] ?? null)));
     """
     site_queries(tmp_path, recs, [])
-    out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json")],
+    out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json"), field],
                          capture_output=True, text=True, check=True)
-    assert json.loads(out.stdout) == [["喜多見", None, 8, None], ["牛久", None, None, 2.4]]  # by bus; by car
+    return json.loads(out.stdout)
 
 
 @needs_node

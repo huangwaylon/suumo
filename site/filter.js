@@ -31,6 +31,9 @@
     return out;
   }
 
+  // A listing's photo: a number is the usual path, shortened by the builder (see site._image).
+  const photo = (v, id) => (typeof v === "number" ? `030/N010000/${id.slice(-3)}/${String(v).padStart(4, "0")}.jpg` : v);
+
   function load(index) {
     const c = index.columns, n = c.id.length, items = new Array(n);
     let id = 0;
@@ -50,7 +53,7 @@
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
         town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null,
-        lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: c.image[i],
+        lng: town ? town[2] : null, name: c.name[i] || "", layout: c.layout[i] || "", image: photo(c.image[i], String(id)),
       };
       items[i] = it;
     }

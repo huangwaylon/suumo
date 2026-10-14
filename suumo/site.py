@@ -41,12 +41,17 @@ _ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agen
 
 def _image(url, lid):
     """'…?src=gazo/bukken/030/N010000/img/670/<id>/<id>_0004.jpg&w=…' -> '030/N010000/670/0004.jpg' (app.js
-    rebuilds it with the id); other forms keep their path, or the whole URL."""
+    rebuilds it with the id), or just 4 for the usual 030/N010000/<last 3 digits of the id> (filter.js expands it);
+    other forms keep their path, or the whole URL."""
     if not url or not url.startswith(IMAGE_PREFIX):
         return url
     path = unquote_plus(url[len(IMAGE_PREFIX):].partition("&")[0])
     m = _image_path.match(path)
-    return "/".join(m.group(1, 2, 3, 5)) if m and m.group(4) == lid else path
+    if not m or m.group(4) != lid:
+        return path
+    if m.group(1, 2, 3) == ("030", "N010000", lid[-3:]) and re.fullmatch(r"\d{4}\.jpg", m.group(5)):
+        return int(m.group(5)[:4])
+    return "/".join(m.group(1, 2, 3, 5))
 
 
 def _name(rec):
