@@ -618,9 +618,10 @@
   const SIZE = new RegExp(`(?:(土地|敷地|land|lot)(\\s*))?(?:(over|above|at least|from|min|under|below|up to|max|less than)\\s*)?(?<![\\d.])${NUM}\\s*(m2|平米|平方メートル|sqm|sq\\s?m|坪)(?![a-z\\d])\\s*(${MAX_WORDS}|${MIN_WORDS})?`, "g");
   const LAYOUT = /(?<![a-z\d.])(\d+)\s*(sldk|ldk|sdk|slk|dk|lk|sk|k|r)(?:\s*\+\s*\d*s)?(?![a-z])(?:\s*以上)?|ワンルーム|studio/g;
   const LAYOUT_KIND = { r: 0, k: 0, sk: 0, dk: 1, sdk: 1, lk: 1, slk: 1, ldk: 2, sldk: 2 };
-  const WALK = /(駅)?\s*(徒歩|歩いて)\s*(\d+)\s*分\s*(?:以内|以下|まで)?|駅\s*(\d+)\s*分\s*(?:以内|以下|まで)?|(?<![\d.])(\d+)\s*(?:min|mins|minutes?)\s*(?:walk|on foot)|walk(?:ing)?\s*(\d+)\s*(?:min|mins|minutes?)/g;
+  const WALK = /(駅)?\s*(徒歩|歩いて)\s*(\d+)\s*分\s*(?:以内|以下|まで)?|駅\s*(\d+)\s*分\s*(?:以内|以下|まで)?|(?:(?:within|in|under)\s*)?(?<![\d.])(\d+)\s*(?:min|mins|minutes?)\s*(?:walk|on foot)|walk(?:ing)?\s*(?:within\s*)?(\d+)\s*(?:min|mins|minutes?)/g;
   const AGE = /築\s*(\d+)\s*年\s*(?:以内|未満|以下|まで)?|(?<![\d.])(\d+)\s*years?\s*old|((?:19|20)\d\d)\s*年\s*(?:築\s*)?(?:以降|以後|から)/g;
-  const AMOUNT = `${NUM}\\s*(?:(億)\\s*(?:(\\d[\\d,]*)\\s*万)?|(万))?\\s*(円)?`;
+  // (English: 100M, 1.2B, 100 million; a lone m or b only right after the number: "100 m" is no price)
+  const AMOUNT = `¥?${NUM}\\s*(?:(億)\\s*(?:(\\d[\\d,]*)\\s*万)?|(万)|(million|billion|(?<=\\d)[mb])(?![a-z\\d]))?\\s*(円)?`;
   const MONEY = new RegExp(`(?<![\\d.a-z])(?:(under|below|up to|less than|within|max|over|above|from|at least|more than|min)\\s*)?${AMOUNT}(?:\\s*(?:〜|-|から)\\s*${AMOUNT})?\\s*(${MAX_WORDS}|${MIN_WORDS})?`, "g");
   const IGNORED = /築\s*\d+\s*年\s*(?:以上|超)|(?:バス|bus)\s*\d+\s*(?:分|min\w*)|\d+\s*分\s*(?:以上|超)|\d[\d,.]*\s*(?:億|万)\s*円?\s*台/g;
   const isMax = (w) => /^(under|below|up to|less than|within|max|以下|まで|未満|以内)$/.test(w || "");
@@ -687,14 +688,16 @@
       else ignored.push({ start: m.index, text: spanText(m.index, m.index + m[0].length) });
     });
     pass(/(?:仲介)?手数料\s*0\s*円?/g, (m) => { emit(m.index, m.index + m[0].length, "nofee", true); });
+    pass(/\bsouth[\s-]*facing\b|\btop[\s-]*floor\b/g, (m) => { emit(m.index, m.index + m[0].length, m[0][0] === "s" ? "south" : "top", true); });
     pass(MONEY, (m) => {
-      const [, pre, n1, oku1, man1b, man1, yen1, n2, oku2, man2b, man2, yen2, post] = m;
-      const amount = (n, oku, manB, man, yen) => (oku ? num(n) * 1e8 + (manB ? num(manB) * 1e4 : 0) : man ? num(n) * 1e4 : yen ? num(n) : null);
+      const [, pre, n1, oku1, man1b, man1, mil1, yen1, n2, oku2, man2b, man2, mil2, yen2, post] = m;
+      const unit = (oku, man, mil) => (oku ? 1e8 : man ? 1e4 : mil ? (mil[0] === "b" ? 1e9 : 1e6) : 1);
+      const amount = (n, oku, manB, man, mil, yen) => (oku || man || mil ? num(n) * unit(oku, man, mil) + (manB ? num(manB) * 1e4 : 0) : yen ? num(n) : null);
       const end = m.index + m[0].length;
-      let a = amount(n1, oku1, man1b, man1, yen1);
-      if (n2 != null) {  // a range: a bare first number takes the second one's unit (5000〜8000万)
-        let b = amount(n2, oku2, man2b, man2, yen2);
-        if (a == null && b != null) a = num(n1) * (oku2 ? 1e8 : man2 ? 1e4 : 1);
+      let a = amount(n1, oku1, man1b, man1, mil1, yen1);
+      if (n2 != null) {  // a range: a bare first number takes the second one's unit (5000〜8000万, 50-80M)
+        let b = amount(n2, oku2, man2b, man2, mil2, yen2);
+        if (a == null && b != null) a = num(n1) * unit(oku2, man2, mil2);
         if (a == null && b == null && num(n1) >= 100 && num(n2) >= 100) { a = num(n1) * 1e4; b = num(n2) * 1e4; }
         if (a == null || b == null) return false;
         emit(m.index, end, "priceMin", Math.round(Math.min(a, b)));

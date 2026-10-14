@@ -479,6 +479,14 @@ NL_CASES = [  # text, patch (types as sets), and where it matters: alt of the fi
     ("土地 角地", {"types": {"land"}, "features": ["角地"]}, {}),
     ("横浜", {"areas": ["14103"]}, {"alt": {"field": "stations", "value": "横浜", "label": "横浜"}}),  # the city
     ("8000万〜5000万 バス10分", {"priceMin": 50_000_000, "priceMax": 80_000_000}, {"ignored": ["バス10分"]}),
+    # English amounts (M = million, B = billion; m2 stays a size), walk and floor phrases
+    ("under 100M", {"priceMax": 100_000_000}, {}),
+    ("2LDK under ¥80M within 10 min walk", {"plan": 8, "priceMax": 80_000_000, "walk": 10}, {}),
+    ("50-80M 100m2", {"priceMin": 50_000_000, "priceMax": 80_000_000, "sizeMin": 100}, {}),
+    ("over 1.2B", {"priceMin": 1_200_000_000}, {}),
+    ("up to 90 million", {"priceMax": 90_000_000}, {}),
+    ("south facing top floor", {"south": True, "top": True}, {}),
+    ("in 5 min walk", {"walk": 5}, {}),
 ]
 
 
