@@ -102,7 +102,6 @@
   let listStale = false;
   let listSig = null;           // what the drawn cards show (render skips redrawing the same)        // the phone filter sheet covers the list: it's redrawn when the sheet closes
   let areaNames = new Map();
-  const stationHomes = new Map();  // station -> homes listing it
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
   let dataHour = null;             // YYYYMMDDHH of the data shown now
   // Saved searches (this browser): [{c: conditions as URL parameters, seen: dataHour when last opened}]
@@ -284,7 +283,7 @@
     document.body.classList.toggle("areamode", !!area);
     sideLayout();
     document.body.classList.toggle("show-map", showMap && !WIDE.matches);
-    if ($("q").value.trim() !== q.text) $("q").value = q.text;  // (a space being typed stays)
+    if ($("q").value.trim() !== q.text && document.activeElement !== $("q")) $("q").value = q.text;  // (not while typing)
     $("sort").value = q.sort;
     $("count").textContent = t(mode === "favorites" ? "favBanner" : area ? "areaCount" : "count", num(hits.length));
     byDay = mode === "search" && q.sort === "new" && !!(q.newOnly || q.since);  // what's new: a heading per day
@@ -296,13 +295,15 @@
     $("favs").setAttribute("aria-pressed", mode === "favorites");
     document.body.classList.toggle("listmode", mode !== "search");
     document.body.classList.toggle("comparing", compare && mode !== "search");
-    const offers = mode === "search" ? suggestions() : [];
     renderPrefBar();
     renderQuick();
     renderSearches();
-    $("chips").innerHTML = mode !== "search" ? "" : offers.map(([f, v, label]) =>
-      `<button class="chip suggest" data-suggest="${f}" data-value="${esc(v)}">${esc(label)}</button>`).join("") + active.map(([label, , s], i) => s === "quick" ? "" :
-      `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button><button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
+    // a ward read from the search text that is also a station (or the other way round) can be switched
+    const swap = (ref) => { const j = ref ? altSwaps.findIndex((a) => a.field === ref[0] && a.value === ref[1]) : -1; return j < 0 ? "" :
+      `<button class="chip-alt" data-alt="${j}" aria-label="${esc(t("swapTo", altLabel(altSwaps[j].alt)))}">⇄ ${esc(altLabel(altSwaps[j].alt))}</button>`; };
+    $("chips").innerHTML = mode !== "search" ? "" : active.map(([label, , s, ref], i) => s === "quick" ? "" :
+      `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button>${swap(ref)}<button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
+      (ignoredNote.length ? `<span class="chip muted">${esc(t("ignored", ignoredNote.join("・")))}<button class="chip-x" data-ignored-x="1" aria-label="${esc(t("close"))}">${icon("x")}</button></span>` : "") +
       (active.length > 1 && hits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     renderBanner();
     $("view").innerHTML = showMap ? `${icon("list")}<span>${t("list")}</span>` : `${icon("map")}<span>${t("map")}</span>`;
@@ -427,13 +428,6 @@
       out ? `<button class="btn ghost" data-cmp-all="1">${esc(t("cmpShowAll", out))}</button>` : ""}`;
   }
 
-  function applySuggestion(field, v) {  // the typed name becomes a condition
-    q[field] = [...q[field], v];
-    q.text = "";
-    mode = "search";
-    update();
-  }
-
   const freshCounts = new Map();
   // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
   function renderSearches() {
@@ -474,27 +468,113 @@
       (lastVisit ? chip("since", t("sinceVisit"), lastVisit) : "");
   }
 
-  // Typed a station or area name in the search box: offer it as a condition (walk limits, exact area).
-  // The typed text as conditions to offer, best first: [[field, value, label], ...]. A ward or city named the same
-  // as a station comes first unless 駅 was typed (世田谷 -> 世田谷区); a station may be typed in part (ふたこ).
-  function suggestions() {
-    const station = /(駅|station|sta\.?)$/i.test(q.text), typed = q.text.replace(/\s*(駅|station|sta\.?)$/i, "");
-    if (typed.length < 2) return [];
-    const key = Filter.normalize(typed).replace(/ /g, "");
-    const plain = (n) => Filter.normalize(n).replace(/ /g, "");
-    const area = db.index.areas.find(([code, name]) => !q.areas.includes(code) && [name, name.replace(/[区市町村]$/, ""),
-      I18N.en.places[name]].some((n) => n && plain(n) === key));
-    let best = null;  // the exact station, else the one with most homes among those starting with the text
-    for (const s of db.index.stations) {
-      if (q.stations.includes(s)) continue;
-      const m = Filter.stationMatch(db, s, typed);
-      if (m === 0) { best = s; break; }
-      if (m === 1 && (!best || (stationHomes.get(s) || 0) > (stationHomes.get(best) || 0))) best = s;
+  // ---------- the search box: a combobox of suggestions (Filter.suggest) and of the conditions read from the text
+  // (Filter.parse); nothing is searched until one is chosen (Enter, a tap, leaving the box) ----------
+
+  const NL = { features: I18N.en.features, places: I18N.en.places, year: new Date().getFullYear() };  // (filter.js caches by it)
+  const KIND_ICON = { area: "map", station: "train", town: "pin", name: "building", word: "sliders" };
+  let options = [], activeOption = -1, sgTimer = null;
+  let altSwaps = [];     // [{field, value, label, alt}]: readings of the last search that can be switched (目黒区 ⇄ 目黒駅)
+  let ignoredNote = [];  // phrases the last search understood but couldn't use (築30年以上)
+  const withoutLast = (s) => s.replace(/\S+\s*$/, "").trim();
+  const joined = (...parts) => parts.filter(Boolean).join(" ");
+  const altLabel = (a) => (a.field === "stations" ? t("station", stationName(a.value)) : areaName(a.value));
+  function suggestLabel(c) {
+    if (c.kind === "area") return areaName(c.value);
+    if (c.kind === "station") return t("station", stationName(c.value));
+    return c.kind === "word" ? feature(c.label) : c.label;
+  }
+
+  function applyQuery(next, read = null) {
+    q = next;
+    mode = "search";
+    altSwaps = read ? read.tokens.filter((tk) => tk.alt).map(({ field, value, label, alt }) => ({ field, value, label, alt })) : [];
+    ignoredNote = read ? read.ignored : [];
+    closeSuggest();
+    $("q").value = q.text;
+    update();
+  }
+  // The box's text: its conditions applied, the rest searched as text.
+  function applyText(text) {
+    const read = Filter.parse(text, db, NL);
+    applyQuery(read.tokens.length ? Filter.applyParse(q, read) : { ...q, text: text.trim() }, read);
+  }
+  // A suggestion for the word being typed: the words before it stay; a town or building name is added as text.
+  function pick(c, text) {
+    const base = { ...q, text: withoutLast(text) };
+    if (c.kind === "area" || c.kind === "station") {
+      const f = c.kind === "area" ? "areas" : "stations";
+      return applyQuery({ ...base, [f]: [...new Set([...q[f], c.value])] });
     }
-    const out = [];
-    if (area) out.push(["areas", area[0], t("useArea", place(area[1]))]);
-    if (best) out[station ? "unshift" : "push"](["stations", best, t("useStation", stationName(best))]);
-    return out;
+    if (c.kind === "word") {  // a condition word or a tag: as the parser reads it
+      const read = Filter.parse(c.value, db, NL), next = Filter.applyParse(base, read);
+      return applyQuery({ ...next, text: joined(base.text, read.rest) }, read);
+    }
+    applyQuery({ ...base, text: joined(base.text, c.value) });
+  }
+
+  function updateSuggest() {
+    const text = $("q").value;
+    if (!text.trim() || !db) { closeSuggest(); return; }
+    const read = Filter.parse(text, db, NL), applied = read.tokens.length ? Filter.applyParse(q, read) : null;
+    options = [];
+    if (applied) options.push({ cls: "go", run: () => applyText(text),
+      html: `${icon("search")}<span class="sg-label">${esc(t("applyParsed"))}</span><span class="n">${esc(t("count", num(Filter.count(db, applied))))}</span>` });
+    for (const c of Filter.suggest(db, text, NL)) {
+      options.push({ run: () => pick(c, text), html: `${icon(KIND_ICON[c.kind] || "search")}<span class="sg-label">${esc(suggestLabel(c))}</span>${
+        c.count != null ? `<span class="n">${num(c.count)}</span>` : ""}` });
+    }
+    options.push({ cls: "free", run: () => applyQuery({ ...q, text: text.trim() }), html: `${icon("search")}<span class="sg-label">${esc(t("freeword", text.trim()))}</span>` });
+    activeOption = -1;
+    // the conditions the text would add, as they'll show once applied (dashed: not yet)
+    const now = new Set(activeConditions().map(([l]) => l));
+    $("pending").innerHTML = (applied ? activeConditions(applied).filter(([l, , s]) => s !== "quick" && !now.has(l)).map(([l]) =>
+      `<span class="chip pend">${esc(l)}</span>`).join("") : "") + (read.ignored.length ? `<span class="chip muted">${esc(t("ignored", read.ignored.join("・")))}</span>` : "");
+    $("pending").hidden = !$("pending").innerHTML;
+    $("suggest").innerHTML = options.map((o, i) => `<li role="option" id="sg-${i}" class="sg ${o.cls || ""}" aria-selected="false" data-sg="${i}">${o.html}</li>`).join("");
+    openSuggest(true);
+    $("suggest-live").textContent = t("suggestCount", options.length);
+  }
+  function openSuggest(open) {
+    $("suggest-box").hidden = !open;
+    $("q").setAttribute("aria-expanded", open);
+    if (!open) $("q").removeAttribute("aria-activedescendant");
+  }
+  function closeSuggest() { clearTimeout(sgTimer); options = []; activeOption = -1; openSuggest(false); }
+  function moveOption(d) {
+    if (!options.length) return;
+    activeOption = Math.max(-1, Math.min(options.length - 1, activeOption + d));
+    $("suggest").querySelectorAll(".sg").forEach((el, i) => el.setAttribute("aria-selected", i === activeOption));
+    const el = $(`sg-${activeOption}`);
+    if (el) { $("q").setAttribute("aria-activedescendant", el.id); el.scrollIntoView({ block: "nearest" }); } else $("q").removeAttribute("aria-activedescendant");
+  }
+
+  function wireSearch() {
+    const box = $("q");
+    box.addEventListener("input", () => { clearTimeout(sgTimer); sgTimer = setTimeout(updateSuggest, 200); });
+    box.addEventListener("focus", () => { if (box.value.trim()) updateSuggest(); });
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if ($("suggest-box").hidden) updateSuggest();
+        moveOption(e.key === "ArrowDown" ? 1 : -1);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        clearTimeout(sgTimer);
+        if (activeOption >= 0) options[activeOption].run(); else applyText(box.value);
+        if (COARSE.matches) box.blur();
+      } else if (e.key === "Escape" && !$("suggest-box").hidden) { e.stopPropagation(); closeSuggest(); }
+      else if (e.key === "Tab") closeSuggest();
+    });
+    box.addEventListener("blur", () => setTimeout(() => {  // leaving the box applies what it says
+      if (document.activeElement === box || !db) return;
+      if (box.value.trim() !== q.text) applyText(box.value); else closeSuggest();
+    }, 0));
+    $("suggest-box").addEventListener("mousedown", (e) => e.preventDefault());  // the box keeps focus
+    $("suggest-box").addEventListener("click", (e) => {
+      const li = e.target.closest("[data-sg]");
+      if (li) options[+li.dataset.sg]?.run();
+    });
   }
 
   // The conditions in force, as [label, remove(query), filter section] for the chips and the empty state.
@@ -504,7 +584,7 @@
     const reset = (...fs) => (qq) => { const e = Filter.emptyQuery(); for (const f of fs) qq[f] = e[f]; return qq; };
     if (of.text) out.push([t("chipText", of.text), reset("text"), "text"]);
     for (const type of of.types) out.push([typeName(type), drop("types", type), "types"]);
-    for (const a of of.areas) out.push([areaName(a), drop("areas", a), "areas"]);
+    for (const a of of.areas) out.push([areaName(a), drop("areas", a), "areas", ["areas", a]]);
     if (of.priceMin != null || of.priceMax != null) {
       out.push([t("chipPrice", of.priceMin != null ? money(of.priceMin) : "", of.priceMax != null ? money(of.priceMax) : ""),
         reset("priceMin", "priceMax"), "price"]);
@@ -513,7 +593,7 @@
     if (of.sizeMin != null) out.push([t("sizeMin", of.sizeMin), reset("sizeMin"), "size"]);
     if (of.landMin != null) out.push([t("chipLand", of.landMin), reset("landMin"), "size"]);
     if (of.ageMax != null) out.push([ageLabel(of.ageMax), reset("ageMax"), "age"]);
-    for (const s of of.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations"]);
+    for (const s of of.stations) out.push([t("station", stationName(s)), drop("stations", s), "stations", ["stations", s]]);
     if (of.walk != null) out.push([t("walkWithin", of.walk), reset("walk"), "stations"]);
     for (const f of FLAGS) {
       if (of[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
@@ -1443,19 +1523,7 @@
   }
 
   function wire() {
-    let timer = null;
-    $("q").addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => { q.text = e.target.value.trim(); mode = "search"; update(); }, 200);
-    });
-    $("q").addEventListener("keydown", (e) => {  // Enter takes the suggestion (if any) and hides the phone keyboard
-      if (e.key !== "Enter") return;
-      clearTimeout(timer);
-      q.text = e.target.value.trim();
-      const [best] = suggestions();
-      if (best) applySuggestion(best[0], best[1]); else update();
-      if (COARSE.matches) e.target.blur(); else e.target.focus();
-    });
+    wireSearch();
     $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("filters-open").addEventListener("click", () => openFilters(!railOn()));
     $("filters-close").addEventListener("click", () => openFilters(false));
@@ -1525,7 +1593,13 @@
       }
       else if (b.dataset.clear) clearAll();
       else if (b.dataset.edit) openFilters(true, b.dataset.edit);
-      else if (b.dataset.suggest) { applySuggestion(b.dataset.suggest, b.dataset.value); $("q").focus(); }
+      else if (b.dataset.alt != null) {  // 目黒区 ⇄ 目黒駅
+        const a = altSwaps[+b.dataset.alt];
+        q[a.field] = q[a.field].filter((v) => v !== a.value);
+        q[a.alt.field] = [...new Set([...q[a.alt.field], a.alt.value])];
+        altSwaps[+b.dataset.alt] = { ...a.alt, alt: { field: a.field, value: a.value, label: a.label } };
+        update(false);
+      } else if (b.dataset.ignoredX) { ignoredNote = []; render(); }
       else if (b.dataset.prefOpen) openPrefs(true);
       else if (b.dataset.prefRemove) setPrefs(prefsFromHash().filter((s) => s !== b.dataset.prefRemove));
       else if (b.dataset.unsaveSearch != null) {
@@ -1616,7 +1690,6 @@
       const part = Filter.load(await (await fetch(`data/p/${slug}.json`)).json());
       for (const it of part.items) {
         it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
-        for (const [s] of it.stations) stationHomes.set(s, (stationHomes.get(s) || 0) + 1);
       }
       loaded.set(slug, part);
     }));
@@ -1644,7 +1717,6 @@
   }
 
   async function reloadPref(slug) {
-    for (const it of loaded.get(slug).items) for (const [s] of it.stations) stationHomes.set(s, stationHomes.get(s) - 1);
     loaded.delete(slug);
     await loadPrefs([slug]);
     choosePrefs(chosen);
@@ -1702,7 +1774,7 @@
     route();
     showSide();
     if (mode === "search") localStorage.setItem("suumo.last", location.hash);
-    if (early && !q.text) { q.text = early; update(); }
+    if (early && !q.text) applyText(early);
     (window.requestIdleCallback || setTimeout)(() => mapReady());  // so the first map opens without waiting
   }
 

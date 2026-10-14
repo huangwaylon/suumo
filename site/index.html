@@ -37,10 +37,18 @@
   <h1 class="sr" data-t="brand"></h1>
   <header class="bar">
     <a class="brand" href="#" data-t="brand"></a>
-    <label class="search">
-      <svg class="i"><use href="#i-search"/></svg>
-      <input id="q" type="search" data-t-placeholder="search" data-t-label="searchLabel" autocomplete="off" enterkeyhint="search">
-    </label>
+    <div class="search-wrap">
+      <label class="search">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input id="q" type="search" role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list"
+          data-t-placeholder="search" data-t-label="searchLabel" autocomplete="off" enterkeyhint="search">
+      </label>
+      <div id="suggest-box" class="suggest-box" hidden>
+        <div id="pending" class="pending" hidden></div>
+        <ul id="suggest" role="listbox" data-t-label="suggestions"></ul>
+      </div>
+      <div id="suggest-live" class="sr" aria-live="polite"></div>
+    </div>
     <button id="filters-open" class="icon-btn" data-t-label="filtersOpen" aria-controls="filters" aria-expanded="false">
       <svg class="i"><use href="#i-sliders"/></svg><span data-t="filters"></span><span class="badge" id="filters-n" hidden></span>
     </button>
@@ -146,6 +154,9 @@
       <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2-6-2zM9 4v14M15 6v14"/></symbol>
       <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-train" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="13" rx="3"/><path d="M6 10h12M9 20l-2 2M15 20l2 2M9 16v4M15 16v4M9 13h.01M15 13h.01"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2"/></symbol>
+      <symbol id="i-building" viewBox="0 0 24 24"><path d="M5 21V4h10v17M15 9h4v12M3 21h18M8 8h4M8 12h4M8 16h4"/></symbol>
       <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
       <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
