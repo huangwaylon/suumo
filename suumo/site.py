@@ -119,7 +119,7 @@ def station_prefectures(reps, rail_stations=()):
     (二子玉川); it's two only when the railway data has stations of that name more than SPLIT_KM apart."""
     used = defaultdict(set)
     for i in reps:
-        for name, _, _ in i.stations:
+        for name, _ in i.stations:
             used[name].add(i.pref)
     where = defaultdict(list)
     for name, lat, lng, _ in rail_stations:
@@ -150,7 +150,7 @@ def build_index(snap, reps, towns_cache, updated, readings=None, station_prefs=N
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
             "land": i.land, "age": i.age, "built": i.built,
             # pairs (station, access): minutes on foot; -minutes by bus; 1000 + km × 10 by car; null
-            "stations": [x for name, _, walk in i.stations for x in (
+            "stations": [x for name, walk in i.stations for x in (
                 stations(station(name, i.pref)), _access(walk, i.bus.get(name), i.car.get(name)))],
             "features": [features(f) for f in i.features],
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
@@ -222,7 +222,7 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
         built[pref] = build_index(snap, by_pref[pref], towns, updated, readings, station_prefs)
         (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
-    manifest = {"updated": updated, "flags": FLAGS,
+    manifest = {"updated": updated,
                 "prefs": [[p, PREFS.get(p, p), len(by_pref[p])] for p in built],
                 "saved": {i.key: i.pref for i in reps if i.saved}}
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")

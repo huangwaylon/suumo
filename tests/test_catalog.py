@@ -1,7 +1,7 @@
 """Derived listing fields from data/: plan rank, sizes, age, stations, flags, duplicate groups, 新着/値下げ."""
 import pytest
 
-from suumo.catalog import line_name, load, plan_rank
+from suumo.catalog import load, plan_rank
 from tests.helpers import TODAY, rec, write
 
 
@@ -19,15 +19,6 @@ def test_plan_rank(layout, rank):
     assert plan_rank(layout) == rank
 
 
-@pytest.mark.parametrize("line,name", [
-    ("小田急線（新宿～相模大野）", "小田急線"), ("ＪＲ山手線", "JR山手線"), ("山手線", "JR山手線"),
-    ("大井町線", "東急大井町線"), ("東急大井町線", "東急大井町線"), ("都営地下鉄三田線", "都営三田線"),
-    ("丸ノ内線", "東京メトロ丸ノ内線"), ("新交通ゆりかもめ", "ゆりかもめ"), ("京王線", "京王線"),
-])
-def test_line_names_are_one_per_line(line, name):
-    assert line_name(line) == name
-
-
 def test_derived_fields(tmp_path):
     s = snap(tmp_path,
              rec(1, built="1981-05", land_rights="定期借地権", floor_m2=50.0, price=40_000_000,
@@ -39,7 +30,7 @@ def test_derived_fields(tmp_path):
              rec(3, "land", layout="3LDK", floor_m2=None, land_m2=100.0, built=None, build_condition=True))
     condo, house, land = ({i.type: i for i in s.items}[t] for t in ("used_condo", "new_house", "land"))
     assert condo.age == 45 and not condo.post_1981 and condo.leasehold and condo.unit_price == 800_000
-    assert condo.stations == [("狛江", "小田急線", 3), ("喜多見", "小田急線", None)]  # bus access, no bus stops
+    assert condo.stations == [("狛江", 3), ("喜多見", None)]  # bus access, no bus stops
     assert house.plan == 14 and house.size == 95.0 and house.land == 120.0 and house.age == 0
     assert house.post_1981 and house.unit_price is None                              # a price range
     assert land.plan is None and land.size is None and land.conditional and land.pref == "tokyo"
