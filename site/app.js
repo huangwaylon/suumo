@@ -1118,6 +1118,8 @@
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
   let rail = null, railLines = [], railHalos = [], railStations = null, railLabels = null, railAsked = false;
   let railStyled = null, radiusBand = null;  // how the lines and the stations are styled now (restyled on a change)
+  let lineStyle = null;                      // ... as {z, base, focus, colour}, for the lines added later
+  let railDots = [];                         // every station's marker; those near the view are in railStations
   const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
 
   async function drawRail() {
@@ -1127,9 +1129,10 @@
     railHalos = rail.lines.map(([, , , , parts]) => L.polyline(latlngs(parts), { renderer: canvas, interactive: false }));
     railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
     // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
-    railStations = L.layerGroup(rail.stations.map(([name, lat, lng, lines]) => L.circleMarker([lat, lng], { renderer: canvas, radius: 4,
+    railDots = rail.stations.map(([name, lat, lng, lines]) => L.circleMarker([lat, lng], { renderer: canvas, radius: 4,
       color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1, lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] })
-      .bindPopup(() => stationPopup(name, lines))));
+      .bindPopup(() => stationPopup(name, lines)));
+    railStations = L.layerGroup();
     railLabels = L.layerGroup();
     map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
     const open = document.createElement("button"), panel = document.createElement("div");
@@ -1154,7 +1157,7 @@
     });
     for (const el of [open, panel]) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); $("map").append(el); }
     map.on("zoomend", showRail);
-    map.on("moveend", () => { if (!panel.hidden) railPanel(); stationLabels(); });
+    map.on("moveend", () => { if (!panel.hidden) railPanel(); cullRail(); stationLabels(); });
     showRail();
   }
 
@@ -1208,15 +1211,8 @@
     const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines(), colour = halo();
     const band = z < 11 ? 0 : z < 13 ? 1 : z < 15 ? 2 : 3, base = [2, 3, 4.5, 6][band];
     const style = [band, on, [...hiddenOps].sort(), [...focus], colour].join("|");
-    if (style !== railStyled) railLines.forEach((l, i) => {
-      const visible = on && !hiddenOps.has(rail.operators[rail.lines[i][0]][0]), h = railHalos[i];
-      if (visible !== map.hasLayer(l)) { if (visible) { h.addTo(map); l.addTo(map); } else { h.remove(); l.remove(); } }
-      if (!visible) return;
-      const lit = focus.has(i), faded = focus.size && !lit, weight = base + (lit ? 3 : 0);
-      l.setStyle({ weight, opacity: faded ? 0.25 : z < 11 ? 0.75 : 0.95 });
-      h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
-      if (lit) { h.bringToFront(); l.bringToFront(); }
-    });
+    lineStyle = { z, base, focus, colour };
+    if (style !== railStyled) railLines.forEach((l, i) => { if (map.hasLayer(l)) styleLine(i); });
     railStyled = style;
     const stations = on && z >= 11;
     if (stations !== map.hasLayer(railStations)) {
@@ -1224,12 +1220,46 @@
     }
     if (stations && radiusBand !== (z < 13 ? 0 : z < 15 ? 1 : 2)) {
       radiusBand = z < 13 ? 0 : z < 15 ? 1 : 2;
-      railStations.eachLayer((m) => m.setStyle({ radius: stationRadius(z, m.options.lines) }));
+      railStations.eachLayer(styleDot);
     }
+    cullRail();
     stationLabels();
     const b = $("map").querySelector(".rail-btn");
     b.textContent = t("railLayer");
     b.setAttribute("aria-pressed", on);
+  }
+
+  function styleLine(i) {
+    const { z, base, focus, colour } = lineStyle, l = railLines[i], h = railHalos[i];
+    const lit = focus.has(i), faded = focus.size && !lit, weight = base + (lit ? 3 : 0);
+    l.setStyle({ weight, opacity: faded ? 0.25 : z < 11 ? 0.75 : 0.95 });
+    h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
+    if (lit) { h.bringToFront(); l.bringToFront(); }
+  }
+  function styleDot(m) {
+    m.band = radiusBand;
+    m.setStyle({ radius: stationRadius(map.getZoom(), m.options.lines) });
+  }
+  // Only the lines and stations in and around the view are on the map (Leaflet reprojects every path on the map at
+  // each zoom); the others are added as the map moves to them, half a screen ahead.
+  function cullRail() {
+    if (!rail || !map || !lineStyle) return;
+    const b = map.getBounds().pad(0.5), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+    const on = settings.rail !== false;
+    let added = false;
+    for (let i = 0; i < railLines.length; i++) {
+      const line = rail.lines[i], [bs, bw, bn, be] = line.box, l = railLines[i];
+      const want = on && !hiddenOps.has(rail.operators[line[0]][0]) && bn >= s && bs <= n && be >= w && bw <= e;
+      if (want === map.hasLayer(l)) continue;
+      if (want) { railHalos[i].addTo(map); l.addTo(map); styleLine(i); added = true; } else { railHalos[i].remove(); l.remove(); }
+    }
+    if (added) for (const i of lineStyle.focus) if (map.hasLayer(railLines[i])) { railHalos[i].bringToFront(); railLines[i].bringToFront(); }
+    if (!map.hasLayer(railStations)) return;
+    for (let k = 0; k < railDots.length; k++) {
+      const [, lat, lng] = rail.stations[k], m = railDots[k], want = lat >= s && lat <= n && lng >= w && lng <= e;
+      if (want === railStations.hasLayer(m)) continue;
+      if (want) { if (m.band !== radiusBand) styleDot(m); railStations.addLayer(m); } else railStations.removeLayer(m);
+    }
   }
 
   // A station on the map: its lines, and its homes under the current conditions in one tap.
