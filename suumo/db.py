@@ -6,6 +6,7 @@ import fcntl
 import json
 import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS listings (
@@ -62,14 +63,32 @@ def dumps(obj):
 
 
 @contextmanager
-def exclusive(lock_path):
-    """Hold an exclusive lock for the duration; a second writer exits instead of interleaving."""
+def flock(lock_path):
+    """Try to hold an exclusive lock on lock_path for the duration, without waiting: yields whether it's held."""
     with open(lock_path, "w") as f:
         try:
             fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise SystemExit(f"another suumo process is running ({lock_path} is locked)") from None
+            yield False
+            return
+        yield True
+
+
+@contextmanager
+def exclusive(lock_path):
+    """Hold an exclusive lock for the duration; a second writer exits instead of interleaving."""
+    with flock(lock_path) as held:
+        if not held:
+            raise SystemExit(f"another suumo process is running ({lock_path} is locked)")
         yield
+
+
+def locked(lock_path):
+    """True while another process holds lock_path (a writing command holds the DB's lock)."""
+    if not Path(lock_path).exists():
+        return False
+    with flock(lock_path) as held:
+        return not held
 
 
 # Additions to databases created by older code, applied by `migrate` (writers only): tables, then columns.

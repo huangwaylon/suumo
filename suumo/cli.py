@@ -1,7 +1,6 @@
 """Command line: `uv run python -m suumo <command>` (see README)."""
 import argparse
 import contextlib
-import fcntl
 import json
 import os
 import re
@@ -16,7 +15,7 @@ from . import rail as rail_mod
 from . import saved as saved_mod
 from . import scope as scope_mod
 from .archive import Archive
-from .db import DB, exclusive
+from .db import DB, exclusive, locked
 from .export import export
 from .fx import update as update_fx
 from .geo import geocode
@@ -34,6 +33,7 @@ RAIL = "geo/rail.json"  # railway lines and stations for the map (`rail`)
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
 GEO_BUDGET = 600  # seconds a run spends on the address search, for towns 位置参照情報 doesn't place
 ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_SCOPE = "scope.toml"
 
 
 def crawled_since(db, now, hour):
@@ -76,6 +76,10 @@ class Ctx:
         self.lock = ROOT / (args.db + ".lock")
 
     def out_of_scope_hint(self):
+        """Only for the main scope: a narrower --scope (a one-off crawl of one prefecture) would suggest pruning
+        everything else."""
+        if self.args.scope != DEFAULT_SCOPE:
+            return
         oos = out_of_scope(self.db, self.targets)
         if oos:
             print(f"note: {sum(r['n'] for r in oos)} stored listings are no longer in scope.toml; "
@@ -110,12 +114,15 @@ def cmd_run(c: Ctx):
     c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
            datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
     c.db.commit()
-    try:  # towns of new listings, for the site's map; never stops the commit below
-        if not a.no_geocode:
+    if not a.no_geocode:  # a second crawler (--no-geocode) leaves geo/ and fx.json to the hourly one
+        try:  # towns of new listings, for the site's map; never stops the commit below
             update_geo(c.data, c.targets, budget=GEO_BUDGET)
+        except Exception as e:
+            print(f"geocoding failed (retried next run): {e!r}")
+        try:
             update_fx(c.data / "fx.json")  # the day's yen-dollar rate, for the site's USD prices
-    except Exception as e:
-        print(f"geocoding failed (retried next run): {e!r}")
+        except Exception as e:
+            print(f"exchange rate failed (retried next run): {e!r}")
     kinds = Counter(r[0] for r in c.db.x("SELECT kind FROM events WHERE run_id=?", run_id))
     print(f"\nrun {run_id}: {client.requests_made} requests, {p.report['mb']} MB, {p.report['seconds']}s; "
           f"events {dict(kinds) or 'none'}")
@@ -149,21 +156,8 @@ def cmd_status(c: Ctx):
     if last and last["finished"]:
         print(f"last run: {last['run_id']} (finished {last['finished']})")
     elif last:
-        print_progress(last, running=is_locked(c.lock))
+        print_progress(last, running=locked(c.lock))
     c.out_of_scope_hint()
-
-
-def is_locked(lock_path):
-    """True while a writing command (a run) holds the lock."""
-    if not lock_path.exists():
-        return False
-    with open(lock_path) as f:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            return True
-        fcntl.flock(f, fcntl.LOCK_UN)
-    return False
 
 
 def print_progress(run, running):
@@ -230,7 +224,7 @@ def cmd_seed(c: Ctx):
 def main():
     sys.stdout.reconfigure(line_buffering=True)  # progress shows up at once in `tee` / `tail -f`
     ap = argparse.ArgumentParser(prog="suumo")
-    ap.add_argument("--scope", default="scope.toml")
+    ap.add_argument("--scope", default=DEFAULT_SCOPE)
     ap.add_argument("--db", default="state.db")
     ap.add_argument("--archive", default="archive")
     ap.add_argument("--data", default="data")

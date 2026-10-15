@@ -308,8 +308,10 @@ class Pipeline:
             try:
                 html = self.client.get(json.loads(r["list_json"])["path"])
             except FileNotFoundError:
-                # gone from SUUMO; the next search-result crawls will delete it
-                self.db.dequeue(r["type"], r["id"])
+                # gone from SUUMO (404, or a redirect): not asked for again; the entry goes with the listing when
+                # the crawls remove it (re-queueing keeps the attempts)
+                self.db.x("UPDATE queue SET attempts=?, last_error='gone: 404' WHERE type=? AND id=?",
+                          MAX_DETAIL_ATTEMPTS, r["type"], r["id"])
                 gone += 1
                 streak = []
                 continue

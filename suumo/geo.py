@@ -7,7 +7,6 @@ prefecture with every 丁目's representative point; the address search gives th
 in the address search, one request at a time, GEO_DELAY apart.
 """
 import csv
-import fcntl
 import io
 import json
 import re
@@ -20,6 +19,7 @@ from pathlib import Path
 import requests
 
 from .archive import write_atomic
+from .db import flock
 from .http import USER_AGENT
 from .scope import PREFS
 
@@ -97,10 +97,8 @@ def towns_in(data_dir):
 def geocode(data_dir, cache_path, budget_seconds=None, log=print):
     """Look up the towns not in the cache yet. Errors are logged and retried on the next call. One geocoder at a
     time: while another holds the cache (a long `geocode` next to the runs), this one skips."""
-    with open(f"{cache_path}.lock", "w") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+    with flock(f"{cache_path}.lock") as held:
+        if not held:
             log("geocoding: another geocoder is running; skipped")
             return 0
         return _geocode(data_dir, cache_path, budget_seconds, log)

@@ -1,8 +1,10 @@
 """Maintenance commands, the run lock, git data commits, polite fetching and long runs (no network)."""
+import argparse
 import fcntl
 import io
 import json
 import os
+import re
 import subprocess
 import zipfile
 from datetime import date, datetime
@@ -13,8 +15,8 @@ import pytest
 
 from suumo import fx, geo, http, pipeline, saved
 from suumo.archive import Archive
-from suumo.cli import crawl_due, crawled_since, is_locked, print_progress, seconds_until_minute
-from suumo.db import DB, exclusive
+from suumo.cli import Ctx, cmd_status, crawl_due, crawled_since, print_progress, seconds_until_minute
+from suumo.db import DB, exclusive, locked
 from suumo.export import export
 from suumo.geo import _municipality, _same_spelling, geocode, town_of
 from suumo.gitdata import commit_data
@@ -251,9 +253,10 @@ def test_status_shows_a_running_backfill(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "— running" in out and "listing pages (updated" in out and "1,200/64,000 (1.9%) · ETA 22h46m" in out
     lock = tmp_path / "state.db.lock"
-    assert not is_locked(lock)
+    assert not locked(lock)
     with exclusive(lock):
-        assert is_locked(lock)
+        assert locked(lock)
+    assert not locked(lock)
 
 
 @pytest.mark.parametrize("address,town", [
@@ -454,3 +457,86 @@ def test_exchange_rate_is_checked_once_a_day_and_kept_on_errors(tmp_path, monkey
     os.utime(path, (0, 0))                                                         # a day later
     monkeypatch.setattr(fx.requests, "get", lambda url, timeout: (_ for _ in ()).throw(fx.requests.ConnectionError()))
     assert fx.update(path, log=QUIET)["jpy_per_usd"] == 158.12                     # offline: the last rate
+
+
+def _status(tmp_path, capsys, scope="mine.toml"):
+    (tmp_path / "mine.toml").write_text('[[scope]]\npref = "tokyo"\ntypes = ["used_condo"]\n')
+    args = argparse.Namespace(db=str(tmp_path / "s.db"), archive=str(tmp_path / "a"), data=str(tmp_path / "data"),
+                              scope=str(tmp_path / scope) if scope == "mine.toml" else scope)
+    cmd_status(Ctx(args))
+    return capsys.readouterr().out
+
+
+def test_status_queue_line_keeps_the_format_the_driver_reads(tmp_path, capsys):
+    db = _queue_db(tmp_path, 3)
+    db.x("UPDATE queue SET attempts=? WHERE id='2'", pipeline.MAX_DETAIL_ATTEMPTS)   # given up: not counted
+    db.commit()
+    out = _status(tmp_path, capsys)
+    # ~/suumo-refresh/all.sh: sed -n 's/^queue: \([0-9,]*\) listing pages.*/\1/p'
+    assert re.findall(r"^queue: ([0-9,]*) listing pages", out, re.M) == ["2"]
+    assert "note:" not in out
+
+
+def test_prune_hint_only_for_the_main_scope(tmp_path, capsys):
+    db = _queue_db(tmp_path, 1)
+    db.x("UPDATE listings SET pref='atlantis'")
+    db.commit()
+    assert "note:" not in _status(tmp_path, capsys)                  # a one-prefecture scope: no prune hint
+    assert "`python -m suumo prune` removes them" in _status(tmp_path, capsys, scope="scope.toml")
+
+
+class _PageClient:
+    def __init__(self, reply):
+        self.reply, self.delay, self.paths = reply, 1.0, []
+
+    def get(self, path):
+        self.paths.append(path)
+        if isinstance(self.reply, Exception):
+            raise self.reply
+        return self.reply
+
+
+def test_a_gone_listing_page_is_not_asked_for_again(tmp_path):
+    db = _queue_db(tmp_path, 1)
+    targets = [Target("tokyo", "used_condo", None)]
+    client = _PageClient(FileNotFoundError("404"))
+    p = Pipeline(db, Archive(tmp_path / "a"), client, targets, NOW, "r", log=QUIET)
+    p.process_queue(3600)
+    assert p.report["detail"] == {"fetched": 0, "failed": 0, "gone": 1, "remaining": 0}
+    assert tuple(db.x("SELECT attempts, last_error FROM queue").fetchone()) == (pipeline.MAX_DETAIL_ATTEMPTS,
+                                                                                "gone: 404")
+    a = {"code": "13219", "name": "狛江市", "slug": "sc_komae", "expected": 1}
+    db.upsert_area("tokyo", "used_condo", a)
+    p.reconcile("tokyo", "used_condo", a, 1, {"0": json.loads(db.listing("used_condo", "0")["list_json"])}, True)
+    Pipeline(db, Archive(tmp_path / "a"), client, targets, NOW, "r", log=QUIET).process_queue(3600)
+    assert len(client.paths) == 1                                    # still on the search results: not re-fetched
+
+
+def test_a_parse_failure_keeps_the_page_and_is_reported(tmp_path, monkeypatch, capsys):
+    db = _queue_db(tmp_path, 1)
+    monkeypatch.setattr(pipeline, "parse_detail", lambda html: 1 / 0)
+    archive = Archive(tmp_path / "a")
+    p = Pipeline(db, archive, _PageClient("<html>page</html>"), [Target("tokyo", "used_condo", None)], NOW, "r",
+                 log=QUIET)
+    p.process_queue(3600)
+    assert p.report["detail"]["failed"] == 1
+    assert archive.detail_path("tokyo", "used_condo", "0").exists()           # archived before parsing
+    attempts, error = db.x("SELECT attempts, last_error FROM queue").fetchone()
+    assert attempts == pipeline.MAX_DETAIL_ATTEMPTS and error.startswith("parse: ZeroDivisionError")
+    assert "parse failures: 1 (fix the parser, then `reparse`)" in _status(tmp_path, capsys)
+
+
+def test_export_writes_the_runs_events(tmp_path):
+    db = DB(tmp_path / "s.db")
+    ident = {"type": "used_condo", "id": "1", "pref": "tokyo", "area_code": "13219"}
+    db.add_event("r1", "new", ident, {"price": 1})
+    db.add_event("r1", "price_changed", ident, {"price": 2, "old_price": 1})
+    db.add_event("r0", "removed", ident, {"price": 1})
+    db.commit()
+    data = tmp_path / "data"
+    export(db, [Target("tokyo", "used_condo", None)], data, "r1")
+    events = json.loads((data / "events/r1.json").read_text())
+    assert [(e["kind"], e["payload"]) for e in events] == [("new", {"price": 1}),
+                                                          ("price_changed", {"price": 2, "old_price": 1})]
+    export(db, [Target("tokyo", "used_condo", None)], data, "r2")              # a run without events: no file
+    assert sorted(p.name for p in (data / "events").iterdir()) == ["r1.json"]
