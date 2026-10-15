@@ -15,11 +15,19 @@ ACTION = re.compile(rf"^\s*(save|unsave)\s+({'|'.join(TYPES)}):(\d{{1,12}})\s*$"
 
 
 def load(path):
-    """The saved keys ("type:id"); an empty set when there is no list yet."""
+    """The saved keys ("type:id"); an empty set when there is no list yet.
+
+    Only a missing file is empty: a file that can't be read or isn't a list of keys raises, so a run stops before
+    it deletes saved listings and the Saved workflow doesn't rewrite the list from nothing.
+    """
     try:
-        return set(json.loads(Path(path).read_text(encoding="utf-8")))
-    except (OSError, ValueError):
+        text = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
         return set()
+    keys = json.loads(text)
+    if not isinstance(keys, list) or not all(isinstance(k, str) for k in keys):
+        raise ValueError(f"{path}: not a list of 'type:id' keys")
+    return set(keys)
 
 
 def apply(path, title):

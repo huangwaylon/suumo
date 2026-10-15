@@ -57,10 +57,13 @@ def _same_spelling(s):
 
 
 def load_cache(path):
+    """The cache, or {} when there is none yet. A file that can't be read or parsed raises (rather than being
+    treated as empty and then overwritten)."""
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        text = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    return json.loads(text)
 
 
 def save_cache(path, cache):

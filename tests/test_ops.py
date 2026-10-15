@@ -290,6 +290,24 @@ def test_saved_list_applies_issue_titles(tmp_path):
     assert path.read_text() == '[\n"used_condo:20205670"\n]\n'
 
 
+def test_only_a_missing_saved_list_or_geo_cache_is_empty(tmp_path):
+    """A broken saved.json must stop a run (else reconcile/purge delete saved listings) and the Saved workflow
+    (else it rewrites the list from nothing); a broken towns.json must not be re-geocoded from scratch."""
+    assert saved.load(tmp_path / "missing.json") == set()
+    assert geo.load_cache(tmp_path / "missing.json") == {}
+    path = tmp_path / "saved.json"
+    for text in ("[", '{"a": 1}', "[1]", ""):
+        path.write_text(text)
+        with pytest.raises(ValueError):
+            saved.load(path)
+        with pytest.raises(ValueError):
+            saved.apply(path, "save used_condo:1")
+        assert path.read_text() == text
+    path.write_text('{"東京都千代田区丸の内１": [35.68, 139.76')
+    with pytest.raises(ValueError):
+        geo.load_cache(path)
+
+
 def test_geocoder_titles_match_district_towns_and_ke_spellings():
     assert _same_spelling("神奈川県箱根町強羅").startswith(_municipality("神奈川県足柄下郡箱根町強羅"))
     assert _same_spelling("茨城県龍ケ崎市佐貫町").startswith(_municipality("茨城県龍ヶ崎市佐貫町"))
