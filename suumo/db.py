@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS areas (
 CREATE TABLE IF NOT EXISTS queue (
     type TEXT NOT NULL, id TEXT NOT NULL,
     priority INTEGER NOT NULL,        -- 1 new since the area's baseline, 0 backfill
-    reason TEXT NOT NULL, enqueued_at TEXT NOT NULL,
+    reason TEXT NOT NULL, enqueued_at TEXT NOT NULL,  -- reason: unused (older code wrote new | backfill)
     attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
     PRIMARY KEY (type, id)
 );
@@ -98,8 +98,10 @@ CREATE TABLE IF NOT EXISTS ended (           -- tombstones of deleted listings, 
     first_seen TEXT NOT NULL, price INTEGER, ended_at TEXT NOT NULL,   -- ended_at: ISO timestamp of the removal
     PRIMARY KEY (type, id)
 );
+CREATE INDEX IF NOT EXISTS events_run ON events (run_id, type, id);   -- a run's events (export, the retyped check)
 """
-COLUMNS = [("areas", "missed_on", "TEXT")]  # (table, column, type)
+COLUMNS = [("areas", "missed_on", "TEXT"),
+           ("runs", "progress", "TEXT")]  # (table, column, type). progress: JSON {phase, text, at} while running
 
 
 class DB:
@@ -145,13 +147,11 @@ class DB:
                pref, type_key, a["code"], a["name"], a["slug"])
 
     # queue
-    def enqueue(self, type_key, lid, priority, reason, ts):
-        """Insert, or raise the priority of an existing entry."""
-        self.x("""INSERT INTO queue (type, id, priority, reason, enqueued_at) VALUES (?,?,?,?,?)
-                  ON CONFLICT(type, id) DO UPDATE SET
-                    priority=MAX(priority, excluded.priority),
-                    reason=CASE WHEN excluded.priority > priority THEN excluded.reason ELSE reason END""",
-               type_key, lid, priority, reason, ts)
+    def enqueue(self, type_key, lid, priority, ts):
+        """Insert, or raise the priority of an existing entry. (reason is unused: older code wrote new/backfill.)"""
+        self.x("""INSERT INTO queue (type, id, priority, reason, enqueued_at) VALUES (?,?,?,'',?)
+                  ON CONFLICT(type, id) DO UPDATE SET priority=MAX(priority, excluded.priority)""",
+               type_key, lid, priority, ts)
 
     def dequeue(self, type_key, lid):
         self.x("DELETE FROM queue WHERE type=? AND id=?", type_key, lid)

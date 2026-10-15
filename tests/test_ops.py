@@ -7,19 +7,20 @@ import os
 import re
 import subprocess
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
+from urllib3.exceptions import MaxRetryError, NewConnectionError
 
-from suumo import fx, geo, http, pipeline, saved
+from suumo import cli, fx, geo, http, pipeline, saved
 from suumo.archive import Archive
-from suumo.cli import Ctx, cmd_status, crawl_due, crawled_since, print_progress, seconds_until_minute
+from suumo.cli import Ctx, cmd_run, cmd_status, crawl_due, crawled_since, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive, locked
-from suumo.export import export
+from suumo.export import export, export_interrupted
 from suumo.geo import _municipality, _same_spelling, geocode, town_of
-from suumo.gitdata import commit_data
+from suumo.gitdata import commit_data, pull
 from suumo.maintenance import prune, reparse, seed, strip_list_fields
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
@@ -40,7 +41,7 @@ def _db_with_listing(tmp_path, pref="tokyo", area="13219"):
     db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
          "VALUES ('used_condo', '20205670', ?, ?, '狛江市', ?, '2026-10-05', 'x')",
          pref, area, json.dumps({"id": "20205670", "path": "/ms/chuko/tokyo/sc_komae/nc_20205670/"}))
-    db.enqueue("used_condo", "20205670", 0, "backfill", "x")
+    db.enqueue("used_condo", "20205670", 0, "x")
     db.commit()
     return db
 
@@ -201,7 +202,7 @@ def _queue_db(tmp_path, n):
         db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
              "VALUES ('used_condo', ?, 'tokyo', '13219', '狛江市', ?, '2026-10-05', 'x')",
              str(i), json.dumps({"id": str(i), "path": f"/ms/chuko/tokyo/sc_komae/nc_{i}/"}))
-        db.enqueue("used_condo", str(i), 0, "backfill", "x")
+        db.enqueue("used_condo", str(i), 0, "x")
     db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
     db.commit()
     return db
@@ -323,11 +324,11 @@ def test_hourly_runs_stop_listing_pages_before_the_next_run():
 def test_search_results_are_crawled_once_a_day(tmp_path):
     jst = ZoneInfo("Asia/Tokyo")
     db = DB(tmp_path / "s.db")
-    assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                     # never crawled
+    assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4, {"tokyo"})           # never crawled
     db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00')")
-    assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                 # done today
-    assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4)                  # before tomorrow's 04:00
-    assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4)                      # after it
+    assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4, {"tokyo"})       # done today
+    assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4, {"tokyo"})        # before tomorrow's 04:00
+    assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4, {"tokyo"})            # after it
 
 
 def test_the_daily_crawl_is_due_until_every_prefecture_is_done(tmp_path):
@@ -335,14 +336,14 @@ def test_the_daily_crawl_is_due_until_every_prefecture_is_done(tmp_path):
     db = DB(tmp_path / "s.db")
     db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00'), ('chiba', '2026-10-06T04:05:00+09:00')")
     now = datetime(2026, 10, 7, 13, 0, tzinfo=jst)
-    assert crawl_due(db, now, 4, {"tokyo", "chiba"}) and crawl_due(db, now, 4)    # chiba is yesterday's
+    assert crawl_due(db, now, 4, {"tokyo", "chiba"})                              # chiba is yesterday's
     assert not crawl_due(db, now, 4, {"tokyo"})
     assert crawl_due(db, now, 4, {"tokyo", "osaka"})                               # never crawled
     assert crawled_since(db, now, 4) == {"tokyo"}
 
 
 class _AreaPages:
-    """An area page without areas for every prefecture; stops the run (like a kill) at the one in stop_at."""
+    """An area page with one empty area for every prefecture; stops the run (like a kill) at the one in stop_at."""
     def __init__(self, stop_at=None):
         self.stop_at, self.paths = stop_at, []
 
@@ -350,7 +351,7 @@ class _AreaPages:
         if self.stop_at and f"/{self.stop_at}/" in path:
             raise KeyboardInterrupt
         self.paths.append(path)
-        return "<html><body></body></html>"
+        return '<html><body><input name="sc" value="1"><label>x(0)</label></body></html>'
 
 
 def test_a_daily_crawl_that_stopped_resumes_with_the_next_prefecture(tmp_path):
@@ -417,6 +418,45 @@ def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, mo
     assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}
 
 
+def test_bulk_misses_wait_for_the_address_search_without_new_downloads(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    write(data, [rec(1, address="茨城県水戸市赤塚１"), rec(2, address="茨城県水戸市見川３")], pref="ibaraki")
+    write(data, [rec(3, address="東京都狛江市岩戸北３")])
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("08000-19.0b/08_2025.csv", PLACES_CSV.encode("cp932"))
+    downloads = []
+
+    def get(url, timeout):
+        downloads.append(url)
+        if "13000" in url:   # Tokyo's file fails: its town isn't a miss, it's tried again
+            raise geo.requests.ConnectionError("down")
+        return MagicMock(content=buf.getvalue())
+
+    monkeypatch.setattr(geo.requests, "get", get)
+    monkeypatch.setattr(geo, "GEO_DELAY", 0)
+    found = {}
+    monkeypatch.setattr(geo, "lookup", lambda session, town: found[town])   # KeyError: the address search fails
+    cache = tmp_path / "towns.json"
+    assert geocode(data, cache, log=QUIET) == 1
+    assert len(downloads) == 2
+    assert json.loads(cache.read_text()) == {"茨城県水戸市赤塚１": [36.38, 140.41],
+                                             "_bulk": {"url": geo.PLACES_URL, "missed": ["茨城県水戸市見川３"]}}
+
+    downloads.clear()
+    geocode(data, cache, log=QUIET)
+    assert downloads == [geo.PLACES_URL.format(code=13)]   # Ibaraki's miss isn't downloaded again; Tokyo's retried
+
+    monkeypatch.setattr(geo, "PLACES_URL", geo.PLACES_URL.replace("19.0b", "20.0b"))   # next spring's version
+    downloads.clear()
+    geocode(data, cache, log=QUIET)
+    assert len(downloads) == 2                              # every file of the new version is read
+
+    found.update({"茨城県水戸市見川３": [36.4, 140.4], "東京都狛江市岩戸北３": None})
+    geocode(data, cache, log=QUIET)
+    assert "_bulk" not in json.loads(cache.read_text())      # nothing left waiting
+
+
 def test_queue_fetches_what_is_queued_and_copies_land_twins(tmp_path):
     db = DB(tmp_path / "s.db")
     archive = Archive(tmp_path / "a")
@@ -430,7 +470,7 @@ def test_queue_fetches_what_is_queued_and_copies_land_twins(tmp_path):
              "last_seen) VALUES (?, ?, 'tokyo', '13219', '狛江市', ?, ?, '2026-10-05', 'x')",
              type_, lid, json.dumps({"path": f"/ms/chuko/tokyo/sc_komae/nc_{lid}/", **rec_}), detail)
         if not detail:
-            db.enqueue(type_, lid, 0, "backfill", "x")
+            db.enqueue(type_, lid, 0, "x")
     db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
     db.commit()
     fetched = []
@@ -453,7 +493,7 @@ def test_queue_goes_by_prefecture_size_after_new_listings(tmp_path):
         db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
              "VALUES ('land', ?, ?, 'x', 'x', ?, '2026-10-05', 'x')", lid, pref,
              json.dumps({"path": f"/tochi/{pref}/x/nc_{lid}/", "address": lid, "land_m2": 1.0, "price": 1}))
-        db.enqueue("land", lid, priority, "x", "x")
+        db.enqueue("land", lid, priority, "x")
     db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
          "VALUES ('land', '9', 'osaka', 'x', 'x', '{}', '2026-10-05', 'x')")    # osaka has more listings
     rows = db.x("SELECT q.type, q.id, q.priority, l.pref, l.area_code, l.list_json, l.status FROM queue q "
@@ -558,3 +598,173 @@ def test_export_writes_the_runs_events(tmp_path):
                                                           ("price_changed", {"price": 2, "old_price": 1})]
     export(db, [Target("tokyo", "used_condo", None)], data, "r2")              # a run without events: no file
     assert sorted(p.name for p in (data / "events").iterdir()) == ["r1.json"]
+
+
+def _unreachable():
+    reason = NewConnectionError(None, "Failed to resolve 'suumo.jp'")
+    return http.requests.ConnectionError(MaxRetryError(None, "https://suumo.jp/x/", reason=reason))
+
+
+def test_client_network_unreachable_is_a_network_error_not_a_slowdown(monkeypatch):
+    monkeypatch.setattr(http.time, "sleep", lambda s: None)
+    c = http.Client(delay=1.0, log=QUIET)
+    for error in (_unreachable(), http.requests.exceptions.ProxyError("proxy down")):
+        def get(url, timeout, allow_redirects, e=error):
+            raise e
+        c.session.get = get
+        with pytest.raises(http.NetworkError):
+            c.get("/x/")
+    assert c.net_errors == 2 * http.RETRIES and c.slowdowns == 0 and c.delay > 1.0   # still slowed down
+    replies = iter([_unreachable(), http.requests.ReadTimeout("slow"), _unreachable(), _unreachable()])
+
+    def mixed(url, timeout, allow_redirects):
+        raise next(replies)
+    c.session.get = mixed
+    c.delay = 1.0
+    with pytest.raises(RuntimeError) as e:                       # one attempt may have reached SUUMO
+        c.get("/x/")
+    assert not isinstance(e.value, http.NetworkError) and c.slowdowns == 1
+
+
+def test_client_gone_says_status_and_location(monkeypatch):
+    c = http.Client(delay=0, log=QUIET)
+    c.session.get = lambda url, timeout, allow_redirects: FakeResponse(302, headers={"Location": "/library/x/"})
+    with pytest.raises(FileNotFoundError, match="^302 /library/x/$"):
+        c.get("/x/")
+
+
+def test_network_errors_never_use_up_listing_page_attempts(tmp_path, monkeypatch):
+    monkeypatch.setattr(pipeline.time, "sleep", lambda s: None)
+    db = _queue_db(tmp_path, 8)
+    client = _PageClient(http.NetworkError("network unreachable"))
+    out = []
+    p = Pipeline(db, Archive(tmp_path / "a"), client, [Target("tokyo", "used_condo", None)], NOW, "r", log=out.append)
+    p.process_queue(3600)
+    assert [r[0] for r in db.x("SELECT attempts FROM queue")] == [0] * 8
+    assert any("pausing" in line for line in out)                # still an outage streak
+
+
+def test_a_gone_page_keeps_its_status_and_location(tmp_path):
+    db = _queue_db(tmp_path, 1)
+    p = Pipeline(db, Archive(tmp_path / "a"), _PageClient(FileNotFoundError("302 /library/x/")),
+                 [Target("tokyo", "used_condo", None)], NOW, "r", log=QUIET)
+    p.process_queue(3600)
+    assert tuple(db.x("SELECT attempts, last_error FROM queue").fetchone()) == (pipeline.MAX_DETAIL_ATTEMPTS,
+                                                                                "gone: 302 /library/x/")
+
+
+def test_progress_is_its_own_column_and_status_reads_it(tmp_path, capsys):
+    db = _queue_db(tmp_path, 0)
+    p = Pipeline(db, None, None, [], NOW, "r", log=QUIET)
+    p.save_progress("listing pages", "1/2")
+    row = db.x("SELECT report, progress FROM runs").fetchone()
+    assert row["report"] is None and json.loads(row["progress"])["text"] == "1/2"
+    out = _status(tmp_path, capsys)
+    assert "listing pages (updated" in out and "1/2" in out
+    old = {"run_id": "r0", "progress": None, "report": json.dumps({"progress": {"phase": "x", "text": "old",
+                                                                                "at": NOW.isoformat()}})}
+    print_progress(old, running=False)                           # a run by older code: the report's progress
+    assert "old" in capsys.readouterr().out
+
+
+def test_events_of_an_unfinished_run_are_exported_by_the_next(tmp_path):
+    db = DB(tmp_path / "s.db")
+    ident = {"type": "used_condo", "id": "1", "pref": "tokyo", "area_code": "13219"}
+    db.x("INSERT INTO runs (run_id, started, finished) VALUES ('r0', 'x', 'y'), ('r1', 'x', NULL)")
+    db.add_event("r0", "new", ident, {"price": 1})
+    db.add_event("r1", "new", ident, {"price": 2})
+    db.commit()
+    data = tmp_path / "data"
+    assert export_interrupted(db, data) == ["r1"]
+    assert [p.name for p in (data / "events").iterdir()] == ["r1.json"]   # finished runs exported themselves
+    assert json.loads(db.x("SELECT report FROM runs WHERE run_id='r1'").fetchone()[0]) == {"interrupted": True}
+    assert export_interrupted(db, data) == []                    # marked once
+
+
+def test_migrate_adds_the_events_index_and_progress_column(tmp_path):
+    db = DB(tmp_path / "s.db")
+    assert "events_run" in {r["name"] for r in db.x("PRAGMA index_list(events)")}
+    assert "progress" in {r["name"] for r in db.x("PRAGMA table_info(runs)")}
+
+
+def _run_args(tmp_path, **kw):
+    (tmp_path / "mine.toml").write_text('[[scope]]\npref = "tokyo"\ntypes = ["used_condo"]\n')
+    args = dict(db=str(tmp_path / "s.db"), archive=str(tmp_path / "a"), data=str(tmp_path / "data"),
+                scope=str(tmp_path / "mine.toml"), delay=0.0, push=False, commit=False, crawl_at=None,
+                no_crawl=False, no_geocode=True, budget=0.0, until_minute=None)
+    return argparse.Namespace(**{**args, **kw})
+
+
+def test_an_interrupted_run_rolls_back_and_the_next_exports_its_events(tmp_path, monkeypatch):
+    def crawl(self, skip=()):
+        self.db.add_event(self.run_id, "new", {"type": "used_condo", "id": "1", "pref": "tokyo",
+                                               "area_code": "13219"}, {"price": 1})
+        self.db.commit()                                         # a finished area
+        self.db.x("INSERT INTO prefs VALUES ('tokyo', 'x')")     # half an area: rolled back
+        raise KeyboardInterrupt                                  # Ctrl-C, or SIGTERM (cli._interrupt)
+    monkeypatch.setattr(Pipeline, "crawl_lists", crawl)
+    c = Ctx(_run_args(tmp_path))
+    c.db.migrate()
+    with pytest.raises(SystemExit) as e:
+        cmd_run(c)
+    assert e.value.code == 130
+    run = c.db.x("SELECT run_id, finished, report FROM runs").fetchone()
+    assert run["finished"] is None and json.loads(run["report"])["interrupted"]
+    assert c.db.x("SELECT COUNT(*) FROM prefs").fetchone()[0] == 0
+    assert not (tmp_path / "data/events").exists()
+
+    class Later(datetime):  # the next run starts later
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.now(tz) + timedelta(seconds=5)
+    monkeypatch.setattr(cli, "datetime", Later)
+    cmd_run(Ctx(_run_args(tmp_path, no_crawl=True)))
+    assert [p.stem for p in (tmp_path / "data/events").iterdir()] == [run["run_id"]]
+    with pytest.raises(KeyboardInterrupt):
+        cli._interrupt(15, None)
+
+
+def test_a_crawl_stopped_by_the_network_ends_the_run_with_an_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(Pipeline, "crawl_lists", lambda self, skip=(): False)
+    monkeypatch.setattr(Pipeline, "process_queue", lambda *a, **k: pytest.fail("no listing pages while offline"))
+    c = Ctx(_run_args(tmp_path, budget=3600.0))
+    c.db.migrate()
+    with pytest.raises(SystemExit, match="network is down"):
+        cmd_run(c)
+    assert c.db.x("SELECT finished FROM runs").fetchone()[0] is not None   # the run itself finished
+
+
+def _repo(path, *args):
+    return subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True, check=True)
+
+
+def test_git_aborts_a_rebase_a_failed_pull_left_and_clears_a_stale_lock(tmp_path):
+    remote, a, b = tmp_path / "remote.git", tmp_path / "a", tmp_path / "b"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+
+    def clone(path):
+        subprocess.run(["git", "clone", "-q", str(remote), str(path)], check=True, capture_output=True)
+        _repo(path, "config", "user.email", "t@t")
+        _repo(path, "config", "user.name", "t")
+    clone(a)
+    (a / "data").mkdir()
+    (a / "data/x.json").write_text("1\n")
+    _repo(a, "add", ".")
+    _repo(a, "commit", "-qm", "1")
+    _repo(a, "push", "-q", "origin", "HEAD")
+    clone(b)
+    (a / "data/x.json").write_text("2\n")
+    _repo(a, "commit", "-qam", "2")
+    _repo(a, "push", "-q", "origin", "HEAD")
+    (b / "data/x.json").write_text("3\n")                      # the same line, changed on both sides
+    _repo(b, "commit", "-qam", "3")
+    out = []
+    pull(b, log=out.append)
+    assert any("aborted it" in line for line in out)
+    assert not (b / ".git/rebase-merge").exists() and (b / "data/x.json").read_text() == "3\n"
+    lock = b / ".git/index.lock"
+    lock.write_text("")
+    (b / "data/x.json").write_text("4\n")
+    assert not commit_data(b, "r1", log=QUIET)                   # a fresh lock: a git is running, left alone
+    os.utime(lock, (0, 0))
+    assert commit_data(b, "r2", log=QUIET) and not lock.exists()

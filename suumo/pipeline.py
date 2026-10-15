@@ -20,6 +20,7 @@ from .archive import Archive
 from .db import dumps
 from .detail import parse_detail
 from .export import dup_key
+from .http import NetworkError
 from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import by_key, in_scope
 
@@ -30,13 +31,18 @@ SUSPECT_DROP = 0.30      # an area losing more than this share at once is distru
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
 TOMBSTONE_DAYS = 14      # a deleted listing's tombstone (ended table) is kept this long
 MAX_DETAIL_ATTEMPTS = 3
-PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to the run's report for `status`)
+NET_STREAK = 2           # targets (or areas of one) in a row failing with a network error stop the crawl (or it)
+PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to runs.progress for `status`)
 CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the site shows what's fetched so far
 OUTAGE_STREAK = 5          # this many failed listing pages in a row = SUUMO (or the network) is down...
 OUTAGE_PAUSE = 600         # ...pause this long; those failures don't count toward MAX_DETAIL_ATTEMPTS
 
 # priorities in the detail queue: listings new since the area's baseline first
 P_NEW, P_BACKFILL = 1, 0
+
+
+class AreaPageError(ValueError):
+    """An area page that can't be right: the target is an error, nothing of it is reconciled."""
 
 
 class Pipeline:
@@ -52,71 +58,141 @@ class Pipeline:
         self.report = {"targets": [], "detail": {}}
 
     def save_progress(self, phase, text):
-        """Put progress in the run's report so `status` (another process) can show it while the run goes on."""
+        """Put progress in the run's row (runs.progress only, a few bytes) so `status`, another process, can show
+        it while the run goes on. The report is written once, at the end."""
         at = datetime.now(self.now.tzinfo).isoformat(timespec="seconds")
-        self.report["progress"] = {"phase": phase, "text": text, "at": at}
-        self.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(self.report, ensure_ascii=False), self.run_id)
+        self.db.x("UPDATE runs SET progress=? WHERE run_id=?",
+                  json.dumps({"phase": phase, "text": text, "at": at}, ensure_ascii=False), self.run_id)
         self.db.commit()
 
     # ---------- search results ----------
 
     def crawl_lists(self, skip=()):
-        """Crawl every target's search results, except prefectures in skip (already crawled today). Each
-        prefecture's crawled_at is written as soon as its last target is done, so a crawl that stops part-way
-        resumes with the next prefecture (`run --crawl-at`)."""
+        """Crawl every target's search results, except prefectures in skip (already crawled today). A target that
+        failed (its area page, or some of its areas) is crawled again once at the end (only the failed areas when
+        its area page was fine). A prefecture's crawled_at is written once all its targets are done, retry included
+        (success or not), so a crawl that stops part-way resumes with the next prefecture (`run --crawl-at`).
+        NET_STREAK targets in a row failing with a network error (http.NetworkError: our network, not SUUMO) stop
+        the crawl: returns False, and the prefectures not done are left to the next run."""
         targets = [t for t in self.targets if t.pref not in skip]
         if len(targets) < len(self.targets):
             self.log(f"search results: {len({t.pref for t in self.targets} & set(skip))} prefectures already "
                      "crawled since the daily update; skipped")
         left = Counter(t.pref for t in targets)
-        for t in targets:
-            self.log(f"\n=== {t.pref} / {t.type} ===")
-            try:
-                rep = self._crawl_target(t)
-            except Exception as e:  # e.g. the area page itself failed; other targets still run
-                self.log(f"  ERROR {e!r}")
-                rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
-            self.report["targets"].append(rep)
-            left[t.pref] -= 1
-            if not left[t.pref]:
-                self.db.x("INSERT OR REPLACE INTO prefs (pref, crawled_at) VALUES (?, ?)", t.pref, self.ts)
-            self.db.commit()
+        retry, offline = [(t, None) for t in targets], 0
+        for last in (False, True):  # every target, then the failed ones again
+            jobs, retry = retry, []
+            for t, areas in jobs:
+                self.log(f"\n=== {t.pref} / {t.type}{' (again)' if last else ''} ===")
+                rep, failed, again = self._target(t, areas)
+                if last:
+                    rep["retried"] = True
+                self.report["targets"].append(rep)
+                offline = offline + 1 if rep.get("network") else 0
+                if offline >= NET_STREAK:
+                    self.db.commit()
+                    self.log(f"\n! {NET_STREAK} targets in a row failed with a network error: the network is down; "
+                             "the search results not crawled yet are left to the next run")
+                    self.report["offline"] = True
+                    return False
+                if failed and not last:
+                    retry.append((t, again))
+                else:
+                    left[t.pref] -= 1
+                    if not left[t.pref]:
+                        self.db.x("INSERT OR REPLACE INTO prefs (pref, crawled_at) VALUES (?, ?)", t.pref, self.ts)
+                self.db.commit()
+        return True
 
-    def _crawl_target(self, t):
+    def _target(self, t, areas=None):
+        """Crawl a target (or only these areas of it, a retry): (report, failed, the areas to crawl again: None for
+        the whole target)."""
+        try:
+            rep = self._crawl_target(t, areas)
+        except Exception as e:  # e.g. the area page itself failed; other targets still run
+            self.log(f"  ERROR {e}" if isinstance(e, AreaPageError) else f"  ERROR {e!r}")
+            rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
+            if isinstance(e, NetworkError):
+                rep["network"] = True
+            return rep, True, None
+        again = rep.pop("again")
+        return rep, bool(again), again
+
+    def _crawl_target(self, t, retry=None):
+        """One target's area page, then its areas (or only the areas in retry, without the area page). The report's
+        "again": the areas that failed or weren't reached (NET_STREAK network errors in a row end the target)."""
+        rep = {"pref": t.pref, "type": t.type, "areas": [], "again": []}
+        areas = self._area_page(t, rep) if retry is None else retry
+        offline = 0
+        for k, a in enumerate(areas):
+            self.save_progress("search results", f"{t.pref}/{t.type}: area {k + 1}/{len(areas)} ({a['name']})")
+            out = self.crawl_area(t.pref, t.type, a)
+            rep["areas"].append(out)
+            self.db.commit()
+            if out["status"] == "error":
+                rep["again"].append(a)
+            offline = offline + 1 if out.get("network") else 0
+            if offline >= NET_STREAK:
+                self.log(f"  ! {NET_STREAK} areas in a row failed with a network error; stopping {t.pref}/{t.type}")
+                rep["network"] = True
+                rep["again"] += areas[k + 1:]
+                break
+        return rep
+
+    def _area_page(self, t, rep):
+        """Fetch and check the target's area page, reconcile the areas it shows without a link (or doesn't show);
+        returns the areas to crawl. A page that can't be right (no areas but for new_condo, or far fewer listings in
+        the target's areas than held there) raises AreaPageError before anything is reconciled (target = error)."""
         html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
         self.archive.save_list(t.pref, self.day, t.type, "_city", html)
-        areas = [a for a in parse_areas(html, TYPES[t.type], t.pref) if t.includes(a["code"])]
-        rep = {"pref": t.pref, "type": t.type, "areas": []}
+        parsed = parse_areas(html, TYPES[t.type], t.pref)
+        if not parsed and t.type != "new_condo":  # new_condo lists only areas with developments: maybe none
+            raise AreaPageError("area page: no areas on it (a changed or broken page?)")
+        areas = [a for a in parsed if t.includes(a["code"])]
+        held = {}  # area code -> (name, active listings)
+        for r in self.db.x("""SELECT area_code, MAX(area_name) name, COUNT(*) n FROM listings
+                              WHERE pref=? AND type=? AND status='active' GROUP BY area_code""", t.pref, t.type):
+            if t.includes(r["area_code"]):
+                held[r["area_code"]] = (r["name"], r["n"])
+        n_held, expected = sum(n for _, n in held.values()), sum(a["expected"] for a in areas)
+        if n_held >= SUSPECT_MIN_HITS and expected < n_held * (1 - SUSPECT_DROP):
+            raise AreaPageError(f"area page: {expected:,} listings in its areas, {n_held:,} held there "
+                                "(a broken page? nothing reconciled)")
 
         # An area can drop off the area page entirely (e.g. new_condo lists only areas that currently have
-        # developments). Treat it as crawled with zero listings so what we hold there is reconciled too.
+        # developments). Treat it as crawled with zero listings so what we hold there is reconciled too. The same for
+        # a new_condo area the other types know: without developments now, so its first one later is 新着.
         listed = {a["code"] for a in areas}
-        held = {r["area_code"]: r["area_name"] for r in self.db.x(
-            "SELECT DISTINCT area_code, area_name FROM listings WHERE pref=? AND type=? AND status='active'",
-            t.pref, t.type) if t.includes(r["area_code"])}
-        for code in sorted((set(held) | (t.areas or set())) - listed):
-            a = {"code": code, "name": held.get(code, code), "slug": None, "expected": 0}
-            if code in held:
+        known = {}
+        if t.type == "new_condo":
+            known = {r["code"]: r["name"] for r in self.db.x(
+                "SELECT code, MAX(name) name FROM areas WHERE pref=? AND type!=? GROUP BY code", t.pref, t.type)
+                if t.includes(r["code"])}
+        empty = 0
+        for code in sorted((set(held) | set(known) | (t.areas or set())) - listed):
+            if code in held or code in known:
+                a = {"code": code, "name": held[code][0] if code in held else known[code], "slug": None, "expected": 0}
                 self.db.upsert_area(t.pref, t.type, a)
                 rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
+                empty += code not in held
             else:
                 self.log(f"  {code:<10} not on the area page (no listings, or a wrong code)")
                 rep["areas"].append({"code": code, "status": "not_listed"})
 
-        for k, a in enumerate(areas):
-            self.save_progress("search results", f"{t.pref}/{t.type}: area {k + 1}/{len(areas)} ({a['name']})")
+        crawl = []
+        for a in areas:
             self.db.upsert_area(t.pref, t.type, a)
-            if not a["slug"]:
-                if a["code"] in held and a["expected"] == 0:  # listed as "(0)" without a link: crawled, 0 hits
-                    rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
-                    self.db.commit()
-                    continue
-                status = "empty" if a["expected"] == 0 else "no_slug"
-                rep["areas"].append({"code": a["code"], "name": a["name"], "status": status})
-                continue
-            rep["areas"].append(self.crawl_area(t.pref, t.type, a))
-            self.db.commit()
-        return rep
+            if a["slug"]:
+                crawl.append(a)
+            elif a["expected"] == 0:  # listed as "(0)" without a link: crawled, 0 hits (a baseline if nothing held)
+                rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
+                empty += a["code"] not in held
+            else:
+                rep["areas"].append({"code": a["code"], "name": a["name"], "status": "no_slug"})
+        if empty:
+            self.log(f"  {empty} areas without listings: recorded as crawled with 0")
+        self.db.commit()
+        return crawl
 
     def _fetch_area(self, pref, type_key, a):
         path = f"/{TYPES[type_key]}/{pref}/{a['slug']}/?pc={PAGE_SIZE}"
@@ -152,7 +228,10 @@ class Pipeline:
             self.log(f"  {a['name']:<10} ERROR {e!r}")
             self.db.x("UPDATE areas SET last_status='error' WHERE pref=? AND type=? AND code=?",
                       pref, type_key, a["code"])
-            return {"code": a["code"], "name": a["name"], "status": "error", "error": repr(e)}
+            out = {"code": a["code"], "name": a["name"], "status": "error", "error": repr(e)}
+            if isinstance(e, NetworkError):
+                out["network"] = True
+            return out
         complete = not errors and len(recs) >= hits
         return self.reconcile(pref, type_key, a, hits, recs, complete, errors)
 
@@ -227,7 +306,7 @@ class Pipeline:
                             self.db.add_event(self.run_id, "price_changed", ident,
                                               {"price": rec.get("price"), "old_price": tomb["price"]})
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                        self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                     counts["relisted"] += 1
                 elif other:
                     if baselined and self.db.x(
@@ -235,15 +314,15 @@ class Pipeline:
                             self.run_id, other["type"], lid).fetchone():
                         self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})  # both new today
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                        self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                     counts["retyped"] += 1
                 elif baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
+                        self.db.enqueue(type_key, lid, P_NEW, self.ts)
                     counts["new"] += 1
                 elif wanted(lid):
-                    self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                 continue
 
             old = json.loads(row["list_json"])
@@ -256,7 +335,7 @@ class Pipeline:
                                   {"price": rec.get("price"), "old_price": old.get("price")})
             if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch), unless it's a copy
                 if wanted(lid):
-                    self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                 else:
                     self.db.dequeue(type_key, lid)
             self.db.x("""UPDATE listings SET list_json=?, area_code=?, area_name=?, pref=?, status='active',
@@ -301,7 +380,8 @@ class Pipeline:
         line += "".join(f" {k}={v}" for k, v in counts.items() if v)
         if errors:
             line += f" errors={list(errors)[:2]}"
-        self.log(line)
+        if hits or held or status != "complete":  # an empty area with nothing held: counted by _area_page
+            self.log(line)
         return {"code": a["code"], "name": a["name"], "status": status, "hits": hits, "parsed": len(recs),
                 "baseline": not baselined and complete, **counts}
 
@@ -339,19 +419,22 @@ class Pipeline:
                 continue
             try:
                 html = self.client.get(json.loads(r["list_json"])["path"])
-            except FileNotFoundError:
+            except FileNotFoundError as e:
                 # gone from SUUMO (404, or a redirect): not asked for again; the entry goes with the listing when
-                # the crawls remove it (re-queueing keeps the attempts)
-                self.db.x("UPDATE queue SET attempts=?, last_error='gone: 404' WHERE type=? AND id=?",
-                          MAX_DETAIL_ATTEMPTS, r["type"], r["id"])
+                # the crawls remove it (re-queueing keeps the attempts). The status and Location are kept.
+                self.log(f"  gone: {r['type']}/{r['id']}: {e}")
+                self.db.x("UPDATE queue SET attempts=?, last_error=? WHERE type=? AND id=?",
+                          MAX_DETAIL_ATTEMPTS, f"gone: {e}"[:300], r["type"], r["id"])
                 gone += 1
                 streak = []
                 continue
             except Exception as e:
-                self.db.x("UPDATE queue SET attempts=attempts+1, last_error=? WHERE type=? AND id=?",
-                          repr(e)[:300], r["type"], r["id"])
+                # a network error (http.NetworkError: SUUMO was never reached) isn't the page's fault: no attempt
+                counted = not isinstance(e, NetworkError)
+                self.db.x("UPDATE queue SET attempts=attempts+?, last_error=? WHERE type=? AND id=?",
+                          int(counted), repr(e)[:300], r["type"], r["id"])
                 failed += 1
-                streak.append((r["type"], r["id"]))
+                streak.append((r["type"], r["id"], counted))
                 if len(streak) >= OUTAGE_STREAK:
                     self._pause_for_outage(streak, deadline)
                     streak = []
@@ -372,7 +455,6 @@ class Pipeline:
         self.db.commit()
         remaining = self.db.x("SELECT COUNT(*) FROM queue WHERE attempts < ?", MAX_DETAIL_ATTEMPTS).fetchone()[0]
         self.report["detail"] = {"fetched": done, "failed": failed, "gone": gone, "remaining": remaining}
-        self.report.pop("progress", None)
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
 
     def _queue_order(self, rows):
@@ -415,8 +497,9 @@ class Pipeline:
 
     def _pause_for_outage(self, streak, deadline):
         """Several failures in a row: SUUMO or the network is down. Give the attempts back and wait."""
-        for type_key, lid in streak:
-            self.db.x("UPDATE queue SET attempts=MAX(0, attempts-1) WHERE type=? AND id=?", type_key, lid)
+        for type_key, lid, counted in streak:
+            if counted:
+                self.db.x("UPDATE queue SET attempts=MAX(0, attempts-1) WHERE type=? AND id=?", type_key, lid)
         self.db.commit()
         pause = max(0, min(OUTAGE_PAUSE, deadline - time.monotonic()))
         self.log(f"  ! {len(streak)} listing pages failed in a row; pausing {pause / 60:.0f} min "
@@ -432,10 +515,15 @@ class Pipeline:
         self.archive.delete_detail(pref, type_key, lid)
 
     def purge(self):
-        """Ended listings no longer saved, old events/runs rows, old search-result snapshots."""
-        unsaved = [r for r in self.db.x("SELECT type, id, pref FROM listings WHERE status='removed'")
+        """Ended listings no longer saved (deleted, leaving a tombstone dated their removal, as reconcile's deletes
+        do), old events/runs rows, old search-result snapshots."""
+        unsaved = [r for r in self.db.x("SELECT type, id, pref, first_seen, list_json, removed_at FROM listings "
+                                        "WHERE status='removed'")
                    if f"{r['type']}:{r['id']}" not in self.saved]
         for r in unsaved:
+            self.db.x("INSERT OR REPLACE INTO ended (type, id, pref, first_seen, price, ended_at) VALUES (?,?,?,?,?,?)",
+                      r["type"], r["id"], r["pref"], r["first_seen"], json.loads(r["list_json"]).get("price"),
+                      r["removed_at"] or self.ts)
             self.delete(r["pref"], r["type"], r["id"])
         if unsaved:
             self.log(f"deleted {len(unsaved)} ended listings no longer saved")

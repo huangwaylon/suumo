@@ -17,8 +17,9 @@ from pathlib import Path
 
 import requests
 
-from .catalog import listing_station_keys, station_area
+from .catalog import listing_area, listing_station_keys
 from .catalog import station_key as key
+from .export import records
 from .geo import load_cache, save_cache
 
 API = "https://query.wikidata.org/sparql"
@@ -46,14 +47,7 @@ def _english(label):
 
 def mentions(data_dir, pref):
     """Counter of the station keys a prefecture's listings mention."""
-    return listing_station_keys(json.loads(line) for f in (Path(data_dir) / pref).glob("*/*.jsonl")
-                                for line in f.read_text(encoding="utf-8").splitlines())
-
-
-def area(rail_stations, keys):
-    """The box the stations named in a prefecture's listings (a Counter of keys) span (positions from rail.json),
-    or None."""
-    return station_area([(lat, lng) for name, lat, lng, _ in rail_stations for _ in range(keys[key(name)])])
+    return listing_station_keys(records(data_dir, pref))
 
 
 def merge(cache, k, value, n):
@@ -63,9 +57,8 @@ def merge(cache, k, value, n):
     if not old:
         cache[k] = [*value, n]
         return
-    old_n = old[2] if len(old) > 2 else 0
-    best, other = (value, old) if n > old_n else (old, value)
-    cache[k] = [best[0] or other[0], best[1] or other[1], max(n, old_n)]
+    best, other = (value, old) if n > old[2] else (old, value)
+    cache[k] = [best[0] or other[0], best[1] or other[1], max(n, old[2])]
 
 
 def fetch(session, area):
@@ -116,7 +109,7 @@ def update(cache_path, rail_path, prefs, data_dir, log=print):
     session.headers["User-Agent"] = USER_AGENT
     for n, pref in enumerate(todo):
         keys = mentions(data_dir, pref)
-        box = area(rail_stations, keys)
+        box = listing_area(keys, rail_stations)
         if not box:
             continue  # no listings yet
         if n:

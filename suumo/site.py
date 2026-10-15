@@ -21,7 +21,8 @@ from pathlib import Path
 from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
-from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, station_key
+from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, load_events, run_date, station_key
+from .export import prefectures
 from .geo import load_cache, town_of
 from .parse import TYPES
 from .rail import simplify
@@ -91,11 +92,6 @@ def _area_group(code, name):
     return "shi" if code[2] == "2" else "gun"
 
 
-def _new_date(at):
-    """(2026100619, kind) -> '2026-10-06'."""
-    return f"{str(at[0])[:4]}-{str(at[0])[4:6]}-{str(at[0])[6:8]}" if at else None
-
-
 def _date_int(s):
     return int(s.replace("-", "")) if s else 0
 
@@ -145,10 +141,20 @@ def representatives(snap):
     return reps
 
 
-def listing_spelling(rail, reps):
+def station_uses(reps, into=None):
+    """station name -> the prefectures whose listings name it, added to `into` (the build collects it prefecture
+    by prefecture)."""
+    used = defaultdict(set) if into is None else into
+    for i in reps:
+        for name, _ in i.stations:
+            used[name].add(i.pref)
+    return used
+
+
+def listing_spelling(rail, used):
     """Rail stations renamed to how the listings write them (MLIT 阿佐ヶ谷, SUUMO 阿佐ケ谷), so the site matches names
-    exactly: a chosen station's lines on the map, two same-named stations. Only when one listing name fits."""
-    used = {name for i in reps for name, _ in i.stations}
+    exactly: a chosen station's lines on the map, two same-named stations. Only when one listing name fits.
+    used: station_uses()."""
     spelled = defaultdict(set)
     for name in used:
         if "（" not in name:  # SUUMO's own 藤沢（長野県） stays as it is
@@ -160,14 +166,11 @@ def listing_spelling(rail, reps):
     return rail
 
 
-def station_prefectures(reps, rail_stations=()):
+def station_prefectures(used, rail_stations=()):
     """station name -> the prefectures to tell apart, for a name that is really two stations (小川町 in Tokyo and
     in Saitama: "小川町（埼玉）"). A name in listings of two prefectures is usually one station near the border
-    (二子玉川); it's two only when the railway data has stations of that name more than SPLIT_KM apart."""
-    used = defaultdict(set)
-    for i in reps:
-        for name, _ in i.stations:
-            used[name].add(i.pref)
+    (二子玉川); it's two only when the railway data has stations of that name more than SPLIT_KM apart.
+    used: station_uses()."""
     where = defaultdict(list)
     for name, lat, lng, _ in rail_stations:
         if len(used.get(name, ())) > 1:
@@ -240,7 +243,7 @@ def listing_record(snap, item, others, name, new):
     stops = {stop for stop, _ in item.stops}
     stations = [{**s, "bus_stop": True} if s.get("name") in stops else s for s in item.rec.get("stations") or []]
     return {**item.rec, "stations": stations or None, "history": snap.history.get(item.key, []),
-            "new_date": _new_date(new),
+            "new_date": run_date(str(new[0])) if new else None,
             "name": name,
             "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url"),
                         "deal_type": o.rec.get("deal_type")} for o in others]}
@@ -303,12 +306,30 @@ def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
-def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None, saved=()):
-    """saved: the shared saved list ("type:id" keys). Returns {"manifest": ..., <pref slug>: its index}."""
-    rail_path = Path(geo_cache).with_name("rail.json")  # the railway data: stations' places, and the map's lines
-    rail = json.loads(rail_path.read_text()) if rail_path.exists() else None
-    snap = load(data_dir, today or datetime.now(JST).date(), saved, rail["stations"] if rail else ())
-    reps = representatives(snap)
+def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=None, saved=(), rail_path=None):
+    """saved: the shared saved list ("type:id" keys); rail_path: geo/rail.json (stations' places, the map's lines).
+    One prefecture in memory at a time: a first pass collects what the prefectures share (which station names
+    they use: two same-named stations, the railway's spelling; their sizes; the saved list), a second builds and
+    writes each. Returns the manifest."""
+    rail = json.loads(Path(rail_path).read_text()) if rail_path and Path(rail_path).exists() else None
+    places = [s[:] for s in rail["stations"]] if rail else ()  # as read: listing_spelling renames rail's
+    today, events = today or datetime.now(JST).date(), load_events(data_dir)
+
+    def properties(pref):
+        snap = load(data_dir, today, saved, places, prefs=[pref], events=events)
+        return snap, representatives(snap)
+
+    used, counts, saved_at, n_listings = defaultdict(set), {}, {}, 0
+    for pref in prefectures(data_dir):
+        snap, reps = properties(pref)
+        n_listings += len(snap.items)
+        if reps:
+            station_uses(reps, used)
+            counts[pref] = (len(reps), _detail_share(reps))
+            saved_at.update((i.key, i.pref) for i in reps if i.saved)
+    rail = rail and listing_spelling(rail, used)
+    station_prefs = station_prefectures(used, rail["stations"] if rail else ())
+
     out = Path(out_dir)
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(STATIC, out)
@@ -319,34 +340,30 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     readings = station_names(stations_cache) if stations_cache else {}
     towns, updated = load_cache(geo_cache), _updated(Path(data_dir))
     (out / "data" / "p").mkdir(parents=True)
-    by_pref = defaultdict(dict)
-    for item, others in reps.items():
-        by_pref[item.pref][item] = others
-    meta = {i: (_name(i.rec), snap.new(i)) for i in reps}  # each worked out once: the index and the record use them
-    rail = rail and listing_spelling(rail, reps)
-    station_prefs = station_prefectures(reps, rail["stations"] if rail else ())
+    listings = out / "data" / "l"
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
-    built = {}
-    for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
-        built[pref] = build_index(snap, by_pref[pref], meta, towns, readings, station_prefs)
-        (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
+    built = sorted(counts, key=lambda p: (p != "tokyo", -counts[p][0]))
+    for pref in built:
+        snap, reps = properties(pref)
+        meta = {i: (_name(i.rec), snap.new(i)) for i in reps}  # each worked out once: the index and the record use them
+        (out / "data" / "p" / f"{pref}.json").write_text(
+            _dump(build_index(snap, reps, meta, towns, readings, station_prefs)), encoding="utf-8")
+        for type_ in {i.type for i in reps}:
+            (listings / type_).mkdir(parents=True, exist_ok=True)
+        for item, others in reps.items():
+            with open(f"{listings}/{item.type}/{item.rec['id']}.json", "w", encoding="utf-8") as f:
+                f.write(_dump(listing_record(snap, item, others, *meta[item])))
+        del snap, reps, meta  # before the next prefecture is loaded
     manifest = {"updated": updated,
                 # [slug, name, properties, share of them with their listing page fetched]
-                "prefs": [[p, PREFS.get(p, p), len(by_pref[p]), _detail_share(by_pref[p])] for p in built],
-                "saved": {i.key: i.pref for i in reps if i.saved}}
+                "prefs": [[p, PREFS.get(p, p), *counts[p]] for p in built],
+                "saved": saved_at}
     fx = Path(data_dir) / "fx.json"  # the yen-dollar rate (fx.py): the page shows prices in USD too
     if fx.exists():
         manifest["fx"] = json.loads(fx.read_text())
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
     if rail:
         (out / "data" / "rail.json").write_text(_dump({**rail, "lines": rail_lines(rail["lines"])}), encoding="utf-8")
-    listings = out / "data" / "l"
-    for type_ in {i.type for i in reps}:
-        (listings / type_).mkdir(parents=True)
-
-    for item, others in reps.items():
-        with open(f"{listings}/{item.type}/{item.rec['id']}.json", "w", encoding="utf-8") as f:
-            f.write(_dump(listing_record(snap, item, others, *meta[item])))
     sizes = ", ".join(f"{p} {(out / 'data' / 'p' / f'{p}.json').stat().st_size / 1e6:.1f} MB" for p in built)
-    log(f"site: {len(reps):,} properties ({len(snap.items):,} listings); indexes: {sizes} → {out}")
-    return {"manifest": manifest, **built}
+    log(f"site: {sum(n for n, _ in counts.values()):,} properties ({n_listings:,} listings); indexes: {sizes} → {out}")
+    return manifest
