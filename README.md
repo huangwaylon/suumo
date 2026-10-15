@@ -143,7 +143,8 @@ wake if the Mac was asleep; a run still going makes the next one exit). SUUMO up
 day, around 03:00–04:00, so the first run after 04:00 crawls all search results (~800 requests for Tokyo, ~25
 minutes) and the others only fetch listing pages of listings not stored yet, until :50. Every run pulls (for
 `saved.json`), geocodes new towns, then commits `data/` and `geo/` and pushes, which rebuilds the site. A
-listing missing from 2 daily crawls is removed (so within about two days). `--push` needs a git remote that pushes without a prompt (an SSH key in the
+listing missing from 2 daily crawls is removed (so within about two days; a second crawl on the same day
+doesn't count). A daily crawl that stopped part-way resumes with the next prefecture. `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
 `launchctl bootout gui/$(id -u)/local.suumo`.
 
@@ -154,6 +155,7 @@ agent/Keychain); a failed push is logged and retried next run. To stop it:
 | `uv run python -m suumo run` | crawl search results, fetch listing pages for up to `--budget` (default `3h`), clean up, export `data/`, geocode new towns |
 | `run --budget 30m` / `--budget 0` | smaller / no listing-page budget; the queue continues next run |
 | `run --no-crawl` | only work the listing-page queue |
+| `run --crawl-at 4` | crawl search results only while a prefecture in scope wasn't crawled since 04:00 (SUUMO's daily update), skipping those that were |
 | `run --commit` / `--push` | commit `data/` and `geo/` after the run / commit and push (rebuilds the site) |
 | `uv run python -m suumo status` | per pref/type: active listings, % with listing-page details, queue, area states, the current run's progress |
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
@@ -183,14 +185,18 @@ and names are in `data/<pref>/areas.json` after a run.
 
 1. **Search results**: every page of every area in scope (100 listings per page, one request at a time),
    saved to `archive/`, with the parsed count checked against SUUMO's count. Short areas are retried once,
-   then marked `incomplete`.
+   then marked `incomplete`; a page without SUUMO's count is an `error`. Each prefecture is marked crawled as
+   soon as it's done.
 2. **Changes**: the results are diffed against `state.db`. An area's first complete crawl is a silent baseline.
-   After that, new IDs and price changes become events. A listing missing from 2 consecutive complete crawls
-   is deleted (row, archived page; a `removed` event), unless it's on the saved list: then it's kept as ended
-   and still shown on the site in お気に入り. If an area loses more than 30% of at least 20 listings at once,
-   it is marked `suspect` and nothing is removed.
+   After that, new IDs and price changes become events. A listing missing from 2 complete crawls on different
+   days (a day starts at 04:00) is deleted (row, archived page; a `removed` event), unless it's on the saved list:
+   then it's kept as ended and still shown on the site in お気に入り. A deleted listing that comes back within 14
+   days is `relisted` with its original first-seen date. If an area loses more than 30% of at least 20 listings
+   at once, it is marked `suspect` and nothing is removed that day; the next day compares against the new count.
 3. **Listing pages**: fetched once, for listings not stored yet (new first, then backfill), until the budget
-   runs out. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
+   runs out. One listing per property (`dup_key`) gets its page; another agent's copy only when that one goes
+   missing or ends (a group where one agent appears twice is several properties: each gets its page). A page that
+   is gone (404) isn't asked for again. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
    parse failure is logged and the page can be re-parsed later.
 4. **Cleanup**: ended listings no longer saved are deleted; search-result snapshots are kept 14 days; event and
    run rows 90 days.
@@ -215,7 +221,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `geo/stations.json` | yes | station → [kana, English, n] from Wikidata (CC0): a name found in several prefectures keeps the reading from the one whose listings mention it most (n times), gaps filled from the others; `_prefs` lists the prefectures fetched. Delete to refresh |
 | `site/` | yes | the site's source (index.html, app.js, filter.js, style.css) |
 | `.github/workflows/pages.yml` | yes | tests, builds and deploys the site on every push |
-| `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs |
+| `state.db` | no | SQLite: listings and lifecycle, areas, queue, events, runs, per-prefecture crawl times, tombstones of deleted listings (14 days) |
 | `archive/` | no | raw HTML: search-result snapshots by day, latest copy of each listing page |
 | `logs/` | no | output of runs |
 | `uv.lock` | no | local lock (CI resolves from public PyPI) |

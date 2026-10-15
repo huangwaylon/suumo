@@ -13,12 +13,12 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/cli.py` | Entry point (`python -m suumo`). Each command declares its access: `write` (state.db + run lock), `read` (`status`), `files` (`geocode`, `site`, `rail`, `saved`: files in the repo only) |
 | `suumo/pipeline.py` | `Pipeline`: `crawl_lists` → `reconcile` per area → `process_queue` → `purge`. All lifecycle rules and constants live here; progress is saved to the run's report for `status` |
 | `suumo/parse.py` | `TYPES`, area-selection pages (`parse_areas`), search-result pages (`parse_list_page`), shared value parsers (prices, m², stations, town) |
-| `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail`) |
-| `suumo/db.py` | SQLite schema, small query helpers, `dumps` (canonical JSON), `exclusive` (flock) |
+| `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail`); `FIELDS`, every key it can return |
+| `suumo/db.py` | SQLite schema and `DB.migrate` (additive changes), small query helpers, `dumps` (canonical JSON), `flock`/`exclusive`/`locked` (the one lock helper) |
 | `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
-| `suumo/maintenance.py` | `prune` (out-of-scope data), `reparse` (rebuild parsed fields from `archive/`), `seed` (rebuild `state.db` from `data/`) |
+| `suumo/maintenance.py` | `prune` (out-of-scope data), `reparse` (rebuild parsed fields from `archive/`), `seed` (rebuild `state.db` from `data/`), `strip_list_fields` (the one-time fix of rows seeded by older code) |
 | `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page; `write_atomic` (used by all file writers) |
-| `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `in_scope` |
+| `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `by_key` (a dict by pref and type), `in_scope` |
 | `suumo/http.py` | `Client`: one request at a time, delay + jitter, retries, automatic slow-down; 404/410 → `FileNotFoundError` |
 | `suumo/gitdata.py` | `commit_data`: commit `data/` and `geo/` only, optionally push |
 | `suumo/catalog.py` | `data/` → `Snapshot` of `Item`s with the derived fields the site searches on (rooms, sizes, age, walk times, flags: south/top/upper/nofee/ready/tower/parking, condos' monthly `fees`), one station spelling per prefecture, duplicate groups, 新着/値下げ and price history from `data/events/` |
@@ -31,7 +31,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
 | `site/app.js`, `index.html`, `style.css` | The page, map-first: the map plus a panel listing what's in its view (`m=lat,lng,zoom` in the URL, replaced on every move; the map moves only on the refit triggers), the panel's tabs (the list, opened listings, 比較 of the open tabs; `id=`, favorites' `cmp=1`), one filter panel (rail on desktop, sheet elsewhere), favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests), last search (localStorage `suumo.last`). Opening a listing, the favorites view and the overlays are history entries, so back closes them. An app shell (the page never scrolls): ≥1024 map, divider (`settings.panel`), panel; below, a bottom sheet over the map (peek/half/full, `settings.sheet`); ≥1280 the filter rail. Card columns follow the panel's width (container queries) |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
-| `local.suumo.plist` | launchd template (hourly at :05, `run --budget 45m --push`) |
+| `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 4 --budget 3h --until-minute 50 --push`) |
 | `~/suumo-refresh/all.sh` (not in git) | The one-off driver for the nationwide sweep and backfill (nohup + caffeinate): sweep, geocode, then 1 h listing-page runs with the stepped delay, the 04:00 crawl at 1.5 s. Replace with `local.suumo.plist` once the backfill is done |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
@@ -41,17 +41,34 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 ## Data model
 
 - `listings` (PK `type, id`): `list_json` (search-result fields, refreshed every crawl), `detail_json` (listing-page
-  fields), `status` active/removed, `first_seen`, `last_seen`, `missed`, `removed_at`.
-- `areas` (PK `pref, type, code`): `slug`, `baselined`, `last_hits`, `last_status` (complete / incomplete / suspect / error).
-- `queue` (PK `type, id`): `priority` 1 new / 0 backfill, `attempts`, `last_error` (`parse:` prefix = parser failure).
+  fields: only keys in `detail.FIELDS`), `status` active/removed, `first_seen`, `last_seen`, `missed`, `removed_at`.
+- `areas` (PK `pref, type, code`): `slug`, `baselined`, `last_hits` (the latest count), `last_status` (complete /
+  incomplete / suspect / error), `missed_on` (the crawl day whose misses were counted).
+- `queue` (PK `type, id`): `priority` 1 new / 0 backfill, `attempts`, `last_error` (`parse:` prefix = parser failure,
+  `gone: 404` = the page is gone; both are set to `MAX_DETAIL_ATTEMPTS`, so they aren't fetched again and `status`'s
+  `queue:` count leaves them out).
+- `prefs` (PK `pref`): `crawled_at`, written for each prefecture as soon as its search results are done. `run
+  --crawl-at H` crawls while any prefecture in scope wasn't crawled since H:00 (MIN, not MAX) and skips those that
+  were, so a daily crawl that stopped resumes with the next prefecture (`cli.crawl_due`, `crawled_since`).
+- `ended` (PK `type, id`): tombstones of deleted listings (`pref`, `first_seen`, `price`, `ended_at`), written by
+  `reconcile` when it deletes one, dropped by `purge` after `TOMBSTONE_DAYS` (14).
 - `events`: `kind` new / price_changed / removed / relisted, `payload` `{"price"}` (+ `"old_price"` for price
   changes), exported per run to `data/events/<run_id>.json`; the site's 新着, 値下げ and price history come from them.
   (Older databases also carry unused columns: `events.posted`, `listings.detail_fetched/info_date/next_update`,
   `areas.last_crawled`.)
 - `runs`: one row per run with a JSON report (`progress` while running).
+- Schema changes are additive and idempotent: `db.TABLES` / `db.COLUMNS`, applied by `DB.migrate()`, and one-time
+  data fixes under `PRAGMA user_version` (`maintenance.strip_list_fields`). Only writing commands run them, after
+  taking the lock (`status` opens the DB with `migrate=False`): old code must keep working on the result.
 - IDs are SUUMO `nc_` numbers, per agent listing. The same property listed by several agents has several IDs;
-  `dup_key` (type + building/address + size + price) groups them; only one listing per group gets its page fetched
-  (`Pipeline._queue_order`: new first, then the prefecture with the most listings).
+  `dup_key` (type + building/address + size + price) groups them. Only one listing per group gets its page fetched,
+  decided in `Pipeline.reconcile` only: a listing seen in this crawl whose page is stored (or queued) claims the
+  group, so when it goes missing or ends, a copy is queued and fetched. `_queue_order` only orders the queue (new
+  first, then the prefecture with the most listings; a land twin after its queued twin).
+- **A `dup_key` group in which a known `agent` appears twice is not one property** (an agent doesn't list one
+  property twice), **nor is a condo group whose fetched listings have two different known `floor`s.** Their
+  listings stand alone. The crawler applies the agent half when queueing (every listing of such a group gets its
+  page; floors are only known after fetching); the site applies both when folding (`catalog.Snapshot`).
 - `list_json`/`detail_json` are stored with `db.dumps` (sorted keys) so equal data is equal text.
 
 ## Invariants (keep these true)
@@ -69,8 +86,16 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   `Retry-After`) and eases back; keep that behaviour.
   Geocoding is also one request at a time (`geo.GEO_DELAY`).
 - **Removal needs evidence.** A listing is removed only after `REMOVE_AFTER_MISSES` (2) consecutive *complete*
-  crawls of its area miss it; then it's deleted, or kept as `removed` (ended) if it's in `saved.json`. Incomplete/error areas never count; `suspect` areas (lost >30% of ≥20) never remove.
-  An area that vanishes from the area page is reconciled as complete with 0 hits (same guards apply).
+  crawls of its area miss it, on different crawl days: misses count once per area per crawl day (it starts at 04:00,
+  `pipeline.DAY_STARTS`; `areas.missed_on`), so a restarted crawl can't remove anything. Then it's deleted (leaving a
+  tombstone in `ended`), or kept as `removed` (ended) if it's in `saved.json`. Incomplete/error areas never count;
+  a `suspect` crawl (lost >30% of ≥20) counts nothing and uses up the day, and its count becomes the reference,
+  so a real drop is distrusted for one crawl day only. A search-result page without SUUMO's hit count is an error,
+  never "complete with 0". An area that vanishes from the area page, or is listed as "(0)" without a link while
+  listings are held there, is reconciled as complete with 0 hits (same guards apply).
+- **Returns are relisted.** A deleted listing seen again while its tombstone lasts (14 days) gets back its
+  `first_seen`, a `relisted` event (plus `price_changed` if the price differs) and its page queued again; later
+  it's `new`.
 - **Baselines are silent.** An area's first complete crawl creates no events (so nothing is 新着); its listings
   queue as backfill.
 - **Archive before parse.** Every fetched page is saved to `archive/` before parsing; a parser exception is logged and
@@ -125,7 +150,8 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 ## Extending
 
 - **New field from listing pages:** parse it in `detail.parse_detail` (or `parse._standard_unit` for search results),
-  add it to `export.FIELD_ORDER`, add a test against a fixture, then `reparse`. No re-crawl needed while the pages
+  add it to `detail.FIELDS` (listing-page fields; a test checks every fixture) and `export.FIELD_ORDER`, add a test
+  against a fixture, then `reparse`. No re-crawl needed while the pages
   are in `archive/`. Document it in the README field table; show it in `site/app.js` (`detailHtml`) if useful.
 - **New prefecture/area/type:** edit `scope.toml` only. `prune --yes` removes data that leaves the scope.
   Everything downstream is keyed by prefecture: `scope.PREFS` (all 47, slug → name used in addresses) feeds
@@ -147,10 +173,13 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
 
 - `uv sync`, then `uv run pytest -q` (offline, ~2 s; the site tests need `node`) and `uv run ruff check suumo tests`
   (line length 120).
-- Tests: `test_lifecycle.py` (reconcile/purge/export with synthetic records), `test_parsers.py` (value parsers),
-  `test_pages.py` (real pages in `tests/fixtures/`), `test_ops.py` (prune, reparse, seed, lock, git commit, slow-down,
-  outage pause, progress, town names), `test_catalog.py` (derived fields), `test_site.py` (build output on real
-  listings in `tests/fixtures/data/`, every search rule through filter.js). Shared helpers: `tests/helpers.py`
+- Tests: `test_lifecycle.py` (reconcile/purge/export with synthetic records: misses per crawl day, suspect,
+  tombstones, one page per property, area-page cases, crawl_area), `test_parsers.py` (value parsers),
+  `test_pages.py` (real pages in `tests/fixtures/`, `detail.FIELDS`), `test_ops.py` (prune, reparse, seed and the
+  seeded-row fix, lock, git commit, the HTTP client, the queue's outage/gone/parse-failure paths, progress, the
+  `status` line the driver reads, the resumable daily crawl, events export, town names), `test_rail.py` (railway
+  lines), `test_stations.py` (station names), `test_catalog.py` (derived fields), `test_site.py` (build output on
+  real listings in `tests/fixtures/data/`, every search rule through filter.js). Shared helpers: `tests/helpers.py`
   (`rec`, `write`, `site_queries`, `QUIET`). Tests never touch the network.
 - Look at the site locally: `uv run python -m suumo site && cd _site && python3 -m http.server`.
 - Try changes on a copy: `--db`, `--archive`, `--data` point anywhere (`python -m suumo --db /tmp/s.db ... run`).
