@@ -803,9 +803,9 @@
     kyushu: ["福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
   };
   // Every chosen prefecture is held in memory (all of Japan: ~11 MB to download, ~120 MB loaded), so phones
-  // and small-memory devices take up to 5; others may choose all of Japan.
+  // and small-memory devices take up to 10; others may choose all of Japan.
   const BIG = matchMedia("(min-width: 700px)").matches && (navigator.deviceMemory ?? 8) >= 4;
-  const maxPrefs = () => (BIG ? manifest.prefs.length : 5);
+  const maxPrefs = () => (BIG ? manifest.prefs.length : 10);
   const allPrefs = () => manifest.prefs.map(([slug]) => slug);
   const prefParam = (list) => (list.length > 1 && list.length === manifest.prefs.length ? "all" : list.join(","));  // p=
   const prefName = (slug) => place(manifest.prefs.find(([s]) => s === slug)?.[1] ?? slug);
