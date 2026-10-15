@@ -141,12 +141,12 @@ class Pipeline:
 
     def _area_page(self, t, rep):
         """Fetch and check the target's area page, reconcile the areas it shows without a link (or doesn't show);
-        returns the areas to crawl. A page that can't be right (no areas, or far fewer listings in the target's
+        returns the areas to crawl. A page that can't be right (no areas but for new_condo, or far fewer listings in the target's
         areas than held there) raises AreaPageError before anything is reconciled: the target is an error."""
         html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
         self.archive.save_list(t.pref, self.day, t.type, "_city", html)
         parsed = parse_areas(html, TYPES[t.type], t.pref)
-        if not parsed:
+        if not parsed and t.type != "new_condo":  # new_condo lists only areas with developments: maybe none
             raise AreaPageError("area page: no areas on it (a changed or broken page?)")
         areas = [a for a in parsed if t.includes(a["code"])]
         held = {}  # area code -> (name, active listings)
