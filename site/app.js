@@ -960,7 +960,7 @@
     else {  // the results (none: the prefectures)
       const placed = mapHits.filter((h) => get.lat(h) != null);
       const bounds = placed.length ? coreBounds(placed, (h) => [get.lat(h), get.lng(h)])
-        : coreBounds(db.index.towns.filter((tw) => tw[1] != null), (tw) => tw.slice(1));
+        : coreBounds(Filter.places(db), (p) => p);
       if (bounds) map.fitBounds(bounds, { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()], maxZoom: 15 });
     }
     onMapMove();  // (also when it was there already)
@@ -1040,34 +1040,48 @@
   // unfiltered one are kept, so going back to one (clearing the conditions) is quick. Towns at one point are one
   // marker. A cluster counts the homes in it.
   const CLUSTER_MAX = 16;       // zoomed in further, every town has its marker
-  const clusterSets = new Map();  // drawn.set -> {index, points: [{lat, lng, towns, list: handles}], order}
+  const clusterSets = new Map();  // drawn.set -> {index, lat, lng, start, homes, order}: see clusterSet
   const onMap = new Map();      // the markers on the map: "c" + cluster id or "p" + point -> marker
   let markerLayer = null, shownSet = null, shownLang = null;
   let layerOrder = null;        // the results (drawn.search) whose order the shown set's towns list their homes in
+  // Point i is at lat[i], lng[i]; its homes are homes[start[i]..start[i + 1]] (handles, in the results' order).
   function clusterSet() {
-    const points = [], at = new Map(), byTown = new Map();  // (town -> its point)
-    for (let i = 0; i < mapHits.length; i++) {
-      const h = mapHits[i], lat = get.lat(h);
-      if (lat == null) continue;
+    const n = mapHits.length, of = new Int32Array(n).fill(-1), at = new Map(), byTown = new Map(), lat = [], lng = [];
+    for (let i = 0; i < n; i++) {  // each home's point (town -> its point; towns at one place are one point)
+      const h = mapHits[i], y = get.lat(h);
+      if (y == null) continue;
       const town = get.townKey(h);
-      let p = byTown.get(town);
-      if (!p) {
-        const lng = get.lng(h), k = `${lat},${lng}`;
-        if (!(p = at.get(k))) { at.set(k, (p = { lat, lng, towns: [], list: [] })); points.push(p); }
-        byTown.set(town, p);
-        p.towns.push(get.town(h));
+      let k = byTown.get(town);
+      if (k === undefined) {
+        const x = get.lng(h), place = `${y},${x}`;
+        if ((k = at.get(place)) === undefined) { at.set(place, (k = lat.length)); lat.push(y); lng.push(x); }
+        byTown.set(town, k);
       }
-      p.list.push(h);
+      of[i] = k;
     }
+    const m = lat.length, start = new Int32Array(m + 1);
+    for (let i = 0; i < n; i++) if (of[i] >= 0) start[of[i] + 1]++;
+    for (let k = 0; k < m; k++) start[k + 1] += start[k];
+    const homes = new Int32Array(start[m]), next = start.slice(0, m);
+    for (let i = 0; i < n; i++) if (of[i] >= 0) homes[next[of[i]]++] = mapHits[i];
     const index = new Supercluster({ radius: 48, extent: 256, maxZoom: CLUSTER_MAX,
       map: (props) => ({ n: props.n }), reduce: (sum, props) => { sum.n += props.n; } });
-    index.load(points.map((p, i) => ({ type: "Feature", properties: { i, n: p.list.length }, geometry: { type: "Point", coordinates: [p.lng, p.lat] } })));
-    return { index, points, order: drawn.search };
+    index.load(Array.from({ length: m }, (_, i) => ({ type: "Feature", properties: { i, n: start[i + 1] - start[i] }, geometry: { type: "Point", coordinates: [lng[i], lat[i]] } })));
+    compact(index, m);
+    return { index, lat: Float64Array.from(lat), lng: Float64Array.from(lng), start, homes, order: drawn.search };
   }
-  function pointMarker(p) {
-    const towns = p.towns.join("・");
-    return L.marker([p.lat, p.lng], { icon: townIcon(p.list, priced), pricedAs: priced, point: p, title: `${towns} ${t("count", countLabel(p.list.length))}` })
-      .bindPopup(() => popup(towns, inOrder(p.list)), { autoPanPadding: [56, 56] });
+  // A loaded Supercluster, smaller: its points' features aren't kept (a point is read, by its number, only when it's
+  // in view), and each zoom's numbers are a Float64Array rather than a growable array (the same values).
+  function compact(index, m) {
+    index.points = new Proxy([], { get: (_, k) => (k === "length" ? m : typeof k === "string" ? { properties: { i: +k } } : undefined) });
+    for (const tree of index.trees) if (tree) tree.data = Float64Array.from(tree.data);
+  }
+  function pointMarker(set, i) {
+    const list = set.homes.subarray(set.start[i], set.start[i + 1]), towns = new Map();
+    for (const h of list) if (!towns.has(get.townKey(h))) towns.set(get.townKey(h), get.town(h));
+    const names = [...towns.values()].join("・");
+    return L.marker([set.lat[i], set.lng[i]], { icon: townIcon(list, priced), pricedAs: priced, list, title: `${names} ${t("count", countLabel(list.length))}` })
+      .bindPopup(() => popup(names, inOrder(list)), { autoPanPadding: [56, 56] });
   }
   function clusterMarker(f, index) {
     const [lng, lat] = f.geometry.coordinates;
@@ -1111,12 +1125,12 @@
     for (const [k, f] of want) {
       const m = onMap.get(k);
       if (!m) {
-        const made = f.properties.cluster ? clusterMarker(f, set.index) : pointMarker(set.points[f.properties.i]);
+        const made = f.properties.cluster ? clusterMarker(f, set.index) : pointMarker(set, f.properties.i);
         onMap.set(k, made);
         markerLayer.addLayer(made);
-      } else if (m.options.point && m.options.pricedAs !== priced) {  // zoomed past PRICE_ZOOM
+      } else if (m.options.list && m.options.pricedAs !== priced) {  // zoomed past PRICE_ZOOM
         m.options.pricedAs = priced;
-        m.setIcon(townIcon(m.options.point.list, priced));
+        m.setIcon(townIcon(m.options.list, priced));
       }
     }
   }
@@ -1330,7 +1344,7 @@
   }
 
   function popup(town, list) {
-    return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map(item).filter(Boolean).map((it) =>
+    return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${Array.from(list.slice(0, 40), item).filter(Boolean).map((it) =>
       `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image != null ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
         <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }

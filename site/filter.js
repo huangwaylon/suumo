@@ -64,38 +64,61 @@
   // reads one field.
   const SHIFT = 20, ROWS = 1 << SHIFT, MASK = ROWS - 1, MAX_PARTS = 2048;
   const parts = [];                // part number -> the part (null once released)
-  const NO_ACCESS = -0x80000000;   // a station's access when none is known
   const EMPTY = [];
   const nul = (v) => (v === v ? v : null);  // NaN -> null
+
+  // A column in the narrowest typed array holding its values exactly (from a list: null, undefined or NaN: none).
+  // Numbers: Float32Array when every one is a float32, else Float64Array; none is NaN.
+  function floats(v, n) {
+    let T = Float32Array;
+    for (let i = 0; i < n; i++) { const x = v[i]; if (x != null && Math.fround(x) !== x && x === x) { T = Float64Array; break; } }
+    const out = new T(n);
+    for (let i = 0; i < n; i++) out[i] = v[i] ?? NaN;
+    return out;
+  }
+  // Whole numbers: Int8, Int16 or Int32Array as they fit (none: `none`), else Float64Array.
+  function ints(v, n, none = -1) {
+    let lo = none, hi = none;
+    for (let i = 0; i < n; i++) {
+      const x = v[i];
+      if (x == null || x !== x) continue;
+      if (!Number.isInteger(x)) { lo = -Infinity; break; }
+      if (x < lo) lo = x;
+      else if (x > hi) hi = x;
+    }
+    const T = lo >= -0x80 && hi < 0x80 ? Int8Array : lo >= -0x8000 && hi < 0x8000 ? Int16Array
+      : lo >= -0x80000000 && hi < 0x80000000 ? Int32Array : Float64Array;
+    const out = new T(n);
+    for (let i = 0; i < n; i++) { const x = v[i]; out[i] = x == null || x !== x ? none : x; }
+    return out;
+  }
 
   // opts.places: area name -> English name, for text search ("shibuya" finds 渋谷区).
   // An index older than this file may lack columns: they read as none.
   function load(index, opts = {}) {
     const c = index.columns, n = c.id.length, no = parts.length;
     if (no >= MAX_PARTS || n > ROWS) throw new RangeError("Filter.load: too many listings");
-    const col = (k) => c[k] || EMPTY;
-    const nums = (k, T = Float64Array) => { const v = col(k), out = new T(n); for (let i = 0; i < n; i++) out[i] = v[i] ?? NaN; return out; };
-    const ids = (k) => { const v = col(k), out = new Int32Array(n); for (let i = 0; i < n; i++) out[i] = v[i] ?? -1; return out; };
-    const idn = new Float64Array(n), priceHi = new Float64Array(n), others = new Int32Array(n), firstSeen = new Int32Array(n);
-    const cId = c.id, cMax = col("priceMax"), cPrice = col("price"), cOthers = col("others"), cFirst = col("firstSeen");
-    for (let i = 0, id = 0; i < n; i++) {
-      idn[i] = id += cId[i];
+    const col = (k) => c[k] || EMPTY, temp = () => new Float64Array(n).fill(NaN);
+    const id = temp(), priceHi = temp(), dropAt = temp(), prevPrice = temp(), cId = c.id, cMax = col("priceMax"),
+      cPrice = col("price"), cDrop = col("drop");
+    for (let i = 0, sum = 0; i < n; i++) {
+      id[i] = sum += cId[i];
       priceHi[i] = cMax[i] ?? cPrice[i] ?? NaN;
-      others[i] = cOthers[i] || 0;
-      firstSeen[i] = cFirst[i] || 0;
+      const d = cDrop[i];
+      if (d) { dropAt[i] = d[0] ?? NaN; prevPrice[i] = d[1] ?? NaN; }
     }
-    const dropAt = new Float64Array(n), prevPrice = new Float64Array(n), cDrop = col("drop");
-    for (let i = 0; i < n; i++) { const d = cDrop[i]; dropAt[i] = d?.[0] ?? NaN; prevPrice[i] = d?.[1] ?? NaN; }
-    // stations: row i's are stId/stAcc[stOff[i]..stOff[i + 1]] (access: minutes on foot; -minutes by bus; 1000 + km × 10 by car)
-    const cSt = col("stations"), cAcc = col("access");
-    let total = 0;
-    for (let i = 0; i < n; i++) total += cSt[i]?.length || 0;
-    const stOff = new Int32Array(n + 1), stId = new Int32Array(total), stAcc = new Int32Array(total);
+    // stations: row i's are stId/stAcc[stOff[i]..stOff[i + 1]] (access: minutes on foot; -minutes by bus;
+    // 1000 + km × 10 by car; noAccess: none)
+    const cSt = col("stations"), cAcc = col("access"), stOff = new Int32Array(n + 1);
+    for (let i = 0; i < n; i++) stOff[i + 1] = stOff[i] + (cSt[i]?.length || 0);
+    const sid = new Float64Array(stOff[n]), acc = new Float64Array(stOff[n]).fill(NaN);
     for (let i = 0, j = 0; i < n; i++) {
-      const s = cSt[i], a = cAcc[i];
-      if (s) for (let k = 0; k < s.length; k++, j++) { stId[j] = s[k]; stAcc[j] = a?.[k] ?? NO_ACCESS; }
-      stOff[i + 1] = j;
+      const st = cSt[i], a = cAcc[i];
+      if (st) for (let k = 0; k < st.length; k++, j++) { sid[j] = st[k]; acc[j] = a?.[k] ?? NaN; }
     }
+    let wide = false;
+    for (let j = 0; j < acc.length && !wide; j++) wide = acc[j] === acc[j] && !(Number.isInteger(acc[j]) && Math.abs(acc[j]) < 0x8000);
+    const noAccess = wide ? NaN : -0x8000, stAcc = wide ? acc : ints(acc, acc.length, noAccess);
     // tags: W 32-bit words per row, bit k = index.features[k]
     const W = Math.ceil(index.features.length / 32), tags = new Uint32Array(n * W), cTags = col("features");
     for (let i = 0; i < n; i++) {
@@ -105,43 +128,43 @@
         for (let b = 0; b < 6; b++) if (v & (1 << b) && k * 6 + b < W * 32) tags[i * W + ((k * 6 + b) >>> 5)] |= 1 << ((k * 6 + b) & 31);
       }
     }
-    // the bus stop (one per listing at most): its name in a table of its own (for text search) and the minutes
-    const stops = new Map(), stopId = new Int32Array(n), stopWalk = new Float32Array(n), cStop = col("stop");
+    // the bus stop (one per listing at most): its name in a table of its own (for text search) and the minutes;
+    // photos: the usual number, or a path or URL (in a list of their own, as -2 - its position), -1 none
+    const stops = new Map(), cStop = col("stop"), stopId = temp(), stopWalk = temp();
+    const imageText = [], cImage = col("image"), photos = temp();
     for (let i = 0; i < n; i++) {
-      const s = cStop[i];
-      if (!s) { stopId[i] = -1; stopWalk[i] = NaN; continue; }
-      if (!stops.has(s[0])) stops.set(s[0], stops.size);
-      stopId[i] = stops.get(s[0]);
-      stopWalk[i] = s[1] ?? NaN;
+      const st = cStop[i], v = cImage[i];
+      if (st) {
+        if (!stops.has(st[0])) stops.set(st[0], stops.size);
+        stopId[i] = stops.get(st[0]);
+        stopWalk[i] = st[1] ?? NaN;
+      }
+      photos[i] = typeof v === "number" ? v : v == null ? -1 : -2 - (imageText.push(v) - 1);
     }
-    // photos: the usual number, or a path or URL (in a list of their own, as -2 - its position); -1 none
-    const image = new Int32Array(n), imageText = [], cImage = col("image");
-    for (let i = 0; i < n; i++) {
-      const v = cImage[i];
-      image[i] = typeof v === "number" ? v : v == null ? -1 : -2 - (imageText.push(v) - 1);
-    }
-    const area = ids("area"), town = ids("town");
-    // towns: coordinates, and the name without the prefecture (one string per town)
-    const T = index.towns.length, townLat = new Float64Array(T).fill(NaN), townLng = new Float64Array(T).fill(NaN);
-    const townName = new Array(T).fill(null);
+    const area = ints(col("area"), n, 0), town = ints(col("town"), n);
+    // towns: coordinates, and the name without the prefecture (one string per town; the index's list is dropped)
+    const T = index.towns.length, townLat = new Float64Array(T), townLng = new Float64Array(T), townName = new Array(T).fill(null);
     for (let t = 0; t < T; t++) { townLat[t] = index.towns[t][1] ?? NaN; townLng[t] = index.towns[t][2] ?? NaN; }
     for (let i = 0; i < n; i++) {
       const t = town[i];
       if (t >= 0 && townName[t] === null) townName[t] = index.towns[t][0].slice(index.areas[area[i]][2].length);
     }
     const cols = {
-      idn, type: Uint8Array.from(col("type")), area, price: nums("price"), priceHi, plan: nums("plan", Float32Array),
-      size: nums("size"), land: nums("land"), age: nums("age", Float32Array), flags: Int32Array.from(col("flags"), (v) => v || 0),
-      others, newAt: nums("newAt"), dropAt, prevPrice, firstSeen, unit: nums("unit", Float32Array), town, name: ids("name"),
-      layout: ids("layout"), image, fees: nums("fees", Float32Array), stopId, stopWalk, stOff, stId, stAcc, tags,
+      idn: ints(id, n, 0), type: ints(col("type"), n, 0), area, price: floats(col("price"), n), priceHi: floats(priceHi, n),
+      plan: floats(col("plan"), n), size: floats(col("size"), n), land: floats(col("land"), n), age: floats(col("age"), n),
+      flags: ints(col("flags"), n, 0), others: ints(col("others"), n, 0), newAt: ints(col("newAt"), n, 0),
+      dropAt: ints(dropAt, n, 0), prevPrice: floats(prevPrice, n), firstSeen: ints(col("firstSeen"), n, 0),
+      unit: floats(col("unit"), n), town, name: ints(col("name"), n), layout: ints(col("layout"), n), image: ints(photos, n),
+      fees: floats(col("fees"), n), stopId: ints(stopId, n), stopWalk: floats(stopWalk, n),
+      stOff, stId: ints(sid, sid.length, 0), stAcc, tags,
     };
-    index.columns = null;  // the typed columns hold everything now; free the parsed JSON
+    index.columns = index.towns = null;  // the typed columns hold everything now; free the parsed JSON
     const base = no * ROWS, gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
     let shown = 0;
     for (let i = 0; i < n; i++) if (!(cols.flags[i] & gone)) shown++;
     const items = new Int32Array(shown);
     for (let i = 0, k = 0; i < n; i++) if (!(cols.flags[i] & gone)) items[k++] = base + i;
-    const part = { no, base, n, W, c: cols, index, items, flags: index.flags, places: opts.places || null,
+    const part = { no, base, n, W, c: cols, index, items, flags: index.flags, places: opts.places || null, noAccess,
       townLat, townLng, townName, imageText, stops: [...stops.keys()], parts: null,
       // station -> [kana, English] (null for bus stops: kanji only)
       stationNames: new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null])) };
@@ -154,7 +177,7 @@
   function combine(dbs) {
     const all = (f) => dbs.flatMap(f);
     const index = { types: [...new Set(all((d) => d.index.types))], areas: all((d) => d.index.areas),
-      stations: [...new Set(all((d) => d.index.stations))], towns: all((d) => d.index.towns), flags: dbs[0].flags };
+      stations: [...new Set(all((d) => d.index.stations))], flags: dbs[0].flags };
     const items = new Int32Array(dbs.reduce((n, d) => n + d.items.length, 0));
     dbs.reduce((at, d) => (items.set(d.items, at), at + d.items.length), 0);
     return { index, items, flags: index.flags, stationNames: new Map(all((d) => [...d.stationNames])), parts: all((d) => d.parts) };
@@ -165,6 +188,9 @@
     for (const p of db.parts) parts[p.no] = null;
     for (const h of [...cache.keys()]) if (!parts[h >>> SHIFT]) cache.delete(h);
   }
+
+  // Where db's towns are: [lat, lng] of each one with coordinates.
+  const places = (db) => db.parts.flatMap((p) => Array.from(p.townLat, (lat, t) => [lat, p.townLng[t]]).filter(([lat]) => lat === lat));
 
   // Every listing of db, the ended ones kept because saved included (db.items: those searched).
   function every(db) {
@@ -202,7 +228,7 @@
   const walkOf = (a) => (a >= 0 && a < 1000 ? a : null);
   const station = (p, j) => {
     const a = p.c.stAcc[j];
-    return [p.index.stations[p.c.stId[j]], walkOf(a), a < 0 && a !== NO_ACCESS ? -a : null, a >= 1000 ? (a - 1000) / 10 : null];
+    return [p.index.stations[p.c.stId[j]], walkOf(a), a < 0 && a !== p.noAccess ? -a : null, a >= 1000 ? (a - 1000) / 10 : null];
   };
 
   // The listing as an object (the page's cards, popups and listing view): null when its index was released.
@@ -221,7 +247,7 @@
       price: nul(c.price[r]), priceHi: nul(c.priceHi[r]), plan: nul(c.plan[r]), size: nul(c.size[r]), land: nul(c.land[r]),
       age: age === age ? Math.floor(age / 12) : null, ageMonths: nul(age), stations,
       stop: c.stopId[r] >= 0 ? [p.stops[c.stopId[r]], nul(c.stopWalk[r])] : null, flags: c.flags[r], others: c.others[r],
-      newAt: nul(newAt), newDate: newAt ? Math.floor(newAt / 100) : null, dropAt: nul(c.dropAt[r]), prevPrice: nul(c.prevPrice[r]),
+      newAt: newAt || null, newDate: newAt ? Math.floor(newAt / 100) : null, dropAt: c.dropAt[r] || null, prevPrice: nul(c.prevPrice[r]),
       firstSeen: c.firstSeen[r], unit: nul(c.unit[r]), town: t >= 0 ? p.townName[t] : null,
       lat: t >= 0 ? nul(p.townLat[t]) : null, lng: t >= 0 ? nul(p.townLng[t]) : null,
       name: ix.names[c.name[r]] ?? "", layout: ix.layouts[c.layout[r]] ?? "",
@@ -493,40 +519,33 @@
 
   // The listings with coordinates on a grid of GRID° cells, so those in a box (the map's view, at every pan) are
   // found without testing every one: within([south, west, north, east]) -> the handles in it, in the list's order.
-  const GRID = 0.05;
+  // The grid keeps positions only; a cell inside the box is taken whole, one on its edge tested listing by listing.
+  const GRID = 0.05, EDGE = 1e-9;  // (a cell counts as inside with this margin: its listings' rounding)
   function spatial(items) {
-    const n = items.length, la = new Float64Array(n).fill(NaN), lo = new Float64Array(n).fill(NaN);  // (NaN = none)
+    const n = items.length, cell = new Int32Array(n).fill(-1);
+    const town = (i) => { const h = items[i], p = parts[h >>> SHIFT]; return p ? p.c.town[h & MASK] : -1; };
+    const lat = (i) => { const t = town(i); return t >= 0 ? parts[items[i] >>> SHIFT].townLat[t] : NaN; };
+    const lng = (i) => { const t = town(i); return t >= 0 ? parts[items[i] >>> SHIFT].townLng[t] : NaN; };
     let s = Infinity, w = Infinity, north = -Infinity, e = -Infinity, placed = 0;
-    for (let i = 0, no = -1, p = null; i < n; i++) {
-      const h = items[i];
-      if (h >>> SHIFT !== no) { no = h >>> SHIFT; p = parts[no]; }
-      const t = p ? p.c.town[h & MASK] : -1;
-      if (t < 0) continue;
-      const y = p.townLat[t], x = p.townLng[t];
-      la[i] = y;
-      lo[i] = x;
+    for (let i = 0; i < n; i++) {
+      const y = lat(i), x = lng(i);
       if (y !== y || x !== x) continue;
       placed++;
       if (y < s) s = y;
       if (y > north) north = y;
       if (x < w) w = x;
       if (x > e) e = x;
+      cell[i] = 0;
     }
     if (!placed) return { within: () => new Int32Array(0) };
     const rows = Math.floor((north - s) / GRID) + 1, cols = Math.floor((e - w) / GRID) + 1;
     const row = (lat) => Math.floor((lat - s) / GRID), col = (lng) => Math.floor((lng - w) / GRID);
     // positions sorted by cell (a counting sort: each cell's listings in their order), cell k at start[k]..start[k + 1]
-    const cell = new Int32Array(n).fill(-1), start = new Int32Array(rows * cols + 1);
-    for (let i = 0; i < n; i++) if (la[i] === la[i] && lo[i] === lo[i]) start[(cell[i] = row(la[i]) * cols + col(lo[i])) + 1]++;
+    const start = new Int32Array(rows * cols + 1);
+    for (let i = 0; i < n; i++) if (cell[i] >= 0) start[(cell[i] = row(lat(i)) * cols + col(lng(i))) + 1]++;
     for (let k = 0; k < rows * cols; k++) start[k + 1] += start[k];
-    const pos = new Int32Array(placed), lat = new Float64Array(placed), lng = new Float64Array(placed), next = start.slice();
-    for (let i = 0; i < n; i++) {
-      if (cell[i] < 0) continue;
-      const j = next[cell[i]]++;
-      pos[j] = i;
-      lat[j] = la[i];
-      lng[j] = lo[i];
-    }
+    const pos = new Int32Array(placed), next = start.slice();
+    for (let i = 0; i < n; i++) if (cell[i] >= 0) pos[next[cell[i]]++] = i;
     const found = new Int32Array(placed);
     let seen = null;
     return {
@@ -534,8 +553,14 @@
         const r0 = Math.max(0, row(bs)), r1 = Math.min(rows - 1, row(bn)), c0 = Math.max(0, col(bw)), c1 = Math.min(cols - 1, col(be));
         let m = 0;
         for (let r = r0; r <= r1; r++) {
-          for (let j = start[r * cols + c0], end = c1 >= c0 ? start[r * cols + c1 + 1] : j; j < end; j++) {
-            if (lat[j] >= bs && lat[j] <= bn && lng[j] >= bw && lng[j] <= be) found[m++] = pos[j];
+          const rowIn = s + r * GRID - EDGE >= bs && s + (r + 1) * GRID + EDGE <= bn;
+          for (let k = c0; k <= c1; k++) {
+            const a = start[r * cols + k], b = start[r * cols + k + 1];
+            if (rowIn && w + k * GRID - EDGE >= bw && w + (k + 1) * GRID + EDGE <= be) for (let j = a; j < b; j++) found[m++] = pos[j];
+            else for (let j = a; j < b; j++) {
+              const i = pos[j], y = lat(i), x = lng(i);
+              if (y >= bs && y <= bn && x >= bw && x <= be) found[m++] = i;
+            }
           }
         }
         const out = new Int32Array(m);
@@ -772,8 +797,8 @@
   function nameTables(part, opts) {
     if (part.names && part.names.opts === opts) return part.names;
     const ix = part.index, n = (len) => new Int32Array(len);
-    const areaN = n(ix.areas.length), stationN = n(ix.stations.length), townN = n(ix.towns.length),
-      nameN = n(ix.names.length), tagN = n(ix.features.length), town = new Array(ix.towns.length).fill(null);
+    const areaN = n(ix.areas.length), stationN = n(ix.stations.length), townN = n(part.townName.length),
+      nameN = n(ix.names.length), tagN = n(ix.features.length), town = new Array(part.townName.length).fill(null);
     const c = part.c, W = part.W;
     for (let i = 0; i < part.items.length; i++) {
       const r = part.items[i] & MASK, t = c.town[r];
@@ -1099,5 +1124,5 @@
   }
 
   return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, release, every, find, item, get,
-    partOf, positions, matches, search, count, counts, facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
+    partOf, positions, places, matches, search, count, counts, facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
 });
