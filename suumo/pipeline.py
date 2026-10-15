@@ -7,6 +7,7 @@ A run crawls the search results (once a day with `--crawl-at`) and diffs them ag
     saved (on the shared list, saved.json): kept as status 'removed' (the site shows it as ended)
     not saved: deleted (row, queue entry, archived page; git history keeps the data)
   a kept listing seen again -> active (relisted event); one no longer saved -> deleted by `purge`
+  a deleted listing seen again within TOMBSTONE_DAYS -> back with its first_seen (relisted event, not new)
 """
 import json
 import time
@@ -24,6 +25,7 @@ DAY_STARTS = 4           # hour SUUMO's daily update lands; a crawl day runs fro
 EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/events/ in git keeps all)
 SUSPECT_DROP = 0.30      # an area losing more than this share at once is distrusted (no removals)
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
+TOMBSTONE_DAYS = 14      # a deleted listing's tombstone (ended table) is kept this long
 MAX_DETAIL_ATTEMPTS = 3
 PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to the run's report for `status`)
 CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the site shows what's fetched so far
@@ -169,10 +171,23 @@ class Pipeline:
             row = held.get(lid) or self.db.listing(type_key, lid)  # fallback: moved from another area
             ident = {"type": type_key, "id": lid, "pref": pref, "area_code": a["code"]}
             if row is None:
+                tomb = self.db.x("SELECT first_seen, price FROM ended WHERE type=? AND id=?", type_key, lid).fetchone()
                 self.db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen,
                              last_seen) VALUES (?,?,?,?,?,?,?,?)""",
-                          type_key, lid, pref, a["code"], a["name"], dumps(rec), self.today, self.ts)
-                if baselined:
+                          type_key, lid, pref, a["code"], a["name"], dumps(rec),
+                          tomb["first_seen"] if tomb else self.today, self.ts)
+                if tomb:  # deleted lately and back: relisted (its page was deleted with it: fetched again)
+                    self.db.x("DELETE FROM ended WHERE type=? AND id=?", type_key, lid)
+                    if baselined:
+                        self.db.add_event(self.run_id, "relisted", ident, {"price": rec.get("price")})
+                        if tomb["price"] != rec.get("price"):
+                            counts["price_changed"] += 1
+                            self.db.add_event(self.run_id, "price_changed", ident,
+                                              {"price": rec.get("price"), "old_price": tomb["price"]})
+                    if wanted(rec):
+                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    counts["relisted"] += 1
+                elif baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
                     if wanted(rec):
                         self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
@@ -207,13 +222,15 @@ class Pipeline:
                     continue
                 missed = row["missed"] + 1
                 if missed >= REMOVE_AFTER_MISSES:
-                    self.db.add_event(self.run_id, "removed", row,
-                                      {"price": json.loads(row["list_json"]).get("price")})
+                    price = json.loads(row["list_json"]).get("price")
+                    self.db.add_event(self.run_id, "removed", row, {"price": price})
                     self.db.dequeue(type_key, lid)
                     if f"{type_key}:{lid}" in self.saved:
                         self.db.x("UPDATE listings SET status='removed', removed_at=?, missed=? WHERE type=? AND id=?",
                                   self.ts, missed, type_key, lid)
                     else:
+                        self.db.x("INSERT OR REPLACE INTO ended (type, id, pref, first_seen, price, ended_at) "
+                                  "VALUES (?,?,?,?,?,?)", type_key, lid, pref, row["first_seen"], price, self.ts)
                         self.delete(pref, type_key, lid)
                     counts["removed"] += 1
                 else:
@@ -386,6 +403,8 @@ class Pipeline:
         old_runs = (self.now - timedelta(days=EVENT_DAYS)).strftime("%Y%m%dT%H%M%S")
         self.db.x("DELETE FROM events WHERE run_id < ?", old_runs)
         self.db.x("DELETE FROM runs WHERE run_id < ?", old_runs)
+        self.db.x("DELETE FROM ended WHERE ended_at < ?",
+                  (self.now - timedelta(days=TOMBSTONE_DAYS)).isoformat(timespec="seconds"))
         for pref in {t.pref for t in self.targets}:
             self.archive.prune_lists(pref, self.now.date())
         self.db.commit()

@@ -72,8 +72,15 @@ def exclusive(lock_path):
         yield
 
 
-# Additions to databases created by older code: (table, column, type). Each is applied once, by `migrate`.
-COLUMNS = [("areas", "missed_on", "TEXT")]
+# Additions to databases created by older code, applied by `migrate` (writers only): tables, then columns.
+TABLES = """
+CREATE TABLE IF NOT EXISTS ended (           -- tombstones of deleted listings, so a return is relisted, not new
+    type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL,
+    first_seen TEXT NOT NULL, price INTEGER, ended_at TEXT NOT NULL,   -- ended_at: ISO timestamp of the removal
+    PRIMARY KEY (type, id)
+);
+"""
+COLUMNS = [("areas", "missed_on", "TEXT")]  # (table, column, type)
 
 
 class DB:
@@ -89,7 +96,8 @@ class DB:
             self.migrate()
 
     def migrate(self):
-        """Bring an older database up to SCHEMA: additive and idempotent (old code keeps working on the result)."""
+        """Bring an older database up to date: additive and idempotent (old code keeps working on the result)."""
+        self.conn.executescript(TABLES)
         for table, column, kind in COLUMNS:
             if column not in {r["name"] for r in self.x(f"PRAGMA table_info({table})")}:
                 self.x(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")

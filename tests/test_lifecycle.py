@@ -242,7 +242,38 @@ def test_back_on_suumo(env):
         crawl(day, [rec(1)], saved={"used_condo:2"})
     crawl(3, [rec(1), rec(2), rec(3)], saved={"used_condo:2"})
     assert status(db, 2) == status(db, 3) == "active"
-    assert events(db)[-2:] == [("relisted", "2"), ("new", "3")]   # kept one relisted; deleted one is new again
+    assert events(db)[-2:] == [("relisted", "2"), ("relisted", "3")]  # the kept one, and the deleted one (tombstone)
+
+
+def test_a_deleted_listing_back_within_the_tombstone_days_is_relisted(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)])
+    crawl(2, [rec(1)])                                          # 2 deleted, its tombstone kept
+    assert status(db, 2) == "deleted" and db.x("SELECT first_seen FROM ended").fetchone()[0] == "2026-10-05"
+    db.x("DELETE FROM queue")
+    _, out = crawl(5, [rec(1), rec(2, price=45_000_000)])
+    assert out["relisted"] == 1 and out["new"] == 0 and out["price_changed"] == 1
+    assert events(db)[-2:] == [("relisted", "2"), ("price_changed", "2")]
+    payload = json.loads(db.x("SELECT payload FROM events WHERE kind='price_changed'").fetchone()[0])
+    assert payload == {"price": 45_000_000, "old_price": 50_000_000}
+    assert db.listing("used_condo", "2")["first_seen"] == "2026-10-05"
+    assert db.x("SELECT COUNT(*) FROM ended").fetchone()[0] == 0
+    assert db.x("SELECT reason FROM queue WHERE id='2'").fetchone()[0] == "backfill"  # its page went with it
+
+
+def test_a_deleted_listing_back_after_the_tombstone_is_purged_is_new(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)])
+    crawl(2, [rec(1)])
+    day = 3 + pipeline.TOMBSTONE_DAYS
+    p, _ = crawl(day, [rec(1)])
+    p.purge()
+    assert db.x("SELECT COUNT(*) FROM ended").fetchone()[0] == 0
+    crawl(day + 1, [rec(1), rec(2)])
+    assert events(db)[-1] == ("new", "2")
+    assert db.listing("used_condo", "2")["first_seen"] == (T0 + timedelta(days=day + 1)).date().isoformat()
 
 
 def test_export_is_deterministic_and_skips_volatile_fields(env):
