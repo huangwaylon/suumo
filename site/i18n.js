@@ -1,6 +1,7 @@
 // Every user-facing string of the site, in Japanese (default) and English. t(key, ...args) in app.js reads them;
 // a string can be a function of its arguments. Listing data (town, station, building names, SUUMO's tags) is shown
 // as SUUMO writes it.
+const JA_NUM = new Intl.NumberFormat("ja-JP");  // (made once: the map's price pins use it per pin)
 window.I18N = {
   ja: {
     lang: "ja", title: "物件さがし", brand: "物件さがし",
@@ -9,7 +10,7 @@ window.I18N = {
     favorites: "お気に入り", saved: "保存済み", settings: "設定", openSuumo: "SUUMOで見る",
     loading: "読み込み中…", railLayer: "路線", closeTab: (l) => `${l} を閉じる`, closeAll: "すべて閉じる", compareTab: "比較", railCredit: "鉄道: 国土数値情報・ODPT", railShow: "路線を表示", railAll: "すべて表示", railNone: "すべて非表示", stationHomes: (n) => `この駅の物件 ${n}件`, quickNew: "新着", quickDrop: "値下げ", sinceVisit: "前回の訪問以降",
     hoursAgo: (n) => (n < 1 ? "1時間以内" : `${n}時間前`),
-    pinPrice: (y) => (y >= 1e8 ? `${+(y / 1e8).toFixed(y >= 1e9 ? 0 : 1)}億` : `${Math.round(y / 1e4).toLocaleString("ja-JP")}万`),
+    pinPrice: (y) => (y >= 1e8 ? `${+(y / 1e8).toFixed(y >= 1e9 ? 0 : 1)}億` : `${JA_NUM.format(Math.round(y / 1e4))}万`),
     listTab: "この範囲", listAll: "一覧", resizePanel: "一覧の幅", sheetExpand: "一覧を広げる", sheetCollapse: "一覧を縮める", showOnMap: "地図で見る", unplaced: (n) => `地図に表示できない物件 ${n}件`, inView: (n) => `この範囲 ${n}件`, fitAll: (n) => `全${n}件`, fitAllShow: (n) => `全体を表示（${n}件）`,
     viewEmpty: "この範囲に条件に合う物件はありません", showInView: (n) => `この範囲 ${n}件を表示`, mapFailed: "地図を読み込めませんでした",
     savedSearches: "保存した条件", allListings: "すべて", freshN: (n) => `+${n}`, keepSearch: "この条件を保存",

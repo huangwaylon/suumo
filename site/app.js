@@ -1141,7 +1141,7 @@
   // Where the results are, without far outliers (islands, a stray geocode): the 2nd-98th percentile box; all of
   // them when there are few.
   function coreBounds(points) {
-    const pick = (i) => points.map((p) => p[i]).sort((a, b) => a - b), cut = points.length < 20 ? 0 : 0.02;
+    const pick = (i) => Float64Array.from(points, (p) => p[i]).sort(), cut = points.length < 20 ? 0 : 0.02;  // (numeric)
     const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor((a.length - 1) * f + 0.5))];
     return [[at(lat, cut), at(lng, cut)], [at(lat, 1 - cut), at(lng, 1 - cut)]];
   }

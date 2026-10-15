@@ -19,6 +19,7 @@
       // Tokyo) start downloading now rather than after the scripts and data/index.json.
       let p = "";
       try { p = new URLSearchParams((location.hash || localStorage.getItem("suumo.last") || "").slice(1)).get("p") || ""; } catch {}
+      if (p === "all") p = "";  // all of Japan: app.js loads them all, Tokyo first among them
       for (const slug of (p || "tokyo").split(",").filter((x) => /^[a-z_]+$/.test(x))) {
         document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "fetch", crossOrigin: "anonymous", href: `data/p/${slug}.json` }));
       }
