@@ -10,7 +10,7 @@ import re
 import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .parse import TYPES
@@ -19,6 +19,7 @@ LEASEHOLD = {"地上権", "定期借地権", "普通借地権", "旧法借地権
 NEW_TYPES = {"new_house", "new_condo"}
 NEW_DAYS = 7           # 新着: a new/relisted event within this many days
 DROP_DAYS = 30         # 値下げ: a price drop within this many days
+RETURN_DAYS = 14       # a listing seen again this soon after its removal is a return, not 新着
 QUAKE_CODE = "1981-06"  # 新耐震基準: built from June 1981
 CONDOS = {"used_condo", "new_condo"}
 SOUTH = {"南", "南東", "南西"}  # direction (condos)
@@ -191,7 +192,7 @@ class Snapshot:
     items: list                                   # listings (Item): active, and ended ones kept because saved
     areas: dict                                   # area code -> name
     history: dict                                 # key -> [(date, old_price, new_price)], oldest first
-    new_at: dict                                  # key -> (YYYYMMDDHH, "new" | "relisted") of its latest such event
+    new_at: dict                                  # key -> (YYYYMMDDHH, "new" | "relisted"), latest; returns skipped
     drops: dict                                   # key -> (YYYYMMDDHH, old_price, new_price) of its latest drop
     today: date
     groups: dict = field(default_factory=dict)    # dup_key -> [Item] (only groups of 2 or more)
@@ -201,7 +202,7 @@ class Snapshot:
         for i in self.items:
             if i.dup and not (i.saved or i.gone):  # a saved listing stays itself (its key is what was saved)
                 by_dup[i.dup].append(i)
-        self.groups = {k: v for k, v in by_dup.items() if len(v) > 1}
+        self.groups = {k: v for k, v in by_dup.items() if len(v) > 1 and one_property(v)}
 
     def new(self, item):
         """(YYYYMMDDHH, kind) when the listing is new, else None. A property another agent already listed (an
@@ -227,6 +228,16 @@ class Snapshot:
         return d if d and d[0] >= hour(self.today - timedelta(days=DROP_DAYS)) else None
 
 
+def one_property(group):
+    """Whether a dup_key group is one property listed by several agents. Not when an agent lists two of them (lots of
+    one development, units of one building), nor condo units on two different floors."""
+    agents = [i.rec["agent"] for i in group if i.rec.get("agent")]
+    if len(agents) != len(set(agents)):
+        return False
+    floors = {i.rec.get("floor") for i in group if i.type in CONDOS and isinstance(i.rec.get("floor"), int)}
+    return len(floors) < 2
+
+
 def _read_jsonl(path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -238,6 +249,11 @@ def run_date(run_id):
 def run_hour(run_id):
     """'20261006T194539' -> 2026100619 (runs are hourly: the hour says when a change was seen)."""
     return int(run_id[:8] + run_id[9:11])
+
+
+def _hour_time(at):
+    """2026100619 -> datetime(2026, 10, 6, 19)."""
+    return datetime.strptime(str(at), "%Y%m%d%H")
 
 
 def hour(day):
@@ -263,13 +279,17 @@ def load(data_dir, today: date, saved=(), rail_stations=()):
         areas_file = pref_dir / "areas.json"
         if areas_file.exists():
             areas.update(json.loads(areas_file.read_text(encoding="utf-8")))
-    history, new_at, drops = defaultdict(list), {}, {}
+    history, new_at, drops, removed = defaultdict(list), {}, {}, {}
     for path in sorted(data_dir.glob("events/*.json")):
         day, at = run_date(path.stem), run_hour(path.stem)
         for e in json.loads(path.read_text(encoding="utf-8")):
             key = f"{e['type']}:{e['id']}"
-            if e["kind"] in ("new", "relisted"):
-                new_at[key] = (at, e["kind"])
+            if e["kind"] == "removed":
+                removed[key] = at
+            elif e["kind"] in ("new", "relisted"):
+                # back soon after it ended (a missed crawl, a re-post): not new; an earlier new event still counts
+                if key not in removed or _hour_time(at) - _hour_time(removed[key]) > timedelta(days=RETURN_DAYS):
+                    new_at[key] = (at, e["kind"])
             elif e["kind"] == "price_changed":
                 p = e.get("payload") or {}
                 old, new = p.get("old_price"), p.get("price")
