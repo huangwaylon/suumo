@@ -22,6 +22,7 @@ import requests
 
 from .archive import write_atomic
 from .db import flock
+from .export import prefectures, records
 from .http import USER_AGENT
 from .scope import PREFS
 
@@ -86,18 +87,8 @@ def lookup(session, town):
 
 def towns_in(data_dir):
     """Every town of the active listings in data/."""
-    towns = set()
-    for pref_dir in Path(data_dir).iterdir():
-        if not pref_dir.is_dir() or pref_dir.name == "events":
-            continue
-        for path in pref_dir.glob("*/*.jsonl"):
-            if path.parent.name == "removed":
-                continue
-            for line in path.read_text(encoding="utf-8").splitlines():
-                town = town_of(json.loads(line).get("address"), pref_dir.name)
-                if town:
-                    towns.add(town)
-    return towns
+    return {town for pref in prefectures(data_dir) for r in records(data_dir, pref, removed=False)
+            if (town := town_of(r.get("address"), pref))}
 
 
 def geocode(data_dir, cache_path, budget_seconds=None, log=print):

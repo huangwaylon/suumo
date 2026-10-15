@@ -57,8 +57,8 @@ def test_first_complete_crawl_is_a_silent_baseline(env):
     db, _, _, crawl, _ = env
     _, out = crawl(0, [rec(1), rec(2)])
     assert out["baseline"] and events(db) == []
-    q = db.x("SELECT id, priority, reason FROM queue ORDER BY id").fetchall()
-    assert [(r["id"], r["priority"], r["reason"]) for r in q] == [("1", 0, "backfill"), ("2", 0, "backfill")]
+    q = db.x("SELECT id, priority FROM queue ORDER BY id").fetchall()
+    assert [(r["id"], r["priority"]) for r in q] == [("1", pipeline.P_BACKFILL), ("2", pipeline.P_BACKFILL)]
 
 
 def test_incomplete_first_crawl_does_not_baseline(env):
@@ -75,8 +75,8 @@ def test_new_listing_after_baseline_is_an_event_and_jumps_the_queue(env):
     crawl(0, [rec(1)])
     crawl(1, [rec(1), rec(2)])
     assert events(db) == [("new", "2")]
-    top = db.x("SELECT id, reason FROM queue ORDER BY priority DESC, enqueued_at LIMIT 1").fetchone()
-    assert (top["id"], top["reason"]) == ("2", "new")
+    top = db.x("SELECT id, priority FROM queue ORDER BY priority DESC, enqueued_at LIMIT 1").fetchone()
+    assert (top["id"], top["priority"]) == ("2", pipeline.P_NEW)
 
 
 def test_deleted_after_two_complete_misses(env):
@@ -232,7 +232,7 @@ def test_unstored_page_is_queued_until_fetched(env):
     crawl(0, [rec(1)])
     db.x("DELETE FROM queue")
     crawl(1, [rec(1)])
-    assert db.x("SELECT reason FROM queue WHERE id='1'").fetchone()["reason"] == "backfill"
+    assert db.x("SELECT priority FROM queue WHERE id='1'").fetchone()[0] == pipeline.P_BACKFILL
 
 
 def test_back_on_suumo(env):
@@ -259,7 +259,7 @@ def test_a_deleted_listing_back_within_the_tombstone_days_is_relisted(env):
     assert payload == {"price": 45_000_000, "old_price": 50_000_000}
     assert db.listing("used_condo", "2")["first_seen"] == "2026-10-05"
     assert db.x("SELECT COUNT(*) FROM ended").fetchone()[0] == 0
-    assert db.x("SELECT reason FROM queue WHERE id='2'").fetchone()[0] == "backfill"  # its page went with it
+    assert db.x("SELECT priority FROM queue WHERE id='2'").fetchone()[0] == pipeline.P_BACKFILL  # its page went with it
 
 
 def test_a_deleted_listing_back_after_the_tombstone_is_purged_is_new(env):
@@ -531,8 +531,7 @@ def test_an_id_held_under_another_type_is_not_new(env):
     _, out = crawl(1, [rec(1), rec(7)])
     row = db.listing("used_condo", "7")
     assert events(db) == [] and out["retyped"] == 1 and row["first_seen"] == "2026-10-01"
-    q = db.x("SELECT priority, reason FROM queue WHERE id='7'").fetchone()
-    assert (q["priority"], q["reason"]) == (pipeline.P_BACKFILL, "backfill")
+    assert db.x("SELECT priority FROM queue WHERE id='7'").fetchone()[0] == pipeline.P_BACKFILL
 
 
 def test_an_id_new_under_two_types_in_one_run_is_new_under_both(env):

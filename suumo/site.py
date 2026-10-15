@@ -21,7 +21,8 @@ from pathlib import Path
 from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
-from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, load_events, prefectures, run_date, station_key
+from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, load_events, run_date, station_key
+from .export import prefectures
 from .geo import load_cache, town_of
 from .parse import TYPES
 from .rail import simplify

@@ -57,7 +57,7 @@ def by_key(targets):
     return {(t.pref, t.type): t for t in targets}
 
 
-def in_scope(targets, pref, type_key, area_code):
-    """targets: a list of Targets or a by_key() dict (faster when called per listing)."""
-    t = (targets if isinstance(targets, dict) else by_key(targets)).get((pref, type_key))
+def in_scope(scope, pref, type_key, area_code):
+    """scope: by_key(targets)."""
+    t = scope.get((pref, type_key))
     return t is not None and t.includes(area_code)

@@ -45,12 +45,10 @@ def crawled_since(db, now, hour):
             if datetime.fromisoformat(r["crawled_at"]) >= since}
 
 
-def crawl_due(db, now, hour, prefs=None):
-    """SUUMO updates its search results once a day: crawl them while one of prefs (the scope's; by default every
-    prefecture crawled before) wasn't crawled since today's :hour (or yesterday's, before then)."""
-    if prefs is None:
-        prefs = {r[0] for r in db.x("SELECT pref FROM prefs")}
-    return not prefs or not set(prefs) <= crawled_since(db, now, hour)
+def crawl_due(db, now, hour, prefs):
+    """SUUMO updates its search results once a day: crawl them while one of prefs (the scope's) wasn't crawled
+    since today's :hour (or yesterday's, before then)."""
+    return not set(prefs) <= crawled_since(db, now, hour)
 
 
 def seconds_until_minute(now, minute):

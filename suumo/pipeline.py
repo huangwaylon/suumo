@@ -227,7 +227,7 @@ class Pipeline:
                             self.db.add_event(self.run_id, "price_changed", ident,
                                               {"price": rec.get("price"), "old_price": tomb["price"]})
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                        self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                     counts["relisted"] += 1
                 elif other:
                     if baselined and self.db.x(
@@ -235,15 +235,15 @@ class Pipeline:
                             self.run_id, other["type"], lid).fetchone():
                         self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})  # both new today
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                        self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                     counts["retyped"] += 1
                 elif baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
                     if wanted(lid):
-                        self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
+                        self.db.enqueue(type_key, lid, P_NEW, self.ts)
                     counts["new"] += 1
                 elif wanted(lid):
-                    self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                 continue
 
             old = json.loads(row["list_json"])
@@ -256,7 +256,7 @@ class Pipeline:
                                   {"price": rec.get("price"), "old_price": old.get("price")})
             if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch), unless it's a copy
                 if wanted(lid):
-                    self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    self.db.enqueue(type_key, lid, P_BACKFILL, self.ts)
                 else:
                     self.db.dequeue(type_key, lid)
             self.db.x("""UPDATE listings SET list_json=?, area_code=?, area_name=?, pref=?, status='active',

@@ -100,7 +100,7 @@ def test_the_prefecture_that_mentions_a_station_most_gives_its_reading(tmp_path,
 
 
 def test_merge_never_replaces_a_value_with_nothing():
-    cache = {"町田": ["まちだ", "Machida"]}            # an old two-element entry counts as 0 mentions
+    cache = {"町田": ["まちだ", "Machida", 0]}
     stations.merge(cache, "町田", [None, "Machida-shi"], 4)
     assert cache["町田"] == ["まちだ", "Machida-shi", 4]
     stations.merge(cache, "町田", ["ちょうだ", None], 1)

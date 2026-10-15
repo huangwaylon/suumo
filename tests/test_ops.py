@@ -40,7 +40,7 @@ def _db_with_listing(tmp_path, pref="tokyo", area="13219"):
     db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
          "VALUES ('used_condo', '20205670', ?, ?, '狛江市', ?, '2026-10-05', 'x')",
          pref, area, json.dumps({"id": "20205670", "path": "/ms/chuko/tokyo/sc_komae/nc_20205670/"}))
-    db.enqueue("used_condo", "20205670", 0, "backfill", "x")
+    db.enqueue("used_condo", "20205670", 0, "x")
     db.commit()
     return db
 
@@ -201,7 +201,7 @@ def _queue_db(tmp_path, n):
         db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
              "VALUES ('used_condo', ?, 'tokyo', '13219', '狛江市', ?, '2026-10-05', 'x')",
              str(i), json.dumps({"id": str(i), "path": f"/ms/chuko/tokyo/sc_komae/nc_{i}/"}))
-        db.enqueue("used_condo", str(i), 0, "backfill", "x")
+        db.enqueue("used_condo", str(i), 0, "x")
     db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
     db.commit()
     return db
@@ -323,11 +323,11 @@ def test_hourly_runs_stop_listing_pages_before_the_next_run():
 def test_search_results_are_crawled_once_a_day(tmp_path):
     jst = ZoneInfo("Asia/Tokyo")
     db = DB(tmp_path / "s.db")
-    assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                     # never crawled
+    assert crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4, {"tokyo"})           # never crawled
     db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00')")
-    assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                 # done today
-    assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4)                  # before tomorrow's 04:00
-    assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4)                      # after it
+    assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4, {"tokyo"})       # done today
+    assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4, {"tokyo"})        # before tomorrow's 04:00
+    assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4, {"tokyo"})            # after it
 
 
 def test_the_daily_crawl_is_due_until_every_prefecture_is_done(tmp_path):
@@ -335,7 +335,7 @@ def test_the_daily_crawl_is_due_until_every_prefecture_is_done(tmp_path):
     db = DB(tmp_path / "s.db")
     db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00'), ('chiba', '2026-10-06T04:05:00+09:00')")
     now = datetime(2026, 10, 7, 13, 0, tzinfo=jst)
-    assert crawl_due(db, now, 4, {"tokyo", "chiba"}) and crawl_due(db, now, 4)    # chiba is yesterday's
+    assert crawl_due(db, now, 4, {"tokyo", "chiba"})                              # chiba is yesterday's
     assert not crawl_due(db, now, 4, {"tokyo"})
     assert crawl_due(db, now, 4, {"tokyo", "osaka"})                               # never crawled
     assert crawled_since(db, now, 4) == {"tokyo"}
@@ -469,7 +469,7 @@ def test_queue_fetches_what_is_queued_and_copies_land_twins(tmp_path):
              "last_seen) VALUES (?, ?, 'tokyo', '13219', '狛江市', ?, ?, '2026-10-05', 'x')",
              type_, lid, json.dumps({"path": f"/ms/chuko/tokyo/sc_komae/nc_{lid}/", **rec_}), detail)
         if not detail:
-            db.enqueue(type_, lid, 0, "backfill", "x")
+            db.enqueue(type_, lid, 0, "x")
     db.x("INSERT INTO runs (run_id, started) VALUES ('r', 'x')")
     db.commit()
     fetched = []
@@ -492,7 +492,7 @@ def test_queue_goes_by_prefecture_size_after_new_listings(tmp_path):
         db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
              "VALUES ('land', ?, ?, 'x', 'x', ?, '2026-10-05', 'x')", lid, pref,
              json.dumps({"path": f"/tochi/{pref}/x/nc_{lid}/", "address": lid, "land_m2": 1.0, "price": 1}))
-        db.enqueue("land", lid, priority, "x", "x")
+        db.enqueue("land", lid, priority, "x")
     db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen) "
          "VALUES ('land', '9', 'osaka', 'x', 'x', '{}', '2026-10-05', 'x')")    # osaka has more listings
     rows = db.x("SELECT q.type, q.id, q.priority, l.pref, l.area_code, l.list_json, l.status FROM queue q "

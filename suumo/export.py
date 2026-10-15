@@ -127,3 +127,19 @@ def export(db, targets, data_dir, run_id=None):
                 e["payload"] = json.loads(e["payload"])
             _write_json(data_dir / "events" / f"{run_id}.json", events)
     return stats
+
+
+def prefectures(data_dir):
+    """The prefectures data/ holds, in name order."""
+    return sorted(p.name for p in Path(data_dir).iterdir() if p.is_dir() and p.name != "events")
+
+
+def records(data_dir, pref, removed=True):
+    """The records data/ holds for a prefecture, the one reader of its .jsonl files: each type's (TYPES order,
+    area files sorted), then the ended ones kept because saved (removed/), unless removed=False."""
+    d = Path(data_dir) / pref
+    files = [p for t in TYPES for p in sorted((d / t).glob("*.jsonl"))]
+    for path in files + (sorted((d / "removed").glob("*.jsonl")) if removed else []):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                yield json.loads(line)

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS areas (
 CREATE TABLE IF NOT EXISTS queue (
     type TEXT NOT NULL, id TEXT NOT NULL,
     priority INTEGER NOT NULL,        -- 1 new since the area's baseline, 0 backfill
-    reason TEXT NOT NULL, enqueued_at TEXT NOT NULL,
+    reason TEXT NOT NULL, enqueued_at TEXT NOT NULL,  -- reason: unused (older code wrote new | backfill)
     attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
     PRIMARY KEY (type, id)
 );
@@ -145,13 +145,11 @@ class DB:
                pref, type_key, a["code"], a["name"], a["slug"])
 
     # queue
-    def enqueue(self, type_key, lid, priority, reason, ts):
-        """Insert, or raise the priority of an existing entry."""
-        self.x("""INSERT INTO queue (type, id, priority, reason, enqueued_at) VALUES (?,?,?,?,?)
-                  ON CONFLICT(type, id) DO UPDATE SET
-                    priority=MAX(priority, excluded.priority),
-                    reason=CASE WHEN excluded.priority > priority THEN excluded.reason ELSE reason END""",
-               type_key, lid, priority, reason, ts)
+    def enqueue(self, type_key, lid, priority, ts):
+        """Insert, or raise the priority of an existing entry. (reason is unused: older code wrote new/backfill.)"""
+        self.x("""INSERT INTO queue (type, id, priority, reason, enqueued_at) VALUES (?,?,?,'',?)
+                  ON CONFLICT(type, id) DO UPDATE SET priority=MAX(priority, excluded.priority)""",
+               type_key, lid, priority, ts)
 
     def dequeue(self, type_key, lid):
         self.x("DELETE FROM queue WHERE type=? AND id=?", type_key, lid)

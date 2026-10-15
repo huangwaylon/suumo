@@ -7,6 +7,7 @@ from pathlib import Path
 from .archive import Archive
 from .db import dumps
 from .detail import FIELDS
+from .export import records
 from .parse import TYPES, parse_list_page
 from .pipeline import apply_detail
 from .scope import by_key, in_scope
@@ -97,23 +98,21 @@ def seed(db, targets, data_dir: Path, ts, log=print):
         names_file = data_dir / pref / "areas.json"
         names = json.loads(names_file.read_text()) if names_file.exists() else {}
         seeded = set()
-        for f in sorted((data_dir / pref).glob("*/*.jsonl")):
-            for line in f.read_text().splitlines():
-                r = json.loads(line)
-                if not in_scope(scope, pref, r["type"], r["area_code"]):
-                    continue
-                body = {k: v for k, v in r.items() if k not in EXPORT_ONLY}
-                lst = {**body, "path": r["url"].removeprefix("https://suumo.jp")}
-                # detail_json holds listing-page fields only: a list field kept there would outlive its removal
-                # from the search results (merge lays the list over it)
-                detail = {k: v for k, v in body.items() if k in FIELDS} if r.get("has_detail") else None
-                db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, detail_json, status,
-                        first_seen, last_seen, removed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                     r["type"], r["id"], pref, r["area_code"], r["area"], dumps(lst),
-                     dumps(detail) if detail else None, "removed" if r.get("removed_at") else "active",
-                     r["first_seen"], ts, r.get("removed_at"))
-                seeded.add((r["type"], r["area_code"]))
-                n += 1
+        for r in records(data_dir, pref):
+            if not in_scope(scope, pref, r["type"], r["area_code"]):
+                continue
+            body = {k: v for k, v in r.items() if k not in EXPORT_ONLY}
+            lst = {**body, "path": r["url"].removeprefix("https://suumo.jp")}
+            # detail_json holds listing-page fields only: a list field kept there would outlive its removal
+            # from the search results (merge lays the list over it)
+            detail = {k: v for k, v in body.items() if k in FIELDS} if r.get("has_detail") else None
+            db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, detail_json, status,
+                    first_seen, last_seen, removed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                 r["type"], r["id"], pref, r["area_code"], r["area"], dumps(lst),
+                 dumps(detail) if detail else None, "removed" if r.get("removed_at") else "active",
+                 r["first_seen"], ts, r.get("removed_at"))
+            seeded.add((r["type"], r["area_code"]))
+            n += 1
         for type_key, code in seeded:
             hits = db.x("SELECT COUNT(*) FROM listings WHERE pref=? AND type=? AND area_code=? AND status='active'",
                         pref, type_key, code).fetchone()[0]

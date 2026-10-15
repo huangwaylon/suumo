@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from .export import prefectures, records
 from .parse import TYPES
 
 LEASEHOLD = {"地上権", "定期借地権", "普通借地権", "旧法借地権", "借地権"}
@@ -76,11 +77,17 @@ def listing_station_keys(recs):
     return Counter(station_key(s["name"]) for r in recs for s in r.get("stations") or [] if s.get("name"))
 
 
-def railway_near(keys, rail_stations):
-    """The keys of the railway stations in the area the listings' stations (a Counter of keys) span, weighed by
-    mentions so bus stops named like stations elsewhere don't move it: what counts as a station there.
+def listing_area(keys, rail_stations):
+    """The box (station_area) the railway stations the listings name (a Counter of keys) span, each weighed by its
+    mentions so bus stops named like stations elsewhere don't move it; None when none is named.
     rail_stations: rail.json's [[name, lat, lng, lines], ...]."""
-    area = station_area([(lat, lng) for name, lat, lng, _ in rail_stations for _ in range(keys[station_key(name)])])
+    return station_area([(lat, lng) for name, lat, lng, _ in rail_stations for _ in range(keys[station_key(name)])])
+
+
+def railway_near(keys, rail_stations):
+    """The keys of the railway stations in the area the listings' stations (a Counter of keys) span
+    (listing_area): what counts as a station there."""
+    area = listing_area(keys, rail_stations)
     if not area:
         return set()
     west, south, east, north = area
@@ -235,10 +242,6 @@ def one_property(group):
     return len(floors) < 2
 
 
-def _read_jsonl(path):
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-
-
 def run_date(run_id):
     return f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
 
@@ -256,11 +259,6 @@ def _hour_time(at):
 def hour(day):
     """A date as YYYYMMDD00, comparable with run_hour."""
     return int(day.strftime("%Y%m%d")) * 100
-
-
-def prefectures(data_dir):
-    """The prefectures data/ holds, in name order."""
-    return sorted(p.name for p in Path(data_dir).iterdir() if p.is_dir() and p.name != "events")
 
 
 def load_events(data_dir):
@@ -293,9 +291,9 @@ def load(data_dir, today: date, saved=(), rail_stations=(), prefs=None, events=N
     items, areas = [], {}
     for pref in prefectures(data_dir) if prefs is None else prefs:
         pref_dir = data_dir / pref
-        recs = {t: [r for p in sorted((pref_dir / t).glob("*.jsonl")) for r in _read_jsonl(p)] for t in TYPES}
-        for path in sorted((pref_dir / "removed").glob("*.jsonl")):  # ended, kept because saved
-            recs[path.stem] += _read_jsonl(path)
+        recs = {t: [] for t in TYPES}
+        for r in records(data_dir, pref):  # each type's active listings, then its ended ones kept because saved
+            recs[r["type"]].append(r)
         land_ids = {r["id"] for r in recs["land"]}
         railway = railway_near(listing_station_keys(r for rs in recs.values() for r in rs),
                                rail_stations) if rail_stations else None
