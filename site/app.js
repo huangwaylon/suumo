@@ -96,7 +96,6 @@
   let mapHits = [];             // the results, on the map (hits: those in its view)
   let byDay = false;            // the list has a heading per day (what's new, newest first)
   let lastFocus = null;
-  let renderedFor = null;       // the URL (without the open listing) the results were drawn for
   let facets = null, facetsFor = null;
   let listStale = false;        // the list is drawn when it's in sight again (the phone filter sheet, another tab)
   let sayTimer = null;          // the count is said aloud shortly after the conditions change
@@ -246,10 +245,37 @@
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return "#" + p.toString();
   }
-  const conditionsHash = () => hashFor({}, { tab: false, at: false });
   const saveLast = () => mode === "search" && localStorage.setItem("suumo.last", hashFor({}, { tab: false }));  // reopened later
 
   // ---------- results ----------
+
+  // What's drawn depends on, by level: the results (search: their set and order), the map's markers (the set, in any
+  // order), the list (the cards in view). render() redoes each only when what it depends on changed.
+  let dataVersion = 0;          // the loaded listings: bumped when they change (what was drawn from them is stale)
+  const drawn = { search: null, set: null, base: false, markers: null };
+  const EMPTY = JSON.stringify({ ...Filter.emptyQuery(), sort: "" });
+  const unfiltered = () => mode === "search" && JSON.stringify({ ...q, sort: "" }) === EMPTY;
+  const setKey = () => JSON.stringify([dataVersion, mode, mode === "favorites" ? [...favs] : { ...q, sort: "" }]);
+  const resultsKey = () => `${setKey()}|${q.sort}`;
+  // A few states are kept, so going back to one is instant: the latest two and the unfiltered one (clearing the
+  // conditions). cache: key -> {value, base}, least recently used first.
+  function kept(cache, key, make, base = unfiltered()) {
+    let e = cache.get(key);
+    cache.delete(key);
+    cache.set(key, (e ||= { value: make(), base }));
+    const keys = [...cache.keys()], lastBase = keys.findLast((k) => cache.get(k).base);
+    for (const k of keys.slice(0, -2)) if (k !== lastBase) cache.delete(k);
+    return e.value;
+  }
+  const results = new Map(), facetCache = new Map();
+  let rank = null;              // item -> its place in the results (a kept marker layer can be in another order)
+  let unplaced = null;          // the results without coordinates
+  function dataChanged() {
+    dataVersion++;
+    results.clear();
+    facetCache.clear();
+    layers.clear();
+  }
 
   function compute() {
     if (mode === "search") return Filter.search(db, q);
@@ -270,7 +296,6 @@
   }
 
   function render() {
-    renderedFor = conditionsHash();
     lastPlaces = [...q.areas, ...q.stations];
     if (document.body.classList.contains("show-filters") && !WIDE.matches) {
       listStale = true;  // only the sheet is visible: its counts are enough until it closes
@@ -278,7 +303,12 @@
       return;
     }
     listStale = false;
-    mapHits = compute();
+    const key = resultsKey();
+    if (key !== drawn.search) {
+      Object.assign(drawn, { search: key, set: setKey(), base: unfiltered() });
+      mapHits = kept(results, key, compute, drawn.base);
+      rank = unplaced = null;
+    }
     if ($("q").value.trim() !== q.text && document.activeElement !== $("q")) $("q").value = q.text;  // (not while typing)
     $("sort").value = q.sort;
     byDay = mode === "search" && q.sort === "new" && !!(q.newOnly || q.since);  // what's new: a heading per day
@@ -320,9 +350,12 @@
     if (waiting) return;  // the skeleton stays until the map has its view
     if (tab !== "list") { listStale = true; return; }  // (drawn when it's shown)
     // the same cards as already drawn (a sheet closed, a view switched back): kept as they are, with their place
-    const sig = [S.lang, mode, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.map((it) => it.key)].join("|");
-    if (sig === listSig && hits.length) return;
-    listSig = sig;
+    // (the ones further down are drawn from these hits as the list scrolls)
+    const head = [S.lang, mode, byDay, q.stations, showUsd(), [...favs], Object.keys(pending), tabs, hits.length].join("|");
+    let same = listSig?.head === head && hits.length > 0;
+    for (let i = 0, n = byDay ? hits.length : Math.min(shown, hits.length); same && i < n; i++) same = hits[i] === listSig.hits[i];
+    if (same) { listSig.hits = hits; return; }
+    listSig = { head, hits };
     const focused = $("list").contains(document.activeElement) && document.activeElement.closest("[data-key], [data-fav]");
     $("list").innerHTML = hits.length ? "" : mapHits.length ? `<div class="empty"><h3>${esc(t("viewEmpty"))}</h3>
       <button class="btn primary" data-fit="1">${esc(t("fitAllShow", num(mapHits.length)))}</button></div>` : emptyState(activeConditions());
@@ -338,7 +371,7 @@
 
   // The results the map can't show (no coordinates): in every view, folded at the end of the list.
   function renderUnplaced() {
-    const box = $("unplaced"), list = mode === "search" && view ? mapHits.filter((it) => it.lat == null) : [];
+    const box = $("unplaced"), list = mode === "search" && view ? (unplaced ??= mapHits.filter((it) => it.lat == null)) : [];
     box.hidden = !list.length;
     box.querySelector("summary").textContent = t("unplaced", num(list.length));
     box.querySelector(".grid").innerHTML = box.open ? list.map((it) => card(it)).join("") : "";
@@ -657,8 +690,8 @@
   const count = (field, v) => (CHOICES[field].includes(v) ? facets[field][v] || 0 : null);  // none for an extra value
 
   function renderFilters() {
-    const key = JSON.stringify({ ...q, sort: "" });  // the sort doesn't change any count
-    if (key !== facetsFor) { facets = Filter.facets(db, q, CHOICES); facetsFor = key; }
+    const key = `${dataVersion}|${JSON.stringify({ ...q, sort: "" })}`;  // the sort doesn't change any count
+    if (key !== facetsFor) { facets = kept(facetCache, key, () => Filter.facets(db, q, CHOICES)); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
       body.innerHTML = ["text", "types", "price", "plan", "areas", "stations", "size", "age", "extra"].map((s) =>
@@ -869,7 +902,7 @@
   const MAP_WAIT = 2500;
   const inArea = (list, b) => list.filter((it) => it.lat != null && it.lat >= b[0] && it.lng >= b[1] && it.lat <= b[2] && it.lng <= b[3]);
   let viewItems = null, viewItemsFor = null;  // the chosen prefectures' listings in view (the quick chips count them)
-  const inView = () => (viewItemsFor === `${chosen}|${view}` ? viewItems : ((viewItemsFor = `${chosen}|${view}`), (viewItems = inArea(db.items, view))));
+  const inView = () => (viewItemsFor === `${dataVersion}|${view}` ? viewItems : ((viewItemsFor = `${dataVersion}|${view}`), (viewItems = inArea(db.items, view))));
 
   // After a pan or zoom: the list, its counts and the URL follow (the URL is replaced, not a history entry).
   let moveTimer = null;
@@ -966,8 +999,13 @@
     const now = map.getZoom() >= PRICE_ZOOM;
     if (now === priced) return;
     priced = now;
-    cluster.eachLayer((m) => m.setIcon(townIcon(m.options.list, priced)));
-    cluster.refreshClusters();
+    const layer = layers.get(drawn.markers)?.value;
+    if (layer && !filling) reprice(layer);  // (a layer being filled is once it's done)
+  }
+  function reprice(layer) {
+    layer.cluster.eachLayer((m) => m.setIcon(townIcon(m.options.list, priced)));
+    layer.cluster.refreshClusters();
+    layer.priced = priced;
   }
 
   function createMap() {
@@ -986,9 +1024,6 @@
     map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
     map.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "topleft");  // (phones: the sheet is at the bottom)
     L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>' }).addTo(map);
-    cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
-      iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)) });
-    map.addLayer(cluster);
   }
 
   async function drawMap() {
@@ -997,19 +1032,59 @@
       return listResults((waiting = false));
     }
     if (!map) createMap();
-    const towns = new Map();
+    drawMarkers();
+    showRail();  // the chosen stations' lines stand out
+    markOpen();
+    placeMap();
+  }
+
+  // The markers: a cluster layer per set of results (in any order). The current one, the one before it and the
+  // unfiltered one are kept, so going back to one (clearing the conditions) is instant. A new layer is filled in
+  // chunks (all of Japan: most of a second); a set asked for meanwhile is drawn once that's done.
+  const layers = new Map();     // drawn.set + language (the pins' labels) -> {cluster, priced, order}
+  let filling = false;
+  let layerOrder = null;        // the results (drawn.search) whose order the shown layer's towns list their homes in
+  function newCluster() {
+    return L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
+      iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)),
+      chunkProgress: (done, total) => { if (done === total && filling) filled(); } });
+  }
+  function filled() {
+    filling = false;
+    const layer = layers.get(drawn.markers)?.value;
+    if (layer && layer.priced !== priced) reprice(layer);  // (zoomed past PRICE_ZOOM meanwhile)
+    setTimeout(drawMarkers);  // another set asked for meanwhile
+  }
+  function drawMarkers() {
+    const key = `${drawn.set}|${S.lang}`;
+    if (key === drawn.markers || filling || !drawn.set) return;
+    let fresh = false;
+    const layer = kept(layers, key, () => ((fresh = true), { cluster: newCluster(), priced: null, order: drawn.search }), drawn.base);
+    if (layer.cluster !== cluster) {
+      if (cluster) map.removeLayer(cluster);
+      cluster = layer.cluster;
+      map.addLayer(cluster);
+    }
+    drawn.markers = key;
+    layerOrder = layer.order;
     priced = map.getZoom() >= PRICE_ZOOM;
+    if (!fresh) { if (layer.priced !== priced) reprice(layer); return; }
+    layer.priced = priced;
+    const towns = new Map();
     for (const it of mapHits) {
       if (it.lat == null) continue;
       if (!towns.has(it.town)) towns.set(it.town, [it.lat, it.lng, []]);
       towns.get(it.town)[2].push(it);
     }
-    cluster.clearLayers();
+    filling = true;
     cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
-      L.marker([lat, lng], { icon: townIcon(list, priced), list, title: `${town} ${t("count", num(list.length))}` }).bindPopup(() => popup(town, list), { autoPanPadding: [56, 56] })));
-    showRail();  // the chosen stations' lines stand out
-    markOpen();
-    placeMap();
+      L.marker([lat, lng], { icon: townIcon(list, priced), list, title: `${town} ${t("count", num(list.length))}` }).bindPopup((m) => popup(town, inOrder(m.options.list)), { autoPanPadding: [56, 56] })));
+  }
+  // A town's homes in the results' order (the layer may have been drawn for another sort).
+  function inOrder(list) {
+    if (layerOrder === drawn.search || list.length < 2) return list;
+    rank ??= new Map(mapHits.map((it, i) => [it, i]));
+    return [...list].sort((a, b) => rank.get(a) - rank.get(b));
   }
 
   // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ; colours, English names from ODPT) ----------
@@ -1029,6 +1104,7 @@
   const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
   let rail = null, railLines = [], railHalos = [], railStations = null, railLabels = null, railAsked = false;
+  let railStyled = null, radiusBand = null;  // how the lines and the stations are styled now (restyled on a change)
   const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
 
   async function drawRail() {
@@ -1069,15 +1145,20 @@
     showRail();
   }
 
-  // Station names on the map once zoomed in (14+): only those in view, so a few dozen labels at most.
+  // Station names on the map once zoomed in (14+): only those in view, so a few dozen labels at most. Those still in
+  // view stay; the others go.
+  const labels = new Map();  // station (rail.stations entry) -> its label
+  let labelsLang = null;
   function stationLabels() {
-    railLabels.clearLayers();
-    if (!map.hasLayer(railStations) || map.getZoom() < 14) return;
-    const b = map.getBounds().pad(0.1);
-    const shown = rail.stations.filter(([, lat, lng]) => b.contains([lat, lng])).slice(0, 200);
-    for (const [name, lat, lng] of shown) {
-      L.marker([lat, lng], { interactive: false, keyboard: false,
-        icon: L.divIcon({ className: "station-label", html: esc(stationName(name)), iconSize: null, iconAnchor: [-9, 8] }) }).addTo(railLabels);
+    if (labelsLang !== S.lang) { railLabels.clearLayers(); labels.clear(); labelsLang = S.lang; }
+    const b = map.hasLayer(railStations) && map.getZoom() >= 14 && map.getBounds().pad(0.1);
+    const want = new Set(b ? rail.stations.filter(([, lat, lng]) => b.contains([lat, lng])).slice(0, 200) : []);
+    for (const [s, m] of labels) if (!want.has(s)) { railLabels.removeLayer(m); labels.delete(s); }
+    for (const s of want) {
+      if (labels.has(s)) continue;
+      const [name, lat, lng] = s;
+      labels.set(s, L.marker([lat, lng], { interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "station-label", html: esc(stationName(name)), iconSize: null, iconAnchor: [-9, 8] }) }).addTo(railLabels));
     }
   }
 
@@ -1099,9 +1180,12 @@
   }
 
   // The lines of the chosen stations (they're highlighted; the others fade).
+  let chosenFor = null, chosenSet = null;
   function chosenLines() {
+    if (chosenFor === q.stations.join("\n")) return chosenSet;
+    chosenFor = q.stations.join("\n");
     const names = new Set(q.stations.map((s) => s.replace(/（.*）$/, "")));
-    return new Set(names.size ? rail.stations.filter(([n]) => names.has(n)).flatMap(([, , , lines]) => lines) : []);
+    return (chosenSet = new Set(names.size ? rail.stations.filter(([n]) => names.has(n)).flatMap(([, , , lines]) => lines) : []));
   }
 
   // Lines unless switched off (all, or by operator), each on a halo so it reads on any part of the map; stations once
@@ -1109,8 +1193,9 @@
   function showRail() {
     if (!rail || !map) return;
     const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines(), colour = halo();
-    const base = z < 11 ? 2 : z < 13 ? 3 : z < 15 ? 4.5 : 6;
-    railLines.forEach((l, i) => {
+    const band = z < 11 ? 0 : z < 13 ? 1 : z < 15 ? 2 : 3, base = [2, 3, 4.5, 6][band];
+    const style = [band, on, [...hiddenOps].sort(), [...focus], colour].join("|");
+    if (style !== railStyled) railLines.forEach((l, i) => {
       const visible = on && !hiddenOps.has(rail.operators[rail.lines[i][0]][0]), h = railHalos[i];
       if (visible !== map.hasLayer(l)) { if (visible) { h.addTo(map); l.addTo(map); } else { h.remove(); l.remove(); } }
       if (!visible) return;
@@ -1119,11 +1204,15 @@
       h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
       if (lit) { h.bringToFront(); l.bringToFront(); }
     });
+    railStyled = style;
     const stations = on && z >= 11;
     if (stations !== map.hasLayer(railStations)) {
       if (stations) { railStations.addTo(map); railLabels.addTo(map); } else { railStations.remove(); railLabels.remove(); }
     }
-    if (stations) railStations.eachLayer((m) => m.setStyle({ radius: stationRadius(z, m.options.lines) }));
+    if (stations && radiusBand !== (z < 13 ? 0 : z < 15 ? 1 : 2)) {
+      radiusBand = z < 13 ? 0 : z < 15 ? 1 : 2;
+      railStations.eachLayer((m) => m.setStyle({ radius: stationRadius(z, m.options.lines) }));
+    }
     stationLabels();
     const b = $("map").querySelector(".rail-btn");
     b.textContent = t("railLayer");
@@ -1853,6 +1942,7 @@
       loaded.set(slug, part);
     }));
     allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
+    dataChanged();
     offerNewer();
   }
 
@@ -1879,7 +1969,7 @@
     loaded.delete(slug);
     await loadPrefs([slug]);
     choosePrefs(chosen);
-    renderedFor = listSig = null;  // the same listings may have changed
+    listSig = null;  // the same listings may have changed
     render();
   }
 
@@ -1887,7 +1977,7 @@
     chosen = slugs;
     db = Filter.combine(slugs.map((s) => loaded.get(s)));
     areaNames = new Map(db.index.areas.map(([code, name]) => [code, name]));
-    facetsFor = null;
+    dataChanged();
     fitNext = "results";
     $("filters-body").innerHTML = "";  // the area lists change
   }
@@ -1902,7 +1992,7 @@
     if (want.join() !== chosen.join()) choosePrefs(want);
     const before = mode, p = readHash(), key = p.get("id");
     modeChanged(before);
-    if (conditionsHash() !== renderedFor) render(); else placeMap();
+    if (resultsKey() !== drawn.search) render(); else placeMap();  // (the same results: the map goes where it says)
     if (key) { addTabs([key]); showTab(key); }  // a listing: its tab (opened when it isn't, as from a link)
     else if (p.get("cmp") === "1" && mode === "favorites") compareFavs(false);
     else if (tab !== "list") showTab("list");
@@ -1912,7 +2002,7 @@
     history.scrollRestoration = "manual";  // the list keeps its place itself (per tab and view)
     watchUpdates();
     mapReady();  // the map loads while the listings do
-    setTimeout(() => { if (waiting) { waiting = false; if (renderedFor) listResults(); } }, MAP_WAIT);  // or list them all
+    setTimeout(() => { if (waiting) { waiting = false; if (drawn.search) listResults(); } }, MAP_WAIT);  // or list them all
     applyTheme();
     applyLanguage();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);
