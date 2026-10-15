@@ -98,8 +98,10 @@ CREATE TABLE IF NOT EXISTS ended (           -- tombstones of deleted listings, 
     first_seen TEXT NOT NULL, price INTEGER, ended_at TEXT NOT NULL,   -- ended_at: ISO timestamp of the removal
     PRIMARY KEY (type, id)
 );
+CREATE INDEX IF NOT EXISTS events_run ON events (run_id, type, id);   -- a run's events (export, the retyped check)
 """
-COLUMNS = [("areas", "missed_on", "TEXT")]  # (table, column, type)
+COLUMNS = [("areas", "missed_on", "TEXT"),
+           ("runs", "progress", "TEXT")]  # (table, column, type). progress: JSON {phase, text, at} while running
 
 
 class DB:

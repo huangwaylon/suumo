@@ -10,6 +10,7 @@ from suumo import pipeline
 from suumo.archive import Archive
 from suumo.db import DB
 from suumo.export import export
+from suumo.http import NetworkError
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
 from tests.helpers import FIXTURES, QUIET
@@ -317,9 +318,9 @@ def test_export_one_file_per_area_and_cleans_up(env):
 
 
 class EmptyAreaPage:
-    """Client whose area-selection page lists no areas (the area dropped off SUUMO's list)."""
+    """Client whose area-selection page lists only another area (ours dropped off SUUMO's list)."""
     def get(self, path):
-        return "<html><body></body></html>"
+        return '<html><body><input name="sc" value="13218"><label>福生市(3)</label></body></html>'
 
 
 def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
@@ -351,11 +352,28 @@ def test_area_listed_as_zero_without_a_link_is_reconciled_as_empty(env):
     assert status(db, 1) == status(db, 2) == "deleted"
 
 
-def test_area_listed_as_zero_with_nothing_held_is_just_empty(env):
-    db, archive, targets, _, _ = env
+def test_area_listed_as_zero_with_nothing_held_is_a_baseline(env):
+    db, archive, targets, crawl, _ = env
     p = Pipeline(db, archive, ZeroAreaPage(), targets, T0, "r0", log=QUIET)
     p.crawl_lists()
-    assert p.report["targets"][0]["areas"] == [{"code": "13219", "name": "狛江市", "status": "empty"}]
+    out = p.report["targets"][0]["areas"][0]
+    assert (out["status"], out["hits"], out["baseline"]) == ("complete", 0, True)
+    area = db.area("tokyo", "used_condo", "13219")
+    assert (area["baselined"], area["last_hits"], area["last_status"]) == (1, 0, "complete")
+    crawl(1, [rec(1)])                                          # its first listing later is 新着
+    assert events(db) == [("new", "1")]
+
+
+def test_a_new_condo_area_the_other_types_know_is_a_baseline_when_missing(env):
+    db, archive, _, _, _ = env                                  # env knows 13219 as a used_condo area
+    client = _list_client(['<html><body><input name="sc" value="13218"><label><a href="/ms/shinchiku/tokyo/'
+                           'sc_fussa/">福生市</a><span>(2)</span></label></body></html>'])
+    targets = [Target("tokyo", "new_condo", frozenset({"13219"}))]
+    Pipeline(db, archive, client, targets, T0, "r0", log=QUIET).crawl_lists()
+    assert client.paths == ["/ms/shinchiku/tokyo/city/"]        # no request for it
+    area = db.area("tokyo", "new_condo", "13219")
+    assert (area["name"], area["baselined"], area["last_hits"], area["last_status"]) == ("狛江市", 1, 0, "complete")
+    assert db.area("tokyo", "new_condo", "13218") is None       # not in the target's areas
 
 
 def test_listing_that_moves_area_keeps_its_history(env):
@@ -544,3 +562,107 @@ def test_an_id_new_under_two_types_in_one_run_is_new_under_both(env):
     crawl(1, [rec(1), rec(7)])
     rows = db.x("SELECT kind, type FROM events WHERE id='7' ORDER BY seq").fetchall()
     assert [tuple(r) for r in rows] == [("new", "new_condo"), ("new", "used_condo")]
+
+
+def area_page(*areas, path="ms/chuko"):
+    """An area-selection page: areas are (code, name, count, slug or None)."""
+    return "<html><body>" + "".join(
+        f'<input name="sc" value="{code}"><label>'
+        + (f'<a href="/{path}/tokyo/{slug}/">{name}</a>' if slug else name) + f"({n})</label>"
+        for code, name, n, slug in areas) + "</body></html>"
+
+
+class _Pages:
+    """A client answering by path: replies {path: html, or an exception, or a list of them in turn}, else default."""
+    def __init__(self, replies, default=None):
+        self.replies, self.default, self.paths = replies, default, []
+
+    def get(self, path):
+        self.paths.append(path)
+        reply = self.replies.get(path, self.default)
+        if isinstance(reply, list):
+            reply = reply.pop(0) if len(reply) > 1 else reply[0]
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+
+CITY = "/ms/chuko/tokyo/city/"
+KOMAE = "/ms/chuko/tokyo/sc_komae/?pc=100"
+
+
+def test_an_area_page_without_areas_is_an_error_and_reconciles_nothing(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    client = _Pages({}, default="<html><body>メンテナンス中</body></html>")
+    p = Pipeline(db, archive, client, targets, T0 + timedelta(days=1), "r1", log=QUIET)
+    assert p.crawl_lists()
+    assert client.paths == [CITY, CITY]                          # tried again once at the end
+    assert all("area page" in r["error"] for r in p.report["targets"])
+    assert db.listing("used_condo", "1")["missed"] == 0
+    assert db.x("SELECT pref FROM prefs").fetchone()[0] == "tokyo"   # given up on for today: crawled_at written
+
+
+def test_an_area_page_with_far_fewer_listings_than_held_is_an_error(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(i) for i in range(1, 26)])                     # 25 held
+    client = _Pages({CITY: area_page(("13219", "狛江市", 5, "sc_komae"))})
+    p = Pipeline(db, archive, client, targets, T0 + timedelta(days=1), "r1", log=QUIET)
+    p.crawl_lists()
+    assert client.paths == [CITY, CITY] and "5 listings in its areas, 25 held" in p.report["targets"][0]["error"]
+    assert all(db.listing("used_condo", str(i))["missed"] == 0 for i in range(1, 26))
+    client = _Pages({CITY: area_page(("13219", "狛江市", 18, "sc_komae"))}, default="<html></html>")
+    Pipeline(db, archive, client, targets, T0 + timedelta(days=1), "r2", log=QUIET).crawl_lists()
+    assert client.paths[:2] == [CITY, KOMAE]                     # 18 of 25: within the suspect margin, crawled
+
+
+def test_a_failed_target_is_tried_again_once_at_the_end(env):
+    db, archive, _, _, _ = env
+    targets = [Target("tokyo", "used_condo", frozenset({"13219"})), Target("tokyo", "land", frozenset({"13219"}))]
+    empty = area_page(("13219", "狛江市", 0, None))
+    client = _Pages({CITY: [RuntimeError("failed after 4 attempts"), empty]}, default=empty)
+    p = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET)
+    written = []
+    p.log = lambda line: written.append((len(client.paths), db.x("SELECT COUNT(*) FROM prefs").fetchone()[0]))
+    assert p.crawl_lists()
+    assert client.paths == [CITY, "/tochi/tokyo/city/", CITY]
+    assert (3, 0) in written and db.x("SELECT COUNT(*) FROM prefs").fetchone()[0] == 1  # written after the retry
+    assert [("error" in r, r.get("retried", False)) for r in p.report["targets"]] == [
+        (True, False), (False, False), (False, True)]
+
+
+def test_only_the_failed_areas_are_crawled_again(env):
+    db, archive, targets, _, _ = env
+    page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")
+    client = _Pages({CITY: area_page(("13219", "狛江市", 67, "sc_komae")), KOMAE: [RuntimeError("HTTP 503"), page]})
+    p = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET)
+    p.crawl_lists()
+    assert client.paths == [CITY, KOMAE, KOMAE]                  # not the area page again
+    assert p.report["targets"][-1]["areas"][0]["status"] == "complete"
+    assert db.area("tokyo", "used_condo", "13219")["last_status"] == "complete"
+
+
+def test_network_errors_in_a_row_stop_the_crawl(env):
+    db, archive, _, _, _ = env
+    targets = [Target("tokyo", "used_condo", None), Target("tokyo", "land", None), Target("chiba", "land", None)]
+    city = area_page(*[(f"1321{i}", f"市{i}", 5, f"sc_{i}") for i in range(3)])
+    client = _Pages({CITY: city}, default=NetworkError("network unreachable"))
+    p = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET)
+    assert not p.crawl_lists()
+    # two areas in a row end the target; the next target's area page fails too: the crawl stops (chiba not asked)
+    assert client.paths == [CITY, "/ms/chuko/tokyo/sc_0/?pc=100", "/ms/chuko/tokyo/sc_1/?pc=100", "/tochi/tokyo/city/"]
+    assert p.report["offline"] and db.x("SELECT COUNT(*) FROM prefs").fetchone()[0] == 0
+
+
+def test_purge_leaves_a_tombstone_for_an_unsaved_ended_listing(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)], saved={"used_condo:2"})
+    crawl(2, [rec(1)], saved={"used_condo:2"})                   # ended, kept: saved
+    removed_at = db.listing("used_condo", "2")["removed_at"]
+    p, _ = crawl(3, [rec(1)])                                    # unsaved
+    p.purge()
+    tomb = db.x("SELECT first_seen, price, ended_at FROM ended WHERE id='2'").fetchone()
+    assert status(db, 2) == "deleted" and tuple(tomb) == ("2026-10-05", 50_000_000, removed_at)
+    crawl(4, [rec(1), rec(2)])
+    assert events(db)[-1] == ("relisted", "2") and db.listing("used_condo", "2")["first_seen"] == "2026-10-05"
