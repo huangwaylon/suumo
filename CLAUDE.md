@@ -111,7 +111,8 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   with its page fetched and most tags; the others become `others` links). Land
   listed under both `new_house` and `land` is kept once, as land. Stations are identified by name, one spelling per prefecture (`catalog.unify_station_names`: 荻窪駅 → 荻窪). A building
   condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly. 新着 = a new/relisted
-  event within 7 days, 値下げ = a drop within 30 days. 南向き = direction 南/南東/南西 or a south tag; 最上階 = floor ==
+  event within 7 days (one within 14 days of that listing's removal is a return, not 新着: `catalog.RETURN_DAYS`),
+  値下げ = a drop within 30 days. 南向き = direction 南/南東/南西 or a south tag; 最上階 = floor ==
   floors above ground (or the tag); 2階以上, タワー (20+ floors) from the floor fields; 仲介手数料なし = deal type
   売主/事業主/代理 without a broker, set when any agent of the property has it; 即入居 = handover 即… or the tag;
   駐車場 = houses/land with a car space or a 駐車 tag (condos never); 管理費等 = management + repair fund (+ other
