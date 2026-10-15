@@ -149,6 +149,22 @@ def test_client_404_is_gone_not_an_error(monkeypatch):
     assert c.delay == 1.0
 
 
+def test_client_network_errors_retry_then_raise_without_a_last_sleep(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(http.time, "sleep", sleeps.append)
+    c = http.Client(delay=1.0, log=QUIET)
+    monkeypatch.setattr(c, "_last", -1e9)
+
+    def get(url, timeout, allow_redirects):
+        c._last = -1e9  # no delay floor between attempts: only the backoff sleeps are left
+        raise http.requests.ConnectionError("down")
+    c.session.get = get
+    with pytest.raises(RuntimeError, match="failed after 4 attempts"):
+        c.get("/x/")
+    assert sleeps == [5, 10, 20]                            # backoff after attempts 1-3, none after the last
+    assert c.delay > 1.0 and c.pushbacks == 0               # slowed down; a network error isn't a pushback
+
+
 def _queue_db(tmp_path, n):
     db = DB(tmp_path / "s.db")
     for i in range(n):

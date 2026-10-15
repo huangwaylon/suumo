@@ -8,7 +8,7 @@ from .archive import Archive
 from .db import dumps
 from .parse import TYPES, parse_list_page
 from .pipeline import apply_detail
-from .scope import in_scope
+from .scope import by_key, in_scope
 
 EXPORT_ONLY = {"id", "type", "area_code", "area", "url", "first_seen", "removed_at", "has_detail", "dup_key"}
 
@@ -16,7 +16,8 @@ EXPORT_ONLY = {"id", "type", "area_code", "area", "url", "first_seen", "removed_
 def out_of_scope(db, targets):
     """[(pref, type, area_code, n)] of stored listings that scope.toml no longer covers."""
     rows = db.x("SELECT pref, type, area_code, COUNT(*) n FROM listings GROUP BY pref, type, area_code").fetchall()
-    return [r for r in rows if not in_scope(targets, r["pref"], r["type"], r["area_code"])]
+    scope = by_key(targets)
+    return [r for r in rows if not in_scope(scope, r["pref"], r["type"], r["area_code"])]
 
 
 def prune(db, archive: Archive, targets, data_dir: Path, apply=False, log=print):
@@ -89,6 +90,7 @@ def seed(db, targets, data_dir: Path, ts, log=print):
     state.db): listings with their first_seen and listing-page fields, and each area with listings as baselined,
     so the next crawl records what changed since that export. Makes no requests."""
     held = {r["pref"] for r in db.x("SELECT DISTINCT pref FROM listings")}
+    scope = by_key(targets)
     n = 0
     for pref in sorted({t.pref for t in targets} - held):
         names_file = data_dir / pref / "areas.json"
@@ -97,7 +99,7 @@ def seed(db, targets, data_dir: Path, ts, log=print):
         for f in sorted((data_dir / pref).glob("*/*.jsonl")):
             for line in f.read_text().splitlines():
                 r = json.loads(line)
-                if not in_scope(targets, pref, r["type"], r["area_code"]):
+                if not in_scope(scope, pref, r["type"], r["area_code"]):
                     continue
                 body = {k: v for k, v in r.items() if k not in EXPORT_ONLY}
                 lst = {**body, "path": r["url"].removeprefix("https://suumo.jp")}

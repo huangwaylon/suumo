@@ -77,6 +77,9 @@ class Client:
             except requests.RequestException as e:
                 err = repr(e)
                 self._slow_down("network error")
+            if attempt == RETRIES:  # no point waiting after the last attempt
+                self.log(f"  ! {err} on {url} (attempt {attempt}/{RETRIES})")
+                break
             self.log(f"  ! {err} on {url} (attempt {attempt}/{RETRIES}), sleeping {backoff}s")
             time.sleep(backoff)
         raise RuntimeError(f"failed after {RETRIES} attempts: {url}")

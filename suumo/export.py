@@ -19,7 +19,7 @@ from pathlib import Path
 
 from .archive import write_atomic
 from .parse import TYPES, clean
-from .scope import in_scope
+from .scope import by_key
 
 FIELD_ORDER = [
     "id", "type", "area_code", "area", "town", "address", "name", "title",
@@ -94,16 +94,18 @@ def _sync_dir(directory, files):
 
 def export(db, targets, data_dir, run_id=None):
     data_dir = Path(data_dir)
+    scope = by_key(targets)
     stats = {}
     for pref in sorted({t.pref for t in targets}):
         removed = {}
         for type_key in TYPES:
-            if not any(t.pref == pref and t.type == type_key for t in targets):
+            target = scope.get((pref, type_key))
+            if target is None:
                 shutil.rmtree(data_dir / pref / type_key, ignore_errors=True)
                 continue
             rows = db.x("SELECT * FROM listings WHERE pref=? AND type=? ORDER BY CAST(id AS INTEGER)",
                         pref, type_key).fetchall()
-            rows = [r for r in rows if in_scope(targets, pref, type_key, r["area_code"])]
+            rows = [r for r in rows if target.includes(r["area_code"])]
             by_area = defaultdict(list)
             for r in rows:
                 if r["status"] == "active":

@@ -52,5 +52,12 @@ def load(path):
     return targets
 
 
+def by_key(targets):
+    """{(pref, type): Target}: one lookup per listing instead of a scan over every target."""
+    return {(t.pref, t.type): t for t in targets}
+
+
 def in_scope(targets, pref, type_key, area_code):
-    return any(t.pref == pref and t.type == type_key and t.includes(area_code) for t in targets)
+    """targets: a list of Targets or a by_key() dict (faster when called per listing)."""
+    t = (targets if isinstance(targets, dict) else by_key(targets)).get((pref, type_key))
+    return t is not None and t.includes(area_code)

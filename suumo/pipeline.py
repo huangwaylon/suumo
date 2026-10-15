@@ -17,7 +17,7 @@ from .db import dumps
 from .detail import parse_detail
 from .export import dup_key
 from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
-from .scope import in_scope
+from .scope import by_key, in_scope
 
 REMOVE_AFTER_MISSES = 2
 EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/events/ in git keeps all)
@@ -36,6 +36,7 @@ P_NEW, P_BACKFILL = 1, 0
 class Pipeline:
     def __init__(self, db, archive: Archive, client, targets, now: datetime, run_id: str, log=print, saved=()):
         self.db, self.archive, self.client, self.targets = db, archive, client, targets
+        self.scope = by_key(targets)
         self.saved = set(saved)  # "type:id" keys on the shared saved list: kept after they're gone
         self.now, self.run_id, self.log = now, run_id, log
         self.ts = now.isoformat(timespec="seconds")
@@ -250,7 +251,7 @@ class Pipeline:
             if r["status"] != "active":  # ended or deleted since it was queued
                 self.db.dequeue(r["type"], r["id"])
                 continue
-            if not in_scope(self.targets, r["pref"], r["type"], r["area_code"]):
+            if not in_scope(self.scope, r["pref"], r["type"], r["area_code"]):
                 continue  # left for `prune`
             if self._copy_twin(r):  # land listed under new_house too: the same page, already fetched
                 done += 1
