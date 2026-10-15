@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS areas (
     name TEXT, slug TEXT,
     baselined INTEGER NOT NULL DEFAULT 0,   -- 1 once a complete crawl established its starting set
     last_hits INTEGER, last_status TEXT,
+    missed_on TEXT,                         -- the crawl day (YYYY-MM-DD) whose misses were counted
     PRIMARY KEY (pref, type, code)
 );
 
@@ -71,13 +72,28 @@ def exclusive(lock_path):
         yield
 
 
+# Additions to databases created by older code: (table, column, type). Each is applied once, by `migrate`.
+COLUMNS = [("areas", "missed_on", "TEXT")]
+
+
 class DB:
-    def __init__(self, path):
+    def __init__(self, path, migrate=True):
+        """migrate=False for readers (`status`): they never alter a database a run may be writing; writing commands
+        call migrate() once they hold the lock."""
         self.conn = sqlite3.connect(path)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
+        if migrate:
+            self.migrate()
+
+    def migrate(self):
+        """Bring an older database up to SCHEMA: additive and idempotent (old code keeps working on the result)."""
+        for table, column, kind in COLUMNS:
+            if column not in {r["name"] for r in self.x(f"PRAGMA table_info({table})")}:
+                self.x(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
+        self.commit()
 
     def x(self, sql, *args):
         return self.conn.execute(sql, args)

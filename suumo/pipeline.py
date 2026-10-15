@@ -19,7 +19,8 @@ from .export import dup_key
 from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import by_key, in_scope
 
-REMOVE_AFTER_MISSES = 2
+REMOVE_AFTER_MISSES = 2  # consecutive complete crawls, on different crawl days, that don't see a listing
+DAY_STARTS = 4           # hour SUUMO's daily update lands; a crawl day runs from it to the next day's
 EVENT_DAYS = 90          # events/runs rows kept this long in the DB (data/events/ in git keeps all)
 SUSPECT_DROP = 0.30      # an area losing more than this share at once is distrusted (no removals)
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
@@ -42,6 +43,7 @@ class Pipeline:
         self.ts = now.isoformat(timespec="seconds")
         self.today = now.date().isoformat()
         self.day = now.strftime("%Y%m%d")
+        self.crawl_day = (now - timedelta(hours=DAY_STARTS)).date().isoformat()  # one miss per area per crawl day
         self.report = {"targets": [], "detail": {}}
 
     def save_progress(self, phase, text):
@@ -196,7 +198,10 @@ class Pipeline:
                          removed_at=NULL, missed=0, last_seen=? WHERE type=? AND id=?""",
                       dumps(rec), a["code"], a["name"], pref, self.ts, type_key, lid)
 
-        if complete and not suspect:
+        # misses count once per crawl day: a re-crawl the same day (a restarted crawl) saw the same SUUMO data.
+        # A suspect crawl uses up the day too, so a glitch must outlast it by two crawl days to remove anything.
+        counted = complete and area_row["missed_on"] == self.crawl_day
+        if complete and not suspect and not counted:
             for lid, row in held.items():
                 if lid in recs or row["status"] != "active":
                     continue
@@ -217,13 +222,15 @@ class Pipeline:
 
         status = "suspect" if suspect else ("complete" if complete else "incomplete")
         # last_hits is always the latest count: a real drop is distrusted for one crawl, then the new level holds
-        self.db.x("""UPDATE areas SET last_hits=?, last_status=?, baselined=?
+        self.db.x("""UPDATE areas SET last_hits=?, last_status=?, baselined=?, missed_on=?
                      WHERE pref=? AND type=? AND code=?""",
-                  hits, status,
-                  1 if (baselined or (complete and not suspect)) else 0, pref, type_key, a["code"])
+                  hits, status, 1 if (baselined or (complete and not suspect)) else 0,
+                  self.crawl_day if complete else area_row["missed_on"], pref, type_key, a["code"])
         line = f"  {a['name']:<10} hits={hits:>5} parsed={len(recs):>5} {status}"
         if not baselined and complete:
             line += " (baseline)"
+        elif counted and not suspect:
+            line += " (misses already counted this crawl day)"
         line += "".join(f" {k}={v}" for k, v in counts.items() if v)
         if errors:
             line += f" errors={list(errors)[:2]}"

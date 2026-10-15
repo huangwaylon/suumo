@@ -1,5 +1,6 @@
 """Lifecycle rules, offline: reconcile() is driven with synthetic list records, no network."""
 import json
+import sqlite3
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -30,8 +31,8 @@ def env(tmp_path):
     targets = [Target("tokyo", "used_condo", frozenset({"13219"}))]
     db.upsert_area("tokyo", "used_condo", AREA)
 
-    def crawl(day, recs, complete=True, hits=None, saved=()):
-        now = T0 + timedelta(days=day)
+    def crawl(day, recs, complete=True, hits=None, saved=(), hours=0):
+        now = T0 + timedelta(days=day, hours=hours)
         p = Pipeline(db, archive, None, targets, now, now.strftime("%Y%m%dT%H%M%S"), log=QUIET, saved=saved)
         db.x("INSERT OR IGNORE INTO runs (run_id, started) VALUES (?, ?)", p.run_id, p.ts)
         out = p.reconcile("tokyo", "used_condo", AREA, len(recs) if hits is None else hits,
@@ -87,6 +88,53 @@ def test_deleted_after_two_complete_misses(env):
     crawl(2, [rec(1)])
     assert status(db, 2) == "deleted" and events(db) == [("removed", "2")]
     assert not archive.detail_path("tokyo", "used_condo", "2").exists()
+
+
+def test_a_second_crawl_on_the_same_crawl_day_counts_no_second_miss(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)])                          # 03:00: still the previous crawl day (it starts at 04:00)
+    _, out = crawl(1, [rec(1)], hours=0.5)      # 03:30 the same night: a restarted crawl
+    assert status(db, 2) == "active" and db.listing("used_condo", "2")["missed"] == 1 and out["missing"] == 0
+    crawl(1, [rec(1)], hours=1.5)               # 04:30: the next crawl day
+    assert status(db, 2) == "deleted"
+
+
+def test_an_incomplete_crawl_does_not_use_up_the_crawl_day(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    crawl(1, [rec(1)], complete=False, hits=2)
+    crawl(1, [rec(1)], hours=0.5)               # complete, same day: counts
+    crawl(1, [rec(1)], hours=0.7)               # again: doesn't
+    assert db.listing("used_condo", "2")["missed"] == 1
+    crawl(2, [rec(1)])
+    assert status(db, 2) == "deleted"
+
+
+def test_a_suspect_crawl_uses_up_the_crawl_day(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(i) for i in range(1, 28)])
+    crawl(1, [rec(i) for i in range(1, 19)])                # suspect
+    crawl(1, [rec(i) for i in range(1, 19)], hours=0.5)     # the same day, no longer suspect: still not counted
+    assert db.listing("used_condo", "27")["missed"] == 0
+    crawl(2, [rec(i) for i in range(1, 19)])
+    crawl(3, [rec(i) for i in range(1, 19)])
+    assert status(db, 27) == "deleted"
+
+
+def test_migrate_adds_columns_to_an_old_database(tmp_path):
+    old = sqlite3.connect(tmp_path / "old.db")
+    old.execute("CREATE TABLE areas (pref TEXT NOT NULL, type TEXT NOT NULL, code TEXT NOT NULL, name TEXT, "
+                "slug TEXT, baselined INTEGER NOT NULL DEFAULT 0, last_hits INTEGER, last_status TEXT, "
+                "PRIMARY KEY (pref, type, code))")
+    old.execute("INSERT INTO areas (pref, type, code) VALUES ('tokyo', 'land', '13219')")
+    old.commit()
+    old.close()
+    reader = DB(tmp_path / "old.db", migrate=False)              # `status` never alters
+    assert "missed_on" not in {r["name"] for r in reader.x("PRAGMA table_info(areas)")}
+    db = DB(tmp_path / "old.db")
+    db.migrate()                                                 # idempotent
+    assert db.area("tokyo", "land", "13219")["missed_on"] is None
 
 
 def test_saved_listing_is_kept_as_ended(env):

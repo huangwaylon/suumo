@@ -62,7 +62,7 @@ def parse_budget(s):
 class Ctx:
     def __init__(self, args):
         self.args = args
-        self.db = DB(ROOT / args.db)
+        self.db = DB(ROOT / args.db, migrate=False)
         self.archive = Archive(ROOT / args.archive)
         self.targets = scope_mod.load(ROOT / args.scope)
         self.data = ROOT / args.data
@@ -261,6 +261,8 @@ def main():
         return args.func(args)
     c = Ctx(args)
     with exclusive(c.lock) if args.access == "write" else contextlib.nullcontext():
+        if args.access == "write":
+            c.db.migrate()
         args.func(c)
 
 
