@@ -164,7 +164,8 @@
   }
   function image(it, w, h) {
     let p = it.image;
-    if (!p) return "";
+    if (p == null || p === "") return "";
+    if (typeof p === "number") p = Filter.photo(p, it.id);  // (an item's photo number: 0 is one)
     if (p.startsWith("http")) return p.replace(/w=\d+&h=\d+/, `w=${w}&h=${h}`);
     if (!p.startsWith("gazo/")) {  // shortened by the builder: dir/sub/n/file
       const [a, b, c, file] = p.split("/");
@@ -454,7 +455,7 @@
   function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card${tabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
-      <div class="ph">${it.image ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
+      <div class="ph">${it.image != null ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}${usd(it)}</div>
         <div class="spec">${spec}</div>
@@ -1237,7 +1238,7 @@
 
   function popup(town, list) {
     return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map((it) =>
-      `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
+      `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image != null ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
         <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
 
@@ -1267,7 +1268,7 @@
     const newBuild = (it) => it.type === "new_condo" || it.type === "new_house";
     // [label, cell html, best: [value of a column, "min" | "max"]]
     const ROWS = [
-      ["", ([it]) => `<div class="cmp-top"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div></a>${
+      ["", ([it]) => `<div class="cmp-top"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image != null ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div></a>${
         `<button class="cmp-x" data-tab-close="${esc(it.key)}" aria-label="${esc(t("cmpHide", money(it.price)))}">${icon("x")}</button>`}</div>`],
       ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
       ["price", ([it]) => `<span class="num">${price(it, true)}</span>${usd(it)}`, [([it]) => it.price, "min"]],

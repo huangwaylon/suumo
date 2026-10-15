@@ -43,15 +43,20 @@
     建築条件なし: (it) => !(it.flags & bit(it.part, "conditional")),
     ...Object.fromEntries(Object.entries(LAND_TAGS).map(([t, m2]) => [t, (it) => it.land != null && it.land >= m2])),
   };
-  const tagSet = (part) => (part.tagSet ??= new Set(part.index.features));
-  const hasTag = (it, f) => it.features.has(f) || (!!TAG_RULES[f] && !tagSet(it.part).has(f) && TAG_RULES[f](it));
+  // A tag's position in its prefecture's table (index.features), null when that index doesn't have it.
+  const tagPos = (part, f) => (part.tagPos ??= new Map(part.index.features.map((t, k) => [t, k]))).get(f) ?? null;
+  const hasTagId = (it, f) => { const k = tagPos(it.part, f); return k != null && it.tagIds.includes(k); };
+  const hasTag = (it, f) => {
+    const k = tagPos(it.part, f);
+    return k != null ? it.tagIds.includes(k) : !!TAG_RULES[f] && TAG_RULES[f](it);
+  };
   // A flag of an item, read from its own prefecture's index; an index older than the flag answers from the tags it
   // still has (the other way round from TAG_RULES).
   const FLAG_TAGS = { south: SOUTH_TAGS, ready: READY_TAGS, top: [TOP_TAG] };
   function flagOf(it, name) {
     const b = it.part.flags[name];
     if (b) return !!(it.flags & b);
-    return (FLAG_TAGS[name] || []).some((t) => it.features.has(t));
+    return (FLAG_TAGS[name] || []).some((t) => hasTagId(it, t));
   }
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
@@ -66,6 +71,7 @@
 
   // A listing's tags: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
   const B64 = Object.fromEntries([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"].map((ch, v) => [ch, v]));
+  const NONE = Object.freeze([]);  // (no tags: one shared empty list)
   function tagIds(mask) {
     const out = [];
     for (let k = 0; k < mask.length; k++) {
@@ -75,15 +81,18 @@
     return out;
   }
 
-  // A listing's photo: a number is the usual path, shortened by the builder (see site._image).
+  // A listing's photo: a number is the usual path, shortened by the builder (see site._image). Items keep the
+  // number (photo 0 is one); the page expands it when it shows the photo.
   const photo = (v, id) => (typeof v === "number" ? `030/N010000/${id.slice(-3)}/${String(v).padStart(4, "0")}.jpg` : v);
 
   function load(index) {
-    const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map();
+    const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map(), byKey = new Map();
+    const towns = new Array(index.towns.length);  // each town's name without the prefecture, one string per town
+    const db = { index, items, flags: index.flags, stationNames: null, byKey, parts: null, stops: null };
     let id = 0;
     for (let i = 0; i < n; i++) {
       id += c.id[i];
-      const type = index.types[c.type[i]], area = index.areas[c.area[i]], town = index.towns[c.town[i]];
+      const type = index.types[c.type[i]], area = index.areas[c.area[i]], tid = c.town[i], town = index.towns[tid];
       const st = c.stations[i], stations = [];
       for (let j = 0; j < st.length; j++) {  // [name, walk minutes, bus minutes, car km] (nulls when not)
         const m = c.access[i][j];
@@ -96,29 +105,28 @@
         stations, stop: c.stop?.[i] ?? null, flags: c.flags[i],
         others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
         dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
-        town: town ? town[0].slice(area[2].length) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
-        name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: photo(c.image[i], sid),
+        town: town ? (towns[tid] ??= town[0].slice(area[2].length)) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
+        name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: c.image[i],
         fees: c.fees?.[i] != null ? c.fees[i] * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
         // positions in this prefecture's tables (index.areas, .stations, .features), for counting
-        areaId: c.area[i], stationIds: st, tagIds: tagIds(c.features[i]), part: null,
+        areaId: c.area[i], stationIds: st, tagIds: c.features[i] ? tagIds(c.features[i]) : NONE, part: db,
         nameId: c.name[i], townId: c.town[i], layoutId: c.layout[i], stopId: null,
       };
-      it.features = new Set(it.tagIds.map((k) => index.features[k]));
       if (it.stop) {  // bus stops get a table of their own (for text search)
         if (!stops.has(it.stop[0])) stops.set(it.stop[0], stops.size);
         it.stopId = stops.get(it.stop[0]);
       }
       items[i] = it;
+      byKey.set(it.key, it);
     }
     index.columns = null;  // the items hold everything now; free the raw columns
     const gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
     // station -> [kana, English] (null for bus stops: kanji only)
     const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
-    const db = { index, items: items.filter((it) => !(it.flags & gone)), flags: index.flags, stationNames,
-      byKey: new Map(items.map((it) => [it.key, it])) };
+    db.items = items.filter((it) => !(it.flags & gone));
+    db.stationNames = stationNames;
     db.parts = [db];  // the prefectures searched: one here, several after combine
     db.stops = [...stops.keys()];
-    for (const it of items) it.part = db;
     return db;
   }
 
@@ -368,7 +376,7 @@
       const only = f.length ? f[0] : null, free = only === null;
       if (free) {
         out.total++;
-        // a tag counts when the item has all chosen tags but it, i.e. (it is in it.features) all of them
+        // a tag counts when the item has all chosen tags but it, i.e. (it is among its tags) all of them
         const ids = it.tagIds;
         for (let k = 0; k < ids.length; k++) tally.tags.add(ids[k]);
       }
@@ -837,6 +845,6 @@
     return out;
   }
 
-  return { emptyQuery, upgrade, normalize, stationKey, load, combine, matches, search, count, counts, facets, stationMatch,
+  return { emptyQuery, upgrade, normalize, stationKey, photo, load, combine, matches, search, count, counts, facets, stationMatch,
     suggest, parse, applyParse, nameKey };
 });
