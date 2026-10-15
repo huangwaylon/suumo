@@ -2093,15 +2093,25 @@
     const ready = [...newer].filter((s) => loaded.has(s));
     if (!ready.length) return;
     for (const s of ready) newer.delete(s);
-    toast(t("dataUpdated"), [t("refresh"), () => ready.forEach(reloadPref)]);
+    toast(t("dataUpdated"), [t("refresh"), () => reloadPrefs(ready).catch(() => {})]);
   }
 
-  async function reloadPref(slug) {
-    const old = loaded.get(slug);
-    loaded.delete(slug);
-    await loadPrefs([slug]);
+  // Newer data for these prefectures, loaded in place (all at once: db is rebuilt once, when every one is there).
+  async function reloadPrefs(slugs) {
+    if (!Filter.canLoad(slugs.length)) return location.reload();  // (a page refreshed in place very many times)
+    const old = new Map(slugs.filter((s) => loaded.has(s)).map((s) => [s, loaded.get(s)]));
+    for (const s of slugs) loaded.delete(s);
+    try {
+      await loadPrefs(slugs);
+    } catch (err) {  // (offline again: keep showing what was there, all of it)
+      for (const [s, part] of old) {
+        if (loaded.has(s)) Filter.release(loaded.get(s));
+        loaded.set(s, part);
+      }
+      throw err;
+    }
     choosePrefs(chosen);
-    if (old) Filter.release(old);  // (what's still drawn from it reads as nothing until it's redrawn)
+    for (const part of old.values()) Filter.release(part);  // (still drawn from them: nothing until redrawn)
     listSig = null;  // the same listings may have changed
     render();
   }

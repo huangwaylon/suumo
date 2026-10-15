@@ -187,7 +187,10 @@
   function release(db) {
     for (const p of db.parts) parts[p.no] = null;
     for (const h of [...cache.keys()]) if (!parts[h >>> SHIFT]) cache.delete(h);
+    textCache = [null, new Map()];  // (it may hold a released part)
   }
+  // Whether n more indexes can be loaded in this page (handles have room for MAX_PARTS loads).
+  const canLoad = (n) => parts.length + n <= MAX_PARTS;
 
   // Where db's towns are: [lat, lng] of each one with coordinates.
   const places = (db) => db.parts.flatMap((p) => Array.from(p.townLat, (lat, t) => [lat, p.townLng[t]]).filter(([lat]) => lat === lat));
@@ -1123,6 +1126,6 @@
     return out;
   }
 
-  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, release, every, find, item, get,
+  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, release, canLoad, every, find, item, get,
     partOf, positions, places, matches, search, count, counts, facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
 });
