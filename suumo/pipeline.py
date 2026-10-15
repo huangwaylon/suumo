@@ -8,6 +8,8 @@ A run crawls the search results (once a day with `--crawl-at`) and diffs them ag
     not saved: deleted (row, queue entry, archived page; git history keeps the data)
   a kept listing seen again -> active (relisted event); one no longer saved -> deleted by `purge`
   a deleted listing seen again within TOMBSTONE_DAYS -> back with its first_seen (relisted event, not new)
+  an id first seen under another type (re-typed, or land also listed as new_house) -> that row's first_seen, no
+    new event (unless the other type's got one in the same run), queued at backfill
 """
 import json
 import time
@@ -198,7 +200,7 @@ class Pipeline:
         prev_hits = area_row["last_hits"]
         suspect = (complete and prev_hits is not None and prev_hits >= SUSPECT_MIN_HITS
                    and hits < prev_hits * (1 - SUSPECT_DROP))
-        counts = {"new": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
+        counts = {"new": 0, "retyped": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
         held = {r["id"]: r for r in self.db.area_listings(pref, type_key, a["code"])}
         rows = {lid: held.get(lid) or self.db.listing(type_key, lid) for lid in recs}  # or moved from another area
         wanted = self._leads(type_key, recs, rows)
@@ -208,10 +210,14 @@ class Pipeline:
             ident = {"type": type_key, "id": lid, "pref": pref, "area_code": a["code"]}
             if row is None:
                 tomb = self.db.x("SELECT first_seen, price FROM ended WHERE type=? AND id=?", type_key, lid).fetchone()
+                # the same id under another type (by primary key: no scan): land also listed under new_house, or a
+                # listing re-typed (new_house -> used_house). Not new; the old row ends after its misses.
+                other = None if tomb else next(
+                    (r for t in TYPES if t != type_key and (r := self.db.listing(t, lid))), None)
+                first = tomb["first_seen"] if tomb else other["first_seen"] if other else self.today
                 self.db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen,
                              last_seen) VALUES (?,?,?,?,?,?,?,?)""",
-                          type_key, lid, pref, a["code"], a["name"], dumps(rec),
-                          tomb["first_seen"] if tomb else self.today, self.ts)
+                          type_key, lid, pref, a["code"], a["name"], dumps(rec), first, self.ts)
                 if tomb:  # deleted lately and back: relisted (its page was deleted with it: fetched again)
                     self.db.x("DELETE FROM ended WHERE type=? AND id=?", type_key, lid)
                     if baselined:
@@ -223,6 +229,14 @@ class Pipeline:
                     if wanted(lid):
                         self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
                     counts["relisted"] += 1
+                elif other:
+                    if baselined and self.db.x(
+                            "SELECT 1 FROM events WHERE run_id=? AND type=? AND id=? AND kind IN ('new', 'relisted')",
+                            self.run_id, other["type"], lid).fetchone():
+                        self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})  # both new today
+                    if wanted(lid):
+                        self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
+                    counts["retyped"] += 1
                 elif baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
                     if wanted(lid):

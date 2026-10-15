@@ -517,3 +517,30 @@ def test_a_lead_given_up_on_hands_over(env):
     db.x("UPDATE queue SET attempts=?, last_error='gone: 404' WHERE id='1'", pipeline.MAX_DETAIL_ATTEMPTS)
     crawl(1, [rec(1, **SAME), rec(2, **SAME)])
     assert _fetch_queue(db, archive, targets) == ["2"]
+
+
+def _held_as_new_condo(db, lid, first_seen="2026-10-01"):
+    db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, first_seen, last_seen)
+            VALUES ('new_condo', ?, 'tokyo', '13219', '狛江市', '{}', ?, ?)""", str(lid), first_seen, first_seen)
+
+
+def test_an_id_held_under_another_type_is_not_new(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1)])
+    _held_as_new_condo(db, 7)                                   # SUUMO re-typed it: new_condo -> used_condo
+    _, out = crawl(1, [rec(1), rec(7)])
+    row = db.listing("used_condo", "7")
+    assert events(db) == [] and out["retyped"] == 1 and row["first_seen"] == "2026-10-01"
+    q = db.x("SELECT priority, reason FROM queue WHERE id='7'").fetchone()
+    assert (q["priority"], q["reason"]) == (pipeline.P_BACKFILL, "backfill")
+
+
+def test_an_id_new_under_two_types_in_one_run_is_new_under_both(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(1)])
+    _held_as_new_condo(db, 7, "2026-10-06")
+    run_id = (T0 + timedelta(days=1)).strftime("%Y%m%dT%H%M%S")  # the run that crawls day 1
+    db.add_event(run_id, "new", {"type": "new_condo", "id": "7", "pref": "tokyo", "area_code": "13219"}, {})
+    crawl(1, [rec(1), rec(7)])
+    rows = db.x("SELECT kind, type FROM events WHERE id='7' ORDER BY seq").fetchall()
+    assert [tuple(r) for r in rows] == [("new", "new_condo"), ("new", "used_condo")]
