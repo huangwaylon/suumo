@@ -196,6 +196,12 @@ def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
         (name, new), r, drop = meta[i], i.rec, snap.drop(i)
         town = town_of(r.get("address"), i.pref)
+        flags = {"leasehold": i.leasehold, "conditional": i.conditional, "post1981": i.post_1981,
+                 "new": snap.is_new_at(new), "dropped": drop, "saved": i.saved, "gone": i.gone,
+                 "relisted": new and new[1] == "relisted", "south": i.south, "top": i.top, "upper": i.upper,
+                 # no commission when any agent listing the property sells it without one
+                 "nofee": i.nofee or any(o.nofee for o in reps[i]), "ready": i.ready, "tower": i.tower,
+                 "parking": i.parking}
         row = {
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
             "priceMax": i.price_hi if i.price_hi != i.price_lo else None, "plan": i.plan, "size": i.size,
@@ -205,14 +211,7 @@ def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
             "access": [_access(walk, i.bus.get(name), i.car.get(name)) for name, walk in i.stations],
             "stop": list(min(i.stops, key=lambda s: s[1] if s[1] is not None else 999)) if i.stops else None,
             "features": _mask(features(f) for f in shown[i]),
-            "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
-                      | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new_at(new)
-                      | FLAGS["dropped"] * bool(drop) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
-                      | FLAGS["relisted"] * bool(new and new[1] == "relisted")
-                      | FLAGS["south"] * i.south | FLAGS["top"] * i.top | FLAGS["upper"] * i.upper
-                      # no commission when any agent listing the property sells it without one
-                      | FLAGS["nofee"] * (i.nofee or any(o.nofee for o in reps[i])) | FLAGS["ready"] * i.ready
-                      | FLAGS["tower"] * i.tower | FLAGS["parking"] * i.parking),
+            "flags": sum(FLAGS[k] for k, on in flags.items() if on),
             # when it was new (YYYYMMDDHH), and its latest drop [YYYYMMDDHH, old price]: for 新着, 値下げ and
             # "since your last visit"
             "others": len(reps[i]), "newAt": new[0] if new else None, "drop": list(drop[:2]) if drop else None,

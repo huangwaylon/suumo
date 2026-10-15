@@ -45,7 +45,7 @@ def test_new_drops_and_history_come_from_events(tmp_path):
               "20260901T040000": [{"kind": "new", "type": "used_condo", "id": "1", "payload": {}}]}
     s = snap(tmp_path, rec(1), rec(2), rec(3), events=events)
     by_id = {i.rec["id"]: i for i in s.items}
-    assert [s.is_new(by_id[k]) for k in "123"] == [False, True, False]   # 1 was new too long ago
+    assert [s.is_new_at(s.new(by_id[k])) for k in "123"] == [False, True, False]   # 1 was new too long ago
     assert [bool(s.drop(by_id[k])) for k in "123"] == [False, True, False]  # 3 went up
     assert s.history["used_condo:2"] == [("2026-10-15", 50_000_000, 45_000_000)]
 
@@ -59,17 +59,17 @@ def test_a_return_soon_after_removal_is_not_new(tmp_path):  # (TODAY: 2026-10-20
               "20261018T050000": [ev("relisted", 3)]}                    # 13 days after its removal: a return
     s = snap(tmp_path, rec(1), rec(2), rec(3), rec(4), events=events)
     by_id = {i.rec["id"]: i for i in s.items}
-    assert [s.is_new(by_id[k]) for k in "1234"] == [False, True, False, False]
+    assert [s.is_new_at(s.new(by_id[k])) for k in "1234"] == [False, True, False, False]
     late = {"20260925T040000": [ev("removed", 5)], "20261016T040000": [ev("relisted", 5)]}  # 21 days later: new
     s = snap(tmp_path / "b", rec(5), events=late)
-    assert s.is_new(s.items[0]) and s.new(s.items[0]) == (2026101604, "relisted")
+    assert s.is_new_at(s.new(s.items[0])) and s.new(s.items[0]) == (2026101604, "relisted")
 
 
 def test_a_return_keeps_an_earlier_new_event(tmp_path):
     ev = lambda kind: [{"kind": kind, "type": "used_condo", "id": "1", "payload": {}}]  # noqa: E731
     s = snap(tmp_path, rec(1), events={"20261016T040000": ev("new"), "20261017T040000": ev("removed"),
                                        "20261018T040000": ev("new")})
-    assert s.new(s.items[0]) == (2026101604, "new") and s.is_new(s.items[0])
+    assert s.new(s.items[0]) == (2026101604, "new") and s.is_new_at(s.new(s.items[0]))
 
 
 def test_land_listed_as_new_house_is_kept_once(tmp_path):

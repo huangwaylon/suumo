@@ -464,7 +464,6 @@ body.resizing { user-select: none; cursor: col-resize; }
   .sheet-handle::before { content: ""; display: block; width: 36px; height: 4px; margin: 8px auto; border-radius: 2px; background: var(--faint); opacity: .6; }
   [data-tab-show="list"] .i { width: 16px; height: 16px; margin: 0 2px -3px -4px; }  /* ‹ この範囲: back to the list */
 }
-@media (min-width: 1024px) { [data-tab-show="list"] .i { display: none; } }
 
 /* Wide: the map, the list of what's in view beside it --------------------------------------------- */
 @media (min-width: 1024px) {
@@ -475,6 +474,7 @@ body.resizing { user-select: none; cursor: col-resize; }
   .split { display: block; position: relative; cursor: col-resize; touch-action: none; background: var(--surface); border-left: 1px solid var(--line); }
   .split::after { content: ""; position: absolute; top: 50%; left: 1px; width: 4px; height: 40px; margin-top: -20px; border-radius: 2px; background: var(--faint); opacity: .5; }
   .split:hover::after, .split:focus-visible::after, body.resizing .split::after { background: var(--accent); opacity: 1; }
+  [data-tab-show="list"] .i { display: none; }
 }
 
 /* Desktop: the filter rail ------------------------------------------------------------------------- */

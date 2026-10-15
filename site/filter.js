@@ -20,7 +20,8 @@
   // Tags the site now offers as conditions (the index no longer carries them, site.HIDDEN_TAGS).
   const SOUTH_TAGS = ["南向き", "全室南向き", "東南向き", "南西向き", "全室東南向き", "全室南西向き"];
   const READY_TAGS = ["即引渡可", "即引渡し可"], TOP_TAG = "最上階・上階なし";
-  const TSUBO = 3.30578, LAND_TAGS = { 土地50坪以上: Math.round(50 * TSUBO), 土地100坪以上: Math.round(100 * TSUBO) };
+  const TSUBO = 3.30578;  // ㎡ per 坪
+  const LAND_TAGS = { 土地50坪以上: Math.round(50 * TSUBO), 土地100坪以上: Math.round(100 * TSUBO) };
   // A query from an older link: those tags -> their conditions (land: at least the plot size the tag meant).
   function upgrade(q) {
     const out = { ...q, features: [] };
@@ -81,9 +82,15 @@
     return out;
   }
 
-  // A listing's photo: a number is the usual path, shortened by the builder (see site._image). Items keep the
-  // number (photo 0 is one); the page expands it when it shows the photo.
-  const photo = (v, id) => (typeof v === "number" ? `030/N010000/${id.slice(-3)}/${String(v).padStart(4, "0")}.jpg` : v);
+  // A listing's photo as SUUMO's path (or the URL), from what the builder stored (site._image): a number is the
+  // usual path, "dir/sub/n/file" a shortened one. Items keep what's stored (photo 0 is one); the page asks for the
+  // path when it shows the photo.
+  function photo(v, id) {
+    if (typeof v === "number") v = `030/N010000/${id.slice(-3)}/${String(v).padStart(4, "0")}.jpg`;
+    if (typeof v !== "string" || v.startsWith("http") || v.startsWith("gazo/")) return v;
+    const [a, b, c, file] = v.split("/");
+    return `gazo/bukken/${a}/${b}/img/${c}/${id}/${id}_${file}`;
+  }
 
   function load(index) {
     const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map(), byKey = new Map();
@@ -210,13 +217,9 @@
     dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
     // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
     since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
-    south: (it, v) => !v || flagOf(it, "south"),
-    top: (it, v) => !v || flagOf(it, "top"),            // condos only
-    upper: (it, v) => !v || flagOf(it, "upper"),        // condos only
-    nofee: (it, v) => !v || flagOf(it, "nofee"),
-    ready: (it, v) => !v || flagOf(it, "ready"),
-    tower: (it, v) => !v || flagOf(it, "tower"),
-    parking: (it, v) => !v || flagOf(it, "parking"),    // houses and land only
+    // flags of the listing (top and upper: condos only; parking: houses and land only)
+    ...Object.fromEntries(["south", "top", "upper", "nofee", "ready", "tower", "parking"]
+      .map((f) => [f, (it, v) => !v || flagOf(it, f)])),
     // monthly fees (yen) of condos; houses and land have none and pass
     feesMax: (it, v) => v == null || !isCondo(it.type) || (it.fees != null && it.fees <= v),
     text: (it, v) => !v || textMatches(it, v),
@@ -229,13 +232,12 @@
     post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
-  // The FLAGS conditions as bits of the index: [flag name, passes when set (true) or when not set (false)]
+  // The yes/no conditions (FLAGS) as bits of the index: [flag name, passes when set (true) or when not set (false)]
   const FLAG_BITS = { freehold: ["leasehold", false], noCondition: ["conditional", false], newOnly: ["new", true],
     dropsOnly: ["dropped", true], post1981: ["post1981", true], south: ["south", true], top: ["top", true],
     upper: ["upper", true], nofee: ["nofee", true], ready: ["ready", true], tower: ["tower", true],
     parking: ["parking", true] };
-  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981", "south", "top", "upper", "nofee",
-    "ready", "tower", "parking"];
+  const FLAGS = Object.keys(FLAG_BITS);
   const ALL = [...Object.entries(CHECKS).map(([d, check]) => [d, check, false]),
     ...Object.entries(BUILDING).map(([d, check]) => [d, check, true])];
 
@@ -672,7 +674,7 @@
       const [, landWord, gap, pre, n, unit, post] = m, end = m.index + m[0].length;
       const start = landWord && gap ? m.index + landWord.length + gap.length : m.index;  // "土地 30坪": 土地 is a type too
       if (isMax(pre) || isMax(post)) { ignored.push({ start, text: spanText(start, end) }); return [start, end]; }
-      const v = unit === "坪" ? Math.round(num(n) * 3.30578) : num(n);
+      const v = unit === "坪" ? Math.round(num(n) * TSUBO) : num(n);
       emit(start, end, landWord || onlyLand ? "landMin" : "sizeMin", v);
       return [start, end];
     });
@@ -845,6 +847,6 @@
     return out;
   }
 
-  return { emptyQuery, upgrade, normalize, stationKey, photo, load, combine, matches, search, count, counts, facets, stationMatch,
-    suggest, parse, applyParse, nameKey };
+  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, matches, search, count, counts,
+    facets, stationMatch, suggest, parse, applyParse, nameKey };
 });

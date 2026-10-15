@@ -246,10 +246,15 @@ def test_photo_paths_are_shortened_and_restored(tmp_path):
             rec(20205673)]
     # the usual path is a number (items keep it; the page expands it with Filter.photo), others a shortened path
     assert loaded(tmp_path, recs, "image") == [4, "030/N001000/71/00015.jpg", "gazo/bukken/system/img/No.jpg", None]
-    script = ('const F = require(process.argv[1]);'
-              'process.stdout.write(JSON.stringify([F.photo(0, "20205670"), F.photo(4, "20205670")]))')
+    script = ('const F = require(process.argv[1]); process.stdout.write(JSON.stringify([[0, "20205670"],'
+              '[4, "20205670"], ["030/N001000/71/00015.jpg", "20205671"], ["gazo/bukken/system/img/No.jpg", "1"],'
+              '["https://x.jp/a.jpg", "1"]].map(([v, id]) => F.photo(v, id))))')
     out = subprocess.run([NODE, "-e", script, str(FILTER_JS)], capture_output=True, text=True, check=True)
-    assert json.loads(out.stdout) == ["030/N010000/670/0000.jpg", "030/N010000/670/0004.jpg"]   # photo 0 is a photo
+    assert json.loads(out.stdout) == [   # SUUMO's path again (photo 0 is a photo)
+        "gazo/bukken/030/N010000/img/670/20205670/20205670_0000.jpg",
+        "gazo/bukken/030/N010000/img/670/20205670/20205670_0004.jpg",
+        "gazo/bukken/030/N001000/img/71/20205671/20205671_00015.jpg", "gazo/bukken/system/img/No.jpg",
+        "https://x.jp/a.jpg"]
 
 
 def loaded(tmp_path, recs, field):

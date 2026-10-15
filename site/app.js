@@ -13,7 +13,7 @@
   const settings = { lang: "ja", theme: "auto", ...stored("suumo.settings", {}) };
   const saveSettings = () => localStorage.setItem("suumo.settings", JSON.stringify(settings));
   if (!I18N[settings.lang]) settings.lang = "ja";
-  let S = I18N[settings.lang] || I18N.ja;
+  let S = I18N[settings.lang];
   const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
   const t = (key, ...args) => { const v = lookup(S, key) ?? lookup(I18N.ja, key); return typeof v === "function" ? v(...args) : v; };
   // fixed SUUMO values (land rights, zoning, utilities...) in English: whole, else part by part ("商業、１種住居")
@@ -67,11 +67,9 @@
   const AGES = [0, 5, 10, 20, 30];
   const WALKS = [5, 7, 10, 15, 20];
   const FEES = [15000, 20000, 25000, 30000, 35000, 40000, 50000];  // condos' monthly fees, yen
-  const FLAGS = ["freehold", "noCondition", "newOnly", "dropsOnly", "post1981", "south", "top", "upper", "nofee", "ready",
-    "tower", "parking"];
   const PICKS = ["freehold", "south", "upper", "top", "nofee", "ready", "noCondition", "tower", "parking"];  // こだわり
   const QUICK = ["newOnly", "dropsOnly"];  // also one tap away above the results
-  const PAGE = 30, TSUBO = 3.30578;
+  const PAGE = 30, { FLAGS, TSUBO } = Filter;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
   const TILES = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
   const LEAFLET = [
@@ -163,14 +161,9 @@
     return car ? t("car", stationName(s), car) : t("bus", stationName(s), bus);
   }
   function image(it, w, h) {
-    let p = it.image;
-    if (p == null || p === "") return "";
-    if (typeof p === "number") p = Filter.photo(p, it.id);  // (an item's photo number: 0 is one)
+    if (it.image == null || it.image === "") return "";
+    const p = Filter.photo(it.image, it.id);  // (an item's photo number: 0 is one)
     if (p.startsWith("http")) return p.replace(/w=\d+&h=\d+/, `w=${w}&h=${h}`);
-    if (!p.startsWith("gazo/")) {  // shortened by the builder: dir/sub/n/file
-      const [a, b, c, file] = p.split("/");
-      p = `gazo/bukken/${a}/${b}/img/${c}/${it.id}/${it.id}_${file}`;
-    }
     return `${IMG}${encodeURIComponent(p)}&w=${w}&h=${h}`;
   }
   const typeName = (type) => t("types")[type];

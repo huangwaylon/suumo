@@ -215,9 +215,6 @@ class Snapshot:
                 return None
         return at
 
-    def is_new(self, item):
-        return self.is_new_at(self.new(item))
-
     def is_new_at(self, at):
         """Whether new(item) == at makes the listing 新着 (within NEW_DAYS)."""
         return bool(at) and at[0] >= hour(self.today - timedelta(days=NEW_DAYS))
