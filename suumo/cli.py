@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import re
+import signal
 import sys
 import time
 from collections import Counter
@@ -16,7 +17,7 @@ from . import saved as saved_mod
 from . import scope as scope_mod
 from .archive import Archive
 from .db import DB, exclusive, locked
-from .export import export
+from .export import export, export_interrupted
 from .fx import update as update_fx
 from .geo import geocode
 from .gitdata import commit_data, pull
@@ -85,34 +86,52 @@ class Ctx:
 
 
 def cmd_run(c: Ctx):
+    """A run: crawl (when due), listing pages, purge, export, then geocode and commit. Ctrl-C or SIGTERM rolls back
+    the open transaction (never half an area's reconcile), marks the run interrupted and exits 130; the next run
+    exports its events. A crawl stopped by a network outage finishes the run without listing pages and exits 1."""
     a = c.args
     now = datetime.now(JST)
     run_id = now.strftime("%Y%m%dT%H%M%S")
     if a.push:
         pull(ROOT)  # the saved list changes on GitHub
+    for rid in export_interrupted(c.db, c.data):
+        print(f"run {rid} didn't finish: marked interrupted, its events exported")
     c.db.x("INSERT INTO runs (run_id, started) VALUES (?, ?)", run_id, now.isoformat(timespec="seconds"))
     c.db.commit()
     client = Client(delay=a.delay)
     t0 = time.monotonic()
     p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
-    prefs = {t.pref for t in c.targets}
-    if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at, prefs):
-        print(f"search results: crawled since {a.crawl_at:02d}:00; this run works the listing-page queue")
-    elif not a.no_crawl:  # with --crawl-at, a daily crawl that stopped part-way resumes with the next prefecture
-        p.crawl_lists(skip=crawled_since(c.db, now, a.crawl_at) if a.crawl_at is not None else ())
-    budget = a.budget
-    if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
-        budget = min(budget, seconds_until_minute(datetime.now(JST), a.until_minute))
-    if budget > 0:
-        p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
-    p.purge()
-    p.report.update(export=export(c.db, c.targets, c.data, run_id), requests=client.requests_made,
-                    slowdowns=client.slowdowns, pushbacks=client.pushbacks,
-                    seconds=round(time.monotonic() - t0), mb=round(client.bytes_downloaded / 1e6, 1))
-    c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
-           datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
-    c.db.commit()
-    if not a.no_geocode:  # a second crawler (--no-geocode) leaves geo/ and fx.json to the hourly one
+
+    def stats():
+        return dict(requests=client.requests_made, slowdowns=client.slowdowns, pushbacks=client.pushbacks,
+                    net_errors=client.net_errors, seconds=round(time.monotonic() - t0),
+                    mb=round(client.bytes_downloaded / 1e6, 1))
+
+    online = True
+    try:
+        prefs = {t.pref for t in c.targets}
+        if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at, prefs):
+            print(f"search results: crawled since {a.crawl_at:02d}:00; this run works the listing-page queue")
+        elif not a.no_crawl:  # with --crawl-at, a daily crawl that stopped part-way resumes with the next prefecture
+            online = p.crawl_lists(skip=crawled_since(c.db, now, a.crawl_at) if a.crawl_at is not None else ())
+        budget = a.budget if online else 0  # offline: no listing pages either
+        if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
+            budget = min(budget, seconds_until_minute(datetime.now(JST), a.until_minute))
+        if budget > 0:
+            p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
+        p.purge()
+        p.report.update(export=export(c.db, c.targets, c.data, run_id), **stats())
+        c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
+               datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
+        c.db.commit()
+    except KeyboardInterrupt:
+        c.db.conn.rollback()  # what's committed (whole areas, fetched pages) stays; the next run exports it
+        p.report.update(interrupted=True, **stats())
+        c.db.x("UPDATE runs SET report=? WHERE run_id=?", json.dumps(p.report, ensure_ascii=False), run_id)
+        c.db.commit()
+        print(f"\nrun {run_id}: interrupted after {p.report['seconds']}s; the next run exports its events")
+        raise SystemExit(130) from None
+    if not a.no_geocode and online:  # a second crawler (--no-geocode) leaves geo/ and fx.json to the hourly one
         try:  # towns of new listings, for the site's map; never stops the commit below
             update_geo(c.data, c.targets, budget=GEO_BUDGET)
         except Exception as e:
@@ -127,6 +146,8 @@ def cmd_run(c: Ctx):
     if a.commit or a.push:
         commit_data(ROOT, run_id, push=a.push)
     c.out_of_scope_hint()
+    if not online:  # non-zero, so a driver waits before the next try
+        raise SystemExit(f"run {run_id}: the network is down; search results not crawled yet are left to the next run")
 
 
 def cmd_status(c: Ctx):
@@ -150,7 +171,7 @@ def cmd_status(c: Ctx):
     parse_failures = db.x("SELECT COUNT(*) FROM queue WHERE last_error LIKE 'parse:%'").fetchone()[0]
     if parse_failures:
         print(f"parse failures: {parse_failures} (fix the parser, then `reparse`)")
-    last = db.x("SELECT run_id, finished, report FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
+    last = db.x("SELECT * FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
     if last and last["finished"]:
         print(f"last run: {last['run_id']} (finished {last['finished']})")
     elif last:
@@ -159,7 +180,9 @@ def cmd_status(c: Ctx):
 
 
 def print_progress(run, running):
-    p = json.loads(run["report"] or "{}").get("progress")
+    """runs.progress (a database older than that column: the report's progress)."""
+    raw = run["progress"] if "progress" in run.keys() else None  # noqa: SIM118  (a Row: `in` looks at values)
+    p = json.loads(raw) if raw else json.loads(run["report"] or "{}").get("progress")
     print(f"\ncurrent run: {run['run_id']} — "
           + ("running" if running else "not running (interrupted; the next run continues the queue)"))
     if p:
@@ -219,8 +242,14 @@ def cmd_seed(c: Ctx):
     seed(c.db, c.targets, c.data, datetime.now(JST).isoformat(timespec="seconds"))
 
 
+def _interrupt(signum, frame):
+    raise KeyboardInterrupt  # SIGTERM (launchd, kill) ends a run like Ctrl-C: rolled back, marked interrupted
+
+
 def main():
     sys.stdout.reconfigure(line_buffering=True)  # progress shows up at once in `tee` / `tail -f`
+    signal.signal(signal.SIGINT, signal.default_int_handler)  # a background start (nohup, &) may ignore SIGINT
+    signal.signal(signal.SIGTERM, _interrupt)
     ap = argparse.ArgumentParser(prog="suumo")
     ap.add_argument("--scope", default=DEFAULT_SCOPE)
     ap.add_argument("--db", default="state.db")

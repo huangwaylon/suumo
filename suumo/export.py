@@ -3,7 +3,7 @@
   data/<pref>/<type>/<area_code>.jsonl  active listings in scope, one per line, sorted by id, fixed key order
   data/<pref>/removed/<type>.jsonl      ended listings kept because they're on the saved list (saved.json)
   data/<pref>/areas.json                area code -> name
-  data/events/<run_id>.json             this run's events
+  data/events/<run_id>.json             a run's events (an interrupted run's: at the start of the next one)
 
 One file per type and area keeps files small (a whole prefecture in one file passes GitHub's 100 MB limit) and
 a day's git diff readable by ward. Files are only rewritten when their content changes.
@@ -120,12 +120,7 @@ def export(db, targets, data_dir, run_id=None):
         _write_json(data_dir / pref / "areas.json", areas)
 
     if run_id:
-        events = [dict(e) for e in db.x("SELECT seq, kind, type, id, pref, area_code, payload FROM events "
-                                        "WHERE run_id=? ORDER BY seq", run_id)]
-        if events:
-            for e in events:
-                e["payload"] = json.loads(e["payload"])
-            _write_json(data_dir / "events" / f"{run_id}.json", events)
+        export_events(db, data_dir, run_id)
     return stats
 
 
@@ -143,3 +138,29 @@ def records(data_dir, pref, removed=True):
         for line in path.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 yield json.loads(line)
+
+
+def export_events(db, data_dir, run_id):
+    """data/events/<run_id>.json: the run's events (no file for a run without any)."""
+    events = [dict(e) for e in db.x("SELECT seq, kind, type, id, pref, area_code, payload FROM events "
+                                    "WHERE run_id=? ORDER BY seq", run_id)]
+    if events:
+        for e in events:
+            e["payload"] = json.loads(e["payload"])
+        _write_json(Path(data_dir) / "events" / f"{run_id}.json", events)
+
+
+def export_interrupted(db, data_dir):
+    """Runs that never finished (killed, crashed, interrupted): their committed events are exported now (the site's
+    新着/値下げ come from data/events/; unchanged files aren't rewritten) and their reports marked interrupted.
+    Returns the runs newly marked (an interrupted run marks itself)."""
+    marked = []
+    for r in db.x("SELECT run_id, report FROM runs WHERE finished IS NULL ORDER BY run_id").fetchall():
+        export_events(db, data_dir, r["run_id"])
+        report = json.loads(r["report"] or "{}")
+        if not report.get("interrupted"):
+            db.x("UPDATE runs SET report=? WHERE run_id=?",
+                 json.dumps({**report, "interrupted": True}, ensure_ascii=False), r["run_id"])
+            marked.append(r["run_id"])
+    db.commit()
+    return marked
