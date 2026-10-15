@@ -1118,7 +1118,8 @@
   function inOrder(list) {
     if (layerOrder === drawn.search || list.length < 2) return list;
     rank ??= new Map(mapHits.map((it, i) => [it, i]));
-    return [...list].sort((a, b) => rank.get(a) - rank.get(b));
+    const at = (it) => rank.get(it) ?? Infinity;  // (markers of the previous results, while the new ones are made)
+    return [...list].sort((a, b) => at(a) - at(b) || 0);
   }
 
   // ---------- railway lines and stations (data/rail.json: MLIT 鉄道データ; colours, English names from ODPT) ----------
@@ -2027,20 +2028,26 @@
   }
 
   // The next frame (or a moment, when the page isn't drawn: a hidden tab has no frames).
-  const frame = () => new Promise((ok) => {
+  // (A hidden tab: at once, as its timers are slowed to one a second.)
+  const frame = () => document.hidden ? Promise.resolve() : new Promise((ok) => {
     const late = setTimeout(ok, 100);
     requestAnimationFrame(() => setTimeout(() => { clearTimeout(late); ok(); }));
   });
 
+  const fetching = new Map();  // slug -> its index being fetched and loaded (asked again meanwhile: the same one)
+  let turn = Promise.resolve();
   async function loadPrefs(slugs) {
     const todo = slugs.filter((s) => !loaded.has(s));
-    let done = 0, turn = Promise.resolve();
-    await Promise.all(todo.map(async (slug) => {
-      const index = await (await fetch(`data/p/${slug}.json`)).json();
-      await (turn = turn.then(frame));  // one prefecture a frame (all of Japan: the page keeps drawing meanwhile)
-      const part = Filter.load(index, { places: I18N.en.places });  // ("shibuya" finds 渋谷区)
-      if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47 files
-      loaded.set(slug, part);
+    let done = 0;
+    await Promise.all(todo.map((slug) => {
+      if (!fetching.has(slug)) fetching.set(slug, (async () => {
+        const index = await (await fetch(`data/p/${slug}.json`)).json();
+        await (turn = turn.then(frame));  // one prefecture a frame (all of Japan: the page keeps drawing meanwhile)
+        loaded.set(slug, Filter.load(index, { places: I18N.en.places }));  // ("shibuya" finds 渋谷区)
+      })().finally(() => fetching.delete(slug)));
+      return fetching.get(slug).then(() => {
+        if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47
+      });
     }));
     allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
     dataChanged();
