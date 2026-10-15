@@ -92,6 +92,10 @@ class Pipeline:
             self.save_progress("search results", f"{t.pref}/{t.type}: area {k + 1}/{len(areas)} ({a['name']})")
             self.db.upsert_area(t.pref, t.type, a)
             if not a["slug"]:
+                if a["code"] in held and a["expected"] == 0:  # listed as "(0)" without a link: crawled, 0 hits
+                    rep["areas"].append(self.reconcile(t.pref, t.type, a, 0, {}, True))
+                    self.db.commit()
+                    continue
                 status = "empty" if a["expected"] == 0 else "no_slug"
                 rep["areas"].append({"code": a["code"], "name": a["name"], "status": status})
                 continue
@@ -109,6 +113,8 @@ class Pipeline:
             return hits, {r["id"]: r for r in recs}
 
         hits, recs = page(1)
+        if hits is None:  # without the count nothing says the crawl is complete: an error (no misses)
+            raise ValueError("no hit count on page 1")
         errors = []
         for n in range(2, page_count(hits) + 1):
             try:
@@ -210,9 +216,10 @@ class Pipeline:
                     counts["missing"] += 1
 
         status = "suspect" if suspect else ("complete" if complete else "incomplete")
+        # last_hits is always the latest count: a real drop is distrusted for one crawl, then the new level holds
         self.db.x("""UPDATE areas SET last_hits=?, last_status=?, baselined=?
                      WHERE pref=? AND type=? AND code=?""",
-                  prev_hits if suspect else hits, status,
+                  hits, status,
                   1 if (baselined or (complete and not suspect)) else 0, pref, type_key, a["code"])
         line = f"  {a['name']:<10} hits={hits:>5} parsed={len(recs):>5} {status}"
         if not baselined and complete:

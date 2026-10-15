@@ -135,7 +135,28 @@ def test_sudden_drop_is_suspect_and_removes_nothing(env):
     crawl(2, [rec(i) for i in range(1, 11)])
     assert out["status"] == "suspect"
     assert all(status(db, i) == "active" for i in range(1, 31))
-    assert db.area("tokyo", "used_condo", "13219")["last_hits"] == 30  # reference count kept
+    assert db.listing("used_condo", "30")["missed"] == 1               # day 2 compared against day 1's 10
+
+
+def test_a_real_drop_is_distrusted_for_one_crawl_only(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(i) for i in range(1, 28)])                            # 27
+    _, out = crawl(1, [rec(i) for i in range(1, 19)])                   # 18: suspect, nothing counted
+    assert out["status"] == "suspect" and db.listing("used_condo", "27")["missed"] == 0
+    assert db.area("tokyo", "used_condo", "13219")["last_hits"] == 18   # the new level is the reference
+    _, out = crawl(2, [rec(i) for i in range(1, 19)])
+    assert out["status"] == "complete" and db.listing("used_condo", "27")["missed"] == 1
+    crawl(3, [rec(i) for i in range(1, 19)])
+    assert status(db, 27) == "deleted" and status(db, 18) == "active"
+
+
+def test_a_one_day_glitch_removes_nothing(env):
+    db, _, _, crawl, _ = env
+    crawl(0, [rec(i) for i in range(1, 28)])
+    crawl(1, [rec(i) for i in range(1, 19)])                            # suspect
+    _, out = crawl(2, [rec(i) for i in range(1, 28)])                   # back to 27
+    assert out["status"] == "complete" and events(db) == []
+    assert all(db.listing("used_condo", str(i))["missed"] == 0 for i in range(1, 28))
 
 
 def test_small_areas_may_swing_without_being_suspect(env):
@@ -234,6 +255,30 @@ def test_area_that_drops_off_the_area_page_is_reconciled_as_empty(env):
     assert sorted(events(db, "removed")) == [("removed", "1"), ("removed", "2")]
 
 
+class ZeroAreaPage:
+    """Client whose area page lists the area as "(0)" without a link."""
+    def get(self, path):
+        return '<html><body><input name="sc" value="13219"><label>狛江市(0)</label></body></html>'
+
+
+def test_area_listed_as_zero_without_a_link_is_reconciled_as_empty(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    for day in (1, 2):
+        now = T0 + timedelta(days=day)
+        Pipeline(db, archive, ZeroAreaPage(), targets, now, f"r{day}", log=QUIET).crawl_lists()
+        if day == 1:
+            assert db.listing("used_condo", "1")["missed"] == 1
+    assert status(db, 1) == status(db, 2) == "deleted"
+
+
+def test_area_listed_as_zero_with_nothing_held_is_just_empty(env):
+    db, archive, targets, _, _ = env
+    p = Pipeline(db, archive, ZeroAreaPage(), targets, T0, "r0", log=QUIET)
+    p.crawl_lists()
+    assert p.report["targets"][0]["areas"] == [{"code": "13219", "name": "狛江市", "status": "empty"}]
+
+
 def test_listing_that_moves_area_keeps_its_history(env):
     db, _, _, crawl, _ = env
     crawl(0, [rec(1)])
@@ -289,3 +334,37 @@ def test_only_one_listing_per_property_is_queued(env):
     crawl(2, [rec(2, **same), rec(3, **same), rec(4)])
     crawl(3, [rec(2, **same), rec(3, **same), rec(4)])                  # 1 ended (2 misses): a copy takes over
     assert status(db, 1) == "deleted" and queued() == ["2", "4"]
+
+
+def _list_client(pages):
+    """A client serving search-result pages in turn (the last one repeats); records the paths."""
+    class Client:
+        paths = []
+
+        def get(self, path):
+            self.paths.append(path)
+            return pages[min(len(self.paths), len(pages)) - 1]
+    return Client()
+
+
+def test_a_page_without_a_hit_count_is_an_error_and_counts_no_misses(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1), rec(2)])
+    page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")
+    broken = page.replace("pagination_set-hit", "x").replace("hitbox", "x")
+    for day in (1, 2):
+        p = Pipeline(db, archive, _list_client([broken]), targets, T0 + timedelta(days=day), f"r{day}", log=QUIET)
+        out = p.crawl_area("tokyo", "used_condo", AREA)
+        assert out["status"] == "error" and "no hit count" in out["error"]
+    assert db.area("tokyo", "used_condo", "13219")["last_status"] == "error"
+    assert status(db, 1) == status(db, 2) == "active" and db.listing("used_condo", "1")["missed"] == 0
+
+
+def test_an_incomplete_first_pass_is_crawled_again_and_unioned(env, monkeypatch):
+    db, archive, targets, _, _ = env
+    page = Archive.read(FIXTURES / "list_used_condo_komae.html.gz")  # 67 hits on one page
+    monkeypatch.setattr(pipeline, "page_count", lambda hits: 2)
+    client = _list_client([page, "<html><body><div class='pagination_set-hit'>67件</div></body></html>", page, page])
+    out = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET).crawl_area("tokyo", "used_condo", AREA)
+    assert len(client.paths) == 4                                       # page 2 came back empty: a second pass
+    assert (out["status"], out["parsed"]) == ("complete", 67)

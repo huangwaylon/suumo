@@ -28,6 +28,11 @@ def test_list_pages_parse_every_listing(type_key, hits):
     assert sum("price" in r for r in recs) >= hits * 0.9
 
 
+def test_a_page_without_a_hit_count_has_none():
+    html = page("list_used_condo_komae.html.gz").replace("pagination_set-hit", "x").replace("hitbox", "x")
+    assert parse_list_page(html, "used_condo", KOMAE)[0] is None
+
+
 def test_condo_listing_page():
     d = parse_detail(page("detail_used_condo_20205670.html.gz"))
     assert d["mgmt_fee"] == 146000 and d["repair_fee"] == 26000

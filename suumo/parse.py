@@ -91,9 +91,10 @@ def town(address, area_name):
 
 
 def hit_count(soup):
+    """The page's total hit count; None when the page doesn't show one (not a normal result page)."""
     el = soup.select_one(".pagination_set-hit") or soup.select_one(".hitbox")
-    m = re.search(r"[\d,]+", text(el)) if el else None
-    return int(m.group().replace(",", "")) if m else 0
+    m = re.search(r"\d[\d,]*", text(el)) if el else None
+    return int(m.group().replace(",", "")) if m else None
 
 
 def page_count(hits):
