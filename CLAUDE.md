@@ -15,7 +15,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/parse.py` | `TYPES`, area-selection pages (`parse_areas`), search-result pages (`parse_list_page`), shared value parsers (prices, m², stations, town) |
 | `suumo/detail.py` | Listing pages: spec table → normalized fields (`parse_detail`); `FIELDS`, every key it can return |
 | `suumo/db.py` | SQLite schema and `DB.migrate` (additive changes), small query helpers, `dumps` (canonical JSON), `flock`/`exclusive`/`locked` (the one lock helper) |
-| `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key` |
+| `suumo/export.py` | DB → `data/<pref>/<type>/<area>.jsonl` (one file per type and area, rewritten only on change); `merge` (list + detail fields), `FIELD_ORDER`, `dup_key`; `records` (the one reader of `data/*.jsonl`, for catalog, geo, stations, seed) |
 | `suumo/maintenance.py` | `prune` (out-of-scope data), `reparse` (rebuild parsed fields from `archive/`), `seed` (rebuild `state.db` from `data/`), `strip_list_fields` (the one-time fix of rows seeded by older code) |
 | `suumo/archive.py` | Raw HTML store: daily search-result snapshots, latest copy of each listing page; `write_atomic` (used by all file writers) |
 | `suumo/scope.py` | `scope.toml` → `Target(pref, type, areas)` list; `by_key` (a dict by pref and type), `in_scope` |
@@ -26,18 +26,21 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `suumo/geo.py` | Town (丁目) coordinates from MLIT's 位置参照情報 (one file per prefecture, `PLACES_URL`; a new version each spring), the rest from 国土地理院's address search; cached in `geo/towns.json` (with `_bulk`: the towns that version's files don't place, so they aren't downloaded again while the address search works through them) |
 | `suumo/rail.py` | Railway lines and stations for the maps, the whole country: MLIT 国土数値情報 鉄道データ (N02, CC BY 4.0), simplified; colours and English names from ODPT's open, basic (`ODPT_TOKEN`) and challenge (`ODPT_CHALLENGE_TOKEN`, challenge licence) APIs, else carried over from the previous file; `rail` writes `geo/rail.json`. Also decides which same-named stations are really two (`site.station_prefectures`) |
 | `suumo/stations.py` | Station names in kana and English from Wikidata (one query per prefecture), cached in `geo/stations.json`, per prefecture over the area its listings' stations span (`catalog.station_area`, places from rail.json); a name several prefectures return keeps the reading of the one whose listings mention it most (`stations.merge`), never overwritten with null; the site searches and shows them. `site.listing_spelling` renames rail stations to the listings' spelling (阿佐ケ谷, not 阿佐ヶ谷) |
-| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/` (static assets from `site/`, a manifest `data/index.json` with `prefs` entries `[slug, name, count, share with the listing page fetched]`, one search index per prefecture `data/p/<pref>.json` loaded as chosen (flag bits `FLAGS`, `fees` in ¥100), one JSON per listing (`others` with `deal_type`, no-commission agents first); rail.json rebuilt at build time: sections joined into paths, plus a coarse copy for zoom < 11 (`line[5]`; the page uses `line[5] ?? line[4]`)) |
+| `suumo/site.py` | `build`: `data/` + `geo/` → `_site/`, one prefecture in memory at a time (a first pass collects what they share: the station names they use, sizes, the saved list) (static assets from `site/`, a manifest `data/index.json` with `prefs` entries `[slug, name, count, share with the listing page fetched]`, one search index per prefecture `data/p/<pref>.json` loaded as chosen (flag bits `FLAGS`, `fees` in ¥100), one JSON per listing (`others` with `deal_type`, no-commission agents first); rail.json rebuilt at build time: sections joined into paths, plus a coarse copy for zoom < 11 (`line[5]`; the page uses `line[5] ?? line[4]`)) |
 | `site/filter.js` | The search rules, the only implementation: load the columnar index, `CHECKS`/`BUILDING` (one check per condition), `search`, `count`, `counts` (q and variants `{name: patch}` in one pass), `facets` (every choice count in one pass: thresholds bucketed by binary search, tags/areas/stations in typed arrays per prefecture), text search by matching each prefecture's small tables (names, towns, areas, layouts, stations, bus stops) instead of per-item text; `suggest` (candidates for the word being typed), `parse` + `applyParse` (search-box text → conditions; dictionaries per prefecture, built on first use). Must work with an index older than itself (the service worker may serve one after a deploy): read new columns with `?.`, missing flags are 0. Exports `photo`, `FLAGS` and `TSUBO` for app.js |
 | `site/i18n.js` | Every user-facing string, Japanese (default) and English; `t(key, ...args)` in app.js. A test requires every Japanese key to have an English one |
 | `site/app.js`, `index.html`, `style.css` | The page, map-first: the map plus a panel listing what's in its view (`m=lat,lng,zoom` in the URL, replaced on every move; the map moves only on the refit triggers), the panel's tabs (the list, opened listings, 比較 of the open tabs; `id=`, favorites' `cmp=1`), one filter panel (rail on desktop, sheet elsewhere), favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests), last search (localStorage `suumo.last`). Opening a listing, the favorites view and the overlays are history entries, so back closes them. An app shell (the page never scrolls): ≥1024 map, divider (`settings.panel`), panel; below, a bottom sheet over the map (peek/half/full, `settings.sheet`); ≥1280 the filter rail. Card columns follow the panel's width (container queries) |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 4 --budget 3h --until-minute 50 --push`) |
+| `local.hourly.sh` | The same schedule without launchd (a loop in a terminal, for a repo launchd can't read) |
 | `~/suumo-refresh/all.sh` (not in git) | The one-off driver for the nationwide sweep and backfill (nohup + caffeinate): sweep, geocode, then 1 h listing-page runs with the stepped delay, the 04:00 crawl at 1.5 s. Replace with `local.suumo.plist` once the backfill is done |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
 Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `export`/`detail`; `cli` → `site` →
-`stations` → `geo`, with `site` and `stations` also using `catalog` and `site` using `rail` (`simplify`); `cli` → `saved`/`rail`/`fx`/`gitdata`. All of
-them may use the bottom layer `parse`/`scope`/`db`/`archive`/`http`. `parse`, `detail` and `catalog` are pure.
+`stations` → `geo`, with `site` and `stations` also using `catalog` and `site` using `rail` (`simplify`); `cli` →
+`saved`/`rail`/`fx`/`gitdata`. `catalog`, `geo`, `stations`, `site` and `maintenance` read `data/` through
+`export.records`/`prefectures` (`export` itself uses only the bottom layer). All of them may use the bottom layer
+`parse`/`scope`/`db`/`archive`/`http`. `parse`, `detail` and `catalog` are pure (`catalog` only reads files).
 
 ## Data model
 
@@ -55,8 +58,8 @@ them may use the bottom layer `parse`/`scope`/`db`/`archive`/`http`. `parse`, `d
   `reconcile` when it deletes one, dropped by `purge` after `TOMBSTONE_DAYS` (14).
 - `events`: `kind` new / price_changed / removed / relisted, `payload` `{"price"}` (+ `"old_price"` for price
   changes), exported per run to `data/events/<run_id>.json`; the site's 新着, 値下げ and price history come from them.
-  (Older databases also carry unused columns: `events.posted`, `listings.detail_fetched/info_date/next_update`,
-  `areas.last_crawled`.)
+  (Unused columns: `queue.reason` (written as ''), and in older databases `events.posted`,
+  `listings.detail_fetched/info_date/next_update`, `areas.last_crawled`.)
 - `runs`: one row per run with a JSON report (`progress` while running).
 - Schema changes are additive and idempotent: `db.TABLES` / `db.COLUMNS`, applied by `DB.migrate()`, and one-time
   data fixes under `PRAGMA user_version` (`maintenance.strip_list_fields`). Only writing commands run them, after
@@ -180,7 +183,7 @@ them may use the bottom layer `parse`/`scope`/`db`/`archive`/`http`. `parse`, `d
 
 ## Development
 
-- `uv sync`, then `uv run pytest -q` (offline, ~2 s; the site tests need `node`) and `uv run ruff check suumo tests`
+- `uv sync`, then `uv run pytest -q` (offline, ~5 s; the site tests need `node`) and `uv run ruff check suumo tests`
   (line length 120).
 - Tests: `test_lifecycle.py` (reconcile/purge/export with synthetic records: misses per crawl day, suspect,
   tombstones, one page per property, area-page cases, crawl_area), `test_parsers.py` (value parsers),

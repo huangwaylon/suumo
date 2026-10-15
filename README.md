@@ -127,9 +127,7 @@ at a time without giving up on those listings.
 
 ### 5. Hourly schedule
 
-Without launchd (the repo still in `~/Documents`): `caffeinate -i ./local.hourly.sh &` runs the same schedule from
-a terminal; restart it after a reboot. Runs resume where an interrupted one stopped.
-
+Install the launchd job (the repo in `~/suumo`; launchd can't read `~/Documents`):
 
 ```sh
 sed "s#__SUUMO_DIR__#$PWD#g" local.suumo.plist > ~/Library/LaunchAgents/local.suumo.plist
@@ -147,6 +145,9 @@ listing missing from 2 daily crawls is removed (so within about two days; a seco
 doesn't count). A daily crawl that stopped part-way resumes with the next prefecture. `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
 `launchctl bootout gui/$(id -u)/local.suumo`.
+
+Without launchd (the repo still in `~/Documents`): `caffeinate -i ./local.hourly.sh &` runs the same schedule from
+a terminal; restart it after a reboot. Runs resume where an interrupted one stopped.
 
 ## Commands
 
