@@ -4,7 +4,9 @@ Listings carry addresses, not coordinates, and SUUMO shows most only to the 丁�
 distinct town is looked up once and cached in geo/towns.json (git-tracked, sorted): {town: [lat, lng] or null}.
 Later runs only look up towns they haven't seen: first in MLIT's 大字・町丁目レベル位置参照情報 (one file per
 prefecture with every 丁目's representative point; the address search gives the same points), then the few left
-in the address search, one request at a time, GEO_DELAY apart.
+in the address search, one request at a time, GEO_DELAY apart. The towns MLIT's files don't place wait for the
+address search under "_bulk" in the cache ({"url": PLACES_URL, "missed": [town, ...]}), so their prefectures' files
+aren't downloaded again every run while the address search works through them; a new PLACES_URL tries them again.
 """
 import csv
 import io
@@ -28,6 +30,7 @@ GEO_DELAY = 1.0
 SAVE_EVERY = 100  # towns between cache saves (an interrupted fill keeps its progress)
 # 大字・町丁目レベル位置参照情報 (MLIT, free): a new version every spring; 'b' is the 大字・町丁目 level
 PLACES_URL = "https://nlftp.mlit.go.jp/isj/dls/data/19.0b/{code:02d}000-19.0b.zip"
+BULK_MISSES = "_bulk"  # the cache's entry of towns PLACES_URL's files don't place (not a town: towns start 都道府県)
 
 _block = re.compile(r"[0-9][0-9\-－]*.*$")   # 番地 / 号 in ASCII digits after the 丁目 (full-width digit)
 _wide_block = re.compile(r"([０-９])[\-－‐番].*$")  # ...or in full-width digits: 下連雀３-４１－１２ -> 下連雀３
@@ -158,30 +161,43 @@ class Places:
 
 
 def bulk(towns, log=print):
-    """{town: [lat, lng]} for the towns MLIT's files place (one download per prefecture they're in)."""
+    """{town: [lat, lng], or None when MLIT's file doesn't place it} for the towns of the prefectures whose files
+    were read (one download per prefecture they're in); a file that couldn't be read leaves its towns out."""
     codes = {name: i for i, name in enumerate(PREFS.values(), 1)}  # PREFS is in JIS order
-    places = Places()
+    places, read = Places(), []
     for name in sorted({n for t in towns for n in codes if t.startswith(n)}):
         try:
             r = requests.get(PLACES_URL.format(code=codes[name]), timeout=120)
             r.raise_for_status()
             with zipfile.ZipFile(io.BytesIO(r.content)) as z:
                 places.add(z.read(next(n for n in z.namelist() if n.endswith(".csv"))).decode("cp932"))
+            read.append(name)
         except (requests.RequestException, zipfile.BadZipFile, StopIteration) as e:
             log(f"  ! 位置参照情報 for {name}: {e!r} (the address search covers it)")
-    return {t: p for t in towns if (p := places.find(t))}
+    return {t: places.find(t) for t in towns if any(t.startswith(n) for n in read)}
 
 
 def _geocode(data_dir, cache_path, budget_seconds, log):
     cache = load_cache(cache_path)
+    misses = cache.pop(BULK_MISSES, None) or {}
     todo = sorted(towns_in(data_dir) - set(cache))
+    missed = set(misses.get("missed", ())) & set(todo) if misses.get("url") == PLACES_URL else set()
+
+    def save():  # the misses still waiting for the address search with it
+        left = sorted(missed - cache.keys())
+        save_cache(cache_path, {**cache, BULK_MISSES: {"url": PLACES_URL, "missed": left}} if left else cache)
+
     if not todo:
+        if misses:
+            save()  # every miss found since, or gone from the listings
         return 0
-    found = bulk(todo, log)
-    if found:
+    placed = bulk([t for t in todo if t not in missed], log)
+    found = {t: p for t, p in placed.items() if p}
+    missed |= placed.keys() - found.keys()
+    if placed:
         cache.update(found)
-        save_cache(cache_path, cache)
-        log(f"位置参照情報: {len(found):,} of {len(todo):,} new towns")
+        save()
+        log(f"位置参照情報: {len(found):,} of {len(placed):,} new towns")
         todo = [t for t in todo if t not in found]
         if not todo:
             return len(found)
@@ -203,10 +219,10 @@ def _geocode(data_dir, cache_path, budget_seconds, log):
                 log("  geocoding stopped after 10 errors; the rest is retried next time")
                 break
         if done and done % SAVE_EVERY == 0:
-            save_cache(cache_path, cache)
+            save()
             log(f"  geocoded {done:,}/{len(todo):,}")
         time.sleep(GEO_DELAY)
-    save_cache(cache_path, cache)
+    save()
     missing = sum(1 for t in todo if t in cache and cache[t] is None)
     log(f"geocoded {done:,} towns ({missing} not found)")
     return len(found) + done

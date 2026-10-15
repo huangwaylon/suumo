@@ -417,6 +417,45 @@ def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, mo
     assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}
 
 
+def test_bulk_misses_wait_for_the_address_search_without_new_downloads(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    write(data, [rec(1, address="茨城県水戸市赤塚１"), rec(2, address="茨城県水戸市見川３")], pref="ibaraki")
+    write(data, [rec(3, address="東京都狛江市岩戸北３")])
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("08000-19.0b/08_2025.csv", PLACES_CSV.encode("cp932"))
+    downloads = []
+
+    def get(url, timeout):
+        downloads.append(url)
+        if "13000" in url:   # Tokyo's file fails: its town isn't a miss, it's tried again
+            raise geo.requests.ConnectionError("down")
+        return MagicMock(content=buf.getvalue())
+
+    monkeypatch.setattr(geo.requests, "get", get)
+    monkeypatch.setattr(geo, "GEO_DELAY", 0)
+    found = {}
+    monkeypatch.setattr(geo, "lookup", lambda session, town: found[town])   # KeyError: the address search fails
+    cache = tmp_path / "towns.json"
+    assert geocode(data, cache, log=QUIET) == 1
+    assert len(downloads) == 2
+    assert json.loads(cache.read_text()) == {"茨城県水戸市赤塚１": [36.38, 140.41],
+                                             "_bulk": {"url": geo.PLACES_URL, "missed": ["茨城県水戸市見川３"]}}
+
+    downloads.clear()
+    geocode(data, cache, log=QUIET)
+    assert downloads == [geo.PLACES_URL.format(code=13)]   # Ibaraki's miss isn't downloaded again; Tokyo's retried
+
+    monkeypatch.setattr(geo, "PLACES_URL", geo.PLACES_URL.replace("19.0b", "20.0b"))   # next spring's version
+    downloads.clear()
+    geocode(data, cache, log=QUIET)
+    assert len(downloads) == 2                              # every file of the new version is read
+
+    found.update({"茨城県水戸市見川３": [36.4, 140.4], "東京都狛江市岩戸北３": None})
+    geocode(data, cache, log=QUIET)
+    assert "_bulk" not in json.loads(cache.read_text())      # nothing left waiting
+
+
 def test_queue_fetches_what_is_queued_and_copies_land_twins(tmp_path):
     db = DB(tmp_path / "s.db")
     archive = Archive(tmp_path / "a")
