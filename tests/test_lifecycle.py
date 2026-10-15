@@ -498,3 +498,22 @@ def test_a_group_with_a_repeated_agent_is_not_one_property(env):
     db.x("DELETE FROM listings")
     crawl(1, [rec(4, agent="A不動産", **SAME), rec(5, agent="B不動産", **SAME)])
     assert queued() == ["4"]                                    # different agents: one property, one page
+
+
+def test_the_queued_member_keeps_its_place_when_the_page_order_changes(env):
+    db, _, _, crawl, _ = env
+    entry = lambda: [tuple(r) for r in db.x("SELECT id, priority, enqueued_at FROM queue")]  # noqa: E731
+    crawl(0, [rec(1, **SAME), rec(2, **SAME)])
+    before = entry()
+    assert [e[0] for e in before] == ["1"]
+    crawl(1, [rec(2, **SAME), rec(1, **SAME)])                  # SUUMO shows the other agent's listing first
+    crawl(2, [rec(3, **SAME), rec(2, **SAME), rec(1, **SAME)])  # and a third agent's, new, first of all
+    assert entry() == before                                    # 1 is still the lead, queued since day 0
+
+
+def test_a_lead_given_up_on_hands_over(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1, **SAME), rec(2, **SAME)])
+    db.x("UPDATE queue SET attempts=?, last_error='gone: 404' WHERE id='1'", pipeline.MAX_DETAIL_ATTEMPTS)
+    crawl(1, [rec(1, **SAME), rec(2, **SAME)])
+    assert _fetch_queue(db, archive, targets) == ["2"]

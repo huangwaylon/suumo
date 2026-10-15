@@ -154,6 +154,43 @@ class Pipeline:
         complete = not errors and len(recs) >= hits
         return self.reconcile(pref, type_key, a, hits, recs, complete, errors)
 
+    def _leads(self, type_key, recs, rows):
+        """wanted(id): whether a listing seen in this crawl should get its page. One listing page per property (the
+        only place this rule lives): a group of listings with the same dup_key has one lead, and the other agents'
+        copies aren't queued (by the owner's decision, copies are never fetched). Only listings seen in this crawl
+        count (a missing one may be ending, and a copy should take over).
+          - a member has its page stored: it's the lead; no other member is queued
+          - else the member already queued (and not given up on) stays the lead, so the group keeps its place in
+            line when SUUMO shows the members in another order; else the first one on the page not given up on
+          - an agent appears twice in the group: not one property (an agent doesn't list the same one twice),
+            every listing in it is its own lead
+        """
+        keys = {lid: dup_key({**rec, "type": type_key}) for lid, rec in recs.items()}
+        groups = defaultdict(list)
+        for lid, k in keys.items():
+            if k:
+                groups[k].append(lid)
+        groups = {k: ids for k, ids in groups.items() if len(ids) > 1}
+        members = [i for ids in groups.values() for i in ids]
+        attempts = {}  # queue entries of the members: id -> attempts
+        for n in range(0, len(members), 500):
+            chunk = members[n:n + 500]
+            attempts.update((r["id"], r["attempts"]) for r in self.db.x(
+                f"SELECT id, attempts FROM queue WHERE type=? AND id IN ({','.join('?' * len(chunk))})",
+                type_key, *chunk))
+        live = lambda i: attempts.get(i, 0) < MAX_DETAIL_ATTEMPTS  # noqa: E731  (not given up: 404, parse error)
+        lead = {}
+        for k, ids in groups.items():
+            names = [recs[i]["agent"] for i in ids if recs[i].get("agent")]
+            if len(names) != len(set(names)):
+                continue
+            if any(rows[i] and rows[i]["detail_json"] for i in ids):
+                lead[k] = None
+            else:
+                lead[k] = (next((i for i in sorted(ids) if i in attempts and live(i)), None)
+                           or next((i for i in ids if live(i)), ids[0]))
+        return lambda lid: keys[lid] not in lead or lead[keys[lid]] == lid
+
     def reconcile(self, pref, type_key, a, hits, recs, complete, errors=()):
         """Apply one area's crawl result to the DB: inserts, events, queue, misses/removals, area state."""
         area_row = self.db.area(pref, type_key, a["code"])
@@ -163,30 +200,11 @@ class Pipeline:
                    and hits < prev_hits * (1 - SUSPECT_DROP))
         counts = {"new": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
         held = {r["id"]: r for r in self.db.area_listings(pref, type_key, a["code"])}
-        # One listing page per property (the only place this rule lives): another agent's listing of one that has
-        # (or is getting) its page isn't queued. Only listings seen in this crawl count (a missing one may be
-        # ending, and a copy should take over). A group in which an agent appears twice isn't one property
-        # (an agent doesn't list the same one twice): every listing in it gets its page.
-        agents = defaultdict(list)
-        for rec in recs.values():
-            if (k := dup_key({**rec, "type": type_key})) and rec.get("agent"):
-                agents[k].append(rec["agent"])
-        distinct = {k for k, names in agents.items() if len(names) != len(set(names))}
-        claimed = {dup_key({**json.loads(r["list_json"]), "type": type_key})
-                   for r in held.values() if r["detail_json"] and r["id"] in recs} - {None}
-
-        def wanted(rec):
-            k = dup_key({**rec, "type": type_key})
-            if k in distinct:
-                return True
-            if k in claimed:
-                return False
-            if k:
-                claimed.add(k)
-            return True
+        rows = {lid: held.get(lid) or self.db.listing(type_key, lid) for lid in recs}  # or moved from another area
+        wanted = self._leads(type_key, recs, rows)
 
         for lid, rec in recs.items():
-            row = held.get(lid) or self.db.listing(type_key, lid)  # fallback: moved from another area
+            row = rows[lid]
             ident = {"type": type_key, "id": lid, "pref": pref, "area_code": a["code"]}
             if row is None:
                 tomb = self.db.x("SELECT first_seen, price FROM ended WHERE type=? AND id=?", type_key, lid).fetchone()
@@ -202,15 +220,15 @@ class Pipeline:
                             counts["price_changed"] += 1
                             self.db.add_event(self.run_id, "price_changed", ident,
                                               {"price": rec.get("price"), "old_price": tomb["price"]})
-                    if wanted(rec):
+                    if wanted(lid):
                         self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
                     counts["relisted"] += 1
                 elif baselined:
                     self.db.add_event(self.run_id, "new", ident, {"price": rec.get("price")})
-                    if wanted(rec):
+                    if wanted(lid):
                         self.db.enqueue(type_key, lid, P_NEW, "new", self.ts)
                     counts["new"] += 1
-                elif wanted(rec):
+                elif wanted(lid):
                     self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
                 continue
 
@@ -223,7 +241,7 @@ class Pipeline:
                 self.db.add_event(self.run_id, "price_changed", ident,
                                   {"price": rec.get("price"), "old_price": old.get("price")})
             if row["detail_json"] is None:  # not stored yet (a failed or interrupted fetch), unless it's a copy
-                if wanted(rec):
+                if wanted(lid):
                     self.db.enqueue(type_key, lid, P_BACKFILL, "backfill", self.ts)
                 else:
                     self.db.dequeue(type_key, lid)
