@@ -2,7 +2,7 @@
 import pytest
 
 from suumo.archive import Archive
-from suumo.detail import parse_detail
+from suumo.detail import FIELDS, parse_detail
 from suumo.parse import parse_areas, parse_list_page
 from tests.helpers import FIXTURES
 
@@ -54,3 +54,8 @@ def test_land_listing_page():
     d = parse_detail(page("detail_land_20862637.html.gz"))
     assert d["build_condition"] is True and (d["coverage_pct"], d["far_pct"]) == (60, 200)
     assert d["road"] == {"width_m": 10.0, "setback_m2": 48.24, "text": d["road"]["text"]}
+
+
+@pytest.mark.parametrize("name", ["detail_used_condo_20205670", "detail_used_house_20779514", "detail_land_20862637"])
+def test_listing_page_fields_are_declared(name):
+    assert parse_detail(page(f"{name}.html.gz")).keys() <= FIELDS   # add new fields to detail.FIELDS

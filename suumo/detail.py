@@ -16,6 +16,15 @@ _TEXT_FIELDS = (  # field, spec labels: values kept as written
     ("insulation", ("断熱性能",)), ("restrictions", ("その他制限事項",)), ("top_price_band", ("最多価格帯",)),
 )
 
+# Every key parse_detail can return (a test checks the fixtures against it): what detail_json may hold.
+FIELDS = frozenset({
+    "stations", "price_excludes_building", "mgmt_fee", "mgmt_form", "repair_fee", "repair_fund_once",
+    "other_monthly", "other_fees", "floor", "structure", "floors_above", "floors_below", "total_units",
+    "units_for_sale", "land_rights", "land_rights_note", "coverage_pct", "far_pct", "parking", "site_m2", "road",
+    "build_condition", "reform", "built", "built_planned", "utilities", "sale_schedule", "features", "deal_type",
+    *(key for key, _ in _TEXT_FIELDS),
+})
+
 
 def spec_table(soup):
     """{label: (value, td)} from every th/td pair; first occurrence wins (the summary and full tables repeat)."""

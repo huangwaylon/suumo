@@ -22,7 +22,7 @@ from .fx import update as update_fx
 from .geo import geocode
 from .gitdata import commit_data, pull
 from .http import Client
-from .maintenance import out_of_scope, prune, reparse, seed
+from .maintenance import out_of_scope, prune, reparse, seed, strip_list_fields
 from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
 from .site import build as build_site
 from .stations import update as update_stations
@@ -263,6 +263,7 @@ def main():
     with exclusive(c.lock) if args.access == "write" else contextlib.nullcontext():
         if args.access == "write":
             c.db.migrate()
+            strip_list_fields(c.db)
         args.func(c)
 
 

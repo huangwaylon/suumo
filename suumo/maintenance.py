@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .archive import Archive
 from .db import dumps
+from .detail import FIELDS
 from .parse import TYPES, parse_list_page
 from .pipeline import apply_detail
 from .scope import by_key, in_scope
@@ -103,10 +104,13 @@ def seed(db, targets, data_dir: Path, ts, log=print):
                     continue
                 body = {k: v for k, v in r.items() if k not in EXPORT_ONLY}
                 lst = {**body, "path": r["url"].removeprefix("https://suumo.jp")}
+                # detail_json holds listing-page fields only: a list field kept there would outlive its removal
+                # from the search results (merge lays the list over it)
+                detail = {k: v for k, v in body.items() if k in FIELDS} if r.get("has_detail") else None
                 db.x("""INSERT INTO listings (type, id, pref, area_code, area_name, list_json, detail_json, status,
                         first_seen, last_seen, removed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                      r["type"], r["id"], pref, r["area_code"], r["area"], dumps(lst),
-                     dumps(body) if r.get("has_detail") else None, "removed" if r.get("removed_at") else "active",
+                     dumps(detail) if detail else None, "removed" if r.get("removed_at") else "active",
                      r["first_seen"], ts, r.get("removed_at"))
                 seeded.add((r["type"], r["area_code"]))
                 n += 1
@@ -122,3 +126,26 @@ def seed(db, targets, data_dir: Path, ts, log=print):
     db.commit()
     log(f"seeded {n} listings (0 requests)")
     return n
+
+
+DETAIL_FIELDS_VERSION = 1  # PRAGMA user_version once strip_list_fields has run
+
+
+def strip_list_fields(db, log=print):
+    """One-time fix for databases seeded by older code, which stored the whole exported record as detail_json:
+    drop the keys parse_detail doesn't produce (NULL when nothing is left: the next crawl queues its page).
+    Runs once (PRAGMA user_version), for writing commands."""
+    if db.x("PRAGMA user_version").fetchone()[0] >= DETAIL_FIELDS_VERSION:
+        return 0
+    fixed = []
+    for r in db.x("SELECT type, id, detail_json FROM listings WHERE detail_json IS NOT NULL"):
+        d = json.loads(r["detail_json"])
+        if not d.keys() <= FIELDS:
+            kept = {k: v for k, v in d.items() if k in FIELDS}
+            fixed.append((dumps(kept) if kept else None, r["type"], r["id"]))
+    db.conn.executemany("UPDATE listings SET detail_json=? WHERE type=? AND id=?", fixed)
+    db.x(f"PRAGMA user_version={DETAIL_FIELDS_VERSION}")
+    db.commit()
+    if fixed:
+        log(f"detail fields: dropped search-result fields from {len(fixed)} seeded listings")
+    return len(fixed)

@@ -18,7 +18,7 @@ from suumo.db import DB, exclusive
 from suumo.export import export
 from suumo.geo import _municipality, _same_spelling, geocode, town_of
 from suumo.gitdata import commit_data
-from suumo.maintenance import prune, reparse, seed
+from suumo.maintenance import prune, reparse, seed, strip_list_fields
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
 from tests.helpers import FIXTURES, QUIET, rec, write
@@ -82,6 +82,34 @@ def test_seed_rebuilds_state_from_data_and_round_trips(tmp_path):
     assert db.listing("used_condo", "2")["missed"] == 1
     assert [r["kind"] for r in db.x("SELECT kind FROM events")] == ["new"]
     assert {r["id"] for r in db.x("SELECT id FROM queue")} == {"4"}
+
+
+def test_seed_keeps_only_listing_page_fields_as_detail(tmp_path):
+    data = tmp_path / "data"
+    write(data, [rec(1, land_rights="所有権", price_max=60_000_000, has_detail=True), rec(2, has_detail=True)])
+    db = DB(tmp_path / "state.db")
+    seed(db, [Target("tokyo", "used_condo", None)], data, "2026-10-14T10:00:00+09:00", log=QUIET)
+    assert json.loads(db.listing("used_condo", "1")["detail_json"]) == {"land_rights": "所有権", "built": "2005-04",
+                                                                       "stations": rec(1)["stations"]}
+    assert json.loads(db.listing("used_condo", "1")["list_json"])["price_max"] == 60_000_000
+    assert db.listing("used_condo", "2")["detail_json"] is not None    # built, stations
+
+
+def test_strip_list_fields_fixes_rows_seeded_by_older_code_once(tmp_path):
+    db = DB(tmp_path / "state.db")
+    rows = {"1": {"price": 1, "price_max": 2, "title": "x", "mgmt_fee": 100},   # seeded: list + detail fields
+            "2": {"price": 1, "title": "x"},                                    # seeded: list fields only
+            "3": {"mgmt_fee": 100, "features": ["南向き"]}}                      # fetched: untouched
+    for lid, detail in rows.items():
+        db.x("INSERT INTO listings (type, id, pref, area_code, area_name, list_json, detail_json, first_seen, "
+             "last_seen) VALUES ('used_condo', ?, 'tokyo', '13219', '狛江市', '{}', ?, '2026-10-05', 'x')",
+             lid, json.dumps(detail))
+    db.commit()
+    assert strip_list_fields(db, log=QUIET) == 2
+    detail = {r["id"]: r["detail_json"] for r in db.x("SELECT id, detail_json FROM listings")}
+    assert detail == {"1": '{"mgmt_fee":100}', "2": None, "3": json.dumps(rows["3"])}
+    db.x("UPDATE listings SET detail_json='{\"price\":1}' WHERE id='3'")
+    assert strip_list_fields(db, log=QUIET) == 0                         # once only (PRAGMA user_version)
 
 
 def test_reparse_rebuilds_from_archive(tmp_path):
