@@ -72,11 +72,10 @@
   const PAGE = 30, { FLAGS, TSUBO } = Filter;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
   const TILES = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
-  const LEAFLET = [
+  const MAP_FILES = [  // (supercluster, the markers' clustering, is ours: no integrity needed)
     ["css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"],
-    ["css", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css", "sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV"],
     ["js", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"],
-    ["js", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js", "sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr"],
+    ["js", "supercluster.min.js"],
   ];
   const COARSE = matchMedia("(pointer: coarse)");
   const WIDE = matchMedia("(min-width: 1280px)");  // filters, results and map side by side (style.css too)
@@ -246,7 +245,7 @@
   // What's drawn depends on, by level: the results (search: their set and order), the map's markers (the set, in any
   // order), the list (the cards in view). render() redoes each only when what it depends on changed.
   let dataVersion = 0;          // the loaded listings: bumped when they change (what was drawn from them is stale)
-  const drawn = { search: null, set: null, base: false, markers: null };
+  const drawn = { search: null, set: null, base: false };
   const EMPTY = JSON.stringify({ ...Filter.emptyQuery(), sort: "" });
   const unfiltered = () => mode === "search" && JSON.stringify({ ...q, sort: "" }) === EMPTY;
   const setKey = () => JSON.stringify([dataVersion, mode, mode === "favorites" ? [...favs] : { ...q, sort: "" }]);
@@ -268,7 +267,7 @@
     dataVersion++;
     results.clear();
     facetCache.clear();
-    layers.clear();
+    clusterSets.clear();
   }
 
   function compute() {
@@ -700,13 +699,13 @@
     const h3 = (k, hint) => `<h3>${esc(t(`sec.${k}`))}${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</h3>`;
     const isLand = q.types.length && q.types.every((type) => type === "land");
     const any = (fn) => !q.types.length || q.types.some(fn), condos = any(isCondo), others = any((type) => !isCondo(type));
-    // a section that opens on demand, saying what's chosen in it
+    // a section that opens on demand, saying what's chosen in it (its contents are drawn once it's open)
     const fold = (k, summary, html) => `<details class="fold" data-fold="${k}"${openFolds.has(k) ? " open" : ""}><summary><h3>${esc(t(`sec.${k}`))}</h3>${
-      `<span class="fold-sum${summary ? " on" : ""}">${esc(summary || t("any"))}</span>`}</summary><div class="fold-body">${html}</div></details>`;
+      `<span class="fold-sum${summary ? " on" : ""}">${esc(summary || t("any"))}</span>`}</summary>${openFolds.has(k) ? `<div class="fold-body" data-drawn="1">${html()}` : '<div class="fold-body">'}</div></details>`;
     const list = (labels) => labels.slice(0, 3).join(", ") + (labels.length > 3 ? t("andMore", labels.length - 3) : "");
     sec("text", q.text ? `<div class="opts"><button class="chip" aria-pressed="true" data-cleartext="1">${esc(t("textFilter", q.text))}${icon("x")}</button></div>` : "");
     sec("types", `${h3("types")}<div class="opts">${Object.keys(t("types")).filter((type) => db.index.types.includes(type)).map((type) => many("types", type, typeName(type), facets.types[type] || 0)).join("")}</div>`);
-    sec("areas", fold("areas", list(q.areas.map(areaName)), areaGroups()));
+    sec("areas", fold("areas", list(q.areas.map(areaName)), areaGroups));
     sec("price", `${h3("price")}<div class="field-pair">${selectEl("priceMin", PRICES, (v) => money(v), t("minNone"), t("priceFrom"))}<span aria-hidden="true">${
       esc(t("to"))}</span>${selectEl("priceMax", PRICES, (v) => money(v), t("maxNone"), t("priceTo"))}</div>`);
     sec("plan", isLand ? "" : `${h3("plan", t("sec.planHint"))}<div class="opts">${withExtra("plan", CHOICES.plan).map((v) =>
@@ -725,7 +724,7 @@
     const fits = { top: condos, upper: condos, tower: condos, parking: others, noCondition: others };
     const share = detailShare();
     const extras = activeConditions().filter(([, , s]) => s === "extra").map(([label]) => label);
-    sec("extra", fold("extra", list(extras), `${share != null && share < 0.9 ? `<p class="hint share">${esc(t("detailShare", Math.round(share * 100)))}</p>` : ""}
+    sec("extra", fold("extra", list(extras), () => `${share != null && share < 0.9 ? `<p class="hint share">${esc(t("detailShare", Math.round(share * 100)))}</p>` : ""}
       <div class="opts">${PICKS.filter((f) => q[f] || (flagKnown(f) && fits[f] !== false)).map((f) => flag(f, facets[f])).join("")}</div>
       ${condos || q.feesMax != null ? select("feesMax", t("feesLabel"), FEES, (v) => t("feesMax", v)) : ""}
       ${shownTags.length ? `<details class="group"${q.features.length ? " open" : ""}><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.map(tagChip).join("")}</div></details>` : ""}`));
@@ -744,7 +743,9 @@
       || `<span class="meta">${esc(t(found.length ? "noStationHomes" : "noStation"))}</span>`;
   }
 
-  // Areas grouped as the index says (23区, a designated city's wards, cities, towns), prefecture by prefecture.
+  // Areas grouped as the index says (23区, a designated city's wards, cities, towns), prefecture by prefecture. A
+  // group's chips are drawn when it's open (all of Japan has some 1,900 areas).
+  let areaGroupList = [];  // per group: its areas as [code, label]
   function areaGroups() {
     const prefs = new Set(db.index.areas.map((a) => a[2])), kinds = t("kinds");
     const groups = new Map();
@@ -755,13 +756,16 @@
       const city = !kinds[group];  // a designated city: its wards without the city's name
       const g = `${prefs.size > 1 ? place(pref) + " " : ""}${city ? place(group) : kinds[group]}`;
       if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push([code, many("areas", code, city ? place(name).replace(group, "") || place(name) : place(name), facets.areas[code] || 0)]);
+      groups.get(g).push([code, city ? place(name).replace(group, "") || place(name) : place(name)]);
     }
-    return [...groups].map(([g, chips], i) => {
-      const open = i === 0 || chips.some(([code]) => q.areas.includes(code));
-      return `<details class="group"${open ? " open" : ""}><summary>${esc(g)}</summary><div class="opts">${chips.map(([, c]) => c).join("")}</div></details>`;
+    areaGroupList = [...groups.values()];
+    return [...groups].map(([g, areas], i) => {
+      const open = i === 0 || openGroups.has(g) || areas.some(([code]) => q.areas.includes(code));
+      return `<details class="group" data-group="${i}" data-name="${esc(g)}"${open ? " open" : ""}><summary>${esc(g)}</summary><div class="opts">${open ? areaChips(i) : ""}</div></details>`;
     }).join("");
   }
+  const areaChips = (i) => areaGroupList[i].map(([code, label]) => many("areas", code, label, facets.areas[code] || 0)).join("");
+  const openGroups = new Set();  // the area groups the user opened (they stay open as the filters are redrawn)
 
   function onFilterClick(e) {
     const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
@@ -886,7 +890,7 @@
 
   // ---------- map: always there; the list is what's in its view ----------
 
-  let leaflet = null, map = null, cluster = null;
+  let leaflet = null, map = null;
   let view = null;              // [south, west, north, east]: what the map shows (null: no map; everything is listed)
   let waiting = true;           // the first list waits for the map's view (at most MAP_WAIT ms)
   let mapAt = null;             // the view in the URL: "lat,lng,zoom" of its centre
@@ -894,7 +898,9 @@
   let lastPlaces = [];          // the areas and stations drawn (naming another one fits the map to the results)
   let autopan = false;          // a popup moved the map: the list stays as it is
   const MAP_WAIT = 2500;
-  const inArea = (list, b) => list.filter((it) => it.lat != null && it.lat >= b[0] && it.lng >= b[1] && it.lat <= b[2] && it.lng <= b[3]);
+  // The listings of a list in a box: looked up on the list's grid (Filter.spatial), made the first time it's asked.
+  const grids = new WeakMap();
+  const inArea = (list, b) => (grids.get(list) || grids.set(list, Filter.spatial(list)).get(list)).within(b);
   let viewItems = null, viewItemsFor = null;  // the chosen prefectures' listings in view (the quick chips count them)
   const inView = () => (viewItemsFor === `${dataVersion}|${view}` ? viewItems : ((viewItemsFor = `${dataVersion}|${view}`), (viewItems = inArea(db.items, view))));
 
@@ -957,10 +963,10 @@
 
   // Leaflet loaded (true) or not available (false; retried next time).
   function mapReady() {
-    leaflet ||= Promise.all(LEAFLET.map(([kind, url, integrity]) => new Promise((ok, fail) => {
+    leaflet ||= Promise.all(MAP_FILES.map(([kind, url, integrity]) => new Promise((ok, fail) => {
       const el = document.createElement(kind === "css" ? "link" : "script");
       Object.assign(el, kind === "css" ? { rel: "stylesheet", href: url } : { src: url, async: false });
-      Object.assign(el, { integrity, crossOrigin: "", onload: ok, onerror: fail });
+      Object.assign(el, { ...(integrity && { integrity, crossOrigin: "" }), onload: ok, onerror: fail });
       document.head.append(el);
     }))).then(() => true, () => { leaflet = null; return false; });
     return leaflet;
@@ -991,37 +997,21 @@
     return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl" style="width:${size}px;height:${size}px">${countLabel(n)}</div>`, iconSize: [size, size] }));
   }
   let priced = false;  // the town markers show prices (zoomed in)
-  function onZoom() {
-    const now = map.getZoom() >= PRICE_ZOOM;
-    if (now === priced) return;
-    priced = now;
-    const layer = layers.get(drawn.markers)?.value;
-    if (layer && !filling) reprice(layer);  // (a layer being filled is once it's done)
-  }
-  // Only the town markers on the map now are redrawn; the others take the right icon as they're added (beforeAdd,
-  // below). Cluster icons show counts only: they stay.
-  function reprice(layer) {
-    // (markercluster keeps what's drawn in _featureGroup: those markers and clusters, not the 100k towns)
-    (layer.cluster._featureGroup || layer.cluster).eachLayer((m) => { if (m._map && m.options.list && m.options.pricedAs !== priced) setPriced(m); });
-    layer.priced = priced;
-  }
-  function setPriced(m) {
-    m.options.pricedAs = priced;
-    m.setIcon(townIcon(m.options.list, priced));
-  }
 
   function createMap() {
     const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     map = L.map("map", { zoomControl: false, zoomAnimation: motion, fadeAnimation: motion, markerZoomAnimation: motion,
       wheelPxPerZoomLevel: 120, wheelDebounceTime: 80 });  // a wheel notch: about one level
-    map.setView([35.68, 139.76], 10);  // a view before the layers (the cluster layer needs one); placed later
+    map.setView([35.68, 139.76], 10);  // a view before the markers (they're those in view); placed later
     // Leaflet measures its box only on window resizes; the layout also resizes it (the filter rail, the panel), and a
     // stale size leaves part of the map without tiles
     new ResizeObserver(() => map.invalidateSize({ pan: false, debounceMoveend: true })).observe(map.getContainer());
     map.on("popupopen", (e) => e.popup.getElement()?.querySelector(".popup-list a")?.focus({ preventScroll: true }));
+    map.on("popupclose", () => setTimeout(drawMarkers));  // (its marker was kept while it was open)
     map.on("autopanstart", () => { autopan = true; });
     map.on("moveend", onMapMove);
-    map.on("zoomend", onZoom);
+    map.on("moveend", drawMarkers);
+    markerLayer = L.layerGroup().addTo(map);
     if (!COARSE.matches) L.control.zoom({ position: "topright" }).addTo(map);
     map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
     map.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "topleft");  // (phones: the sheet is at the bottom)
@@ -1040,51 +1030,89 @@
     placeMap();
   }
 
-  // The markers: a cluster layer per set of results (in any order). The current one, the one before it and the
-  // unfiltered one are kept, so going back to one (clearing the conditions) is instant. A new layer is filled in
-  // chunks (all of Japan: most of a second); a set asked for meanwhile is drawn once that's done.
-  const layers = new Map();     // drawn.set + language (the pins' labels) -> {cluster, priced, order}
-  let filling = false;
-  let layerOrder = null;        // the results (drawn.search) whose order the shown layer's towns list their homes in
-  function newCluster() {
-    return L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true, chunkInterval: 50,
-      iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)),
-      chunkProgress: (done, total) => { if (done === total && filling) filled(); } });
-  }
-  function filled() {
-    filling = false;
-    const layer = layers.get(drawn.markers)?.value;
-    if (layer && layer.priced !== priced) reprice(layer);  // (zoomed past PRICE_ZOOM meanwhile)
-    setTimeout(drawMarkers);  // another set asked for meanwhile
-  }
-  function drawMarkers() {
-    const key = `${drawn.set}|${S.lang}`;
-    if (key === drawn.markers || filling || !drawn.set) return;
-    let fresh = false;
-    const layer = kept(layers, key, () => ((fresh = true), { cluster: newCluster(), priced: null, order: drawn.search }), drawn.base);
-    if (layer.cluster !== cluster) {
-      if (cluster) map.removeLayer(cluster);
-      cluster = layer.cluster;
-      map.addLayer(cluster);
-    }
-    drawn.markers = key;
-    layerOrder = layer.order;
-    priced = map.getZoom() >= PRICE_ZOOM;
-    if (!fresh) { if (layer.priced !== priced) reprice(layer); return; }
-    layer.priced = priced;
-    const towns = new Map();
+  // The markers: the results' towns clustered once per set of results (Supercluster; in any order), and on the map
+  // only the clusters and towns in and around the view, made as it moves. The current set, the one before it and the
+  // unfiltered one are kept, so going back to one (clearing the conditions) is quick. Towns at one point are one
+  // marker. A cluster counts the homes in it.
+  const CLUSTER_MAX = 16;       // zoomed in further, every town has its marker
+  const clusterSets = new Map();  // drawn.set -> {index, points: [{lat, lng, towns, list}], order}
+  const onMap = new Map();      // the markers on the map: "c" + cluster id or "p" + point -> marker
+  let markerLayer = null, shownSet = null, shownLang = null;
+  let layerOrder = null;        // the results (drawn.search) whose order the shown set's towns list their homes in
+  function clusterSet() {
+    const points = [], at = new Map(), byTown = new Map();  // (prefecture -> per town its point)
     for (const it of mapHits) {
       if (it.lat == null) continue;
-      if (!towns.has(it.town)) towns.set(it.town, [it.lat, it.lng, []]);
-      towns.get(it.town)[2].push(it);
+      let towns = byTown.get(it.part), p;
+      if (!towns) byTown.set(it.part, (towns = []));
+      if (!(p = towns[it.townId])) {
+        const k = `${it.lat},${it.lng}`;
+        if (!(p = at.get(k))) { at.set(k, (p = { lat: it.lat, lng: it.lng, towns: [], list: [] })); points.push(p); }
+        towns[it.townId] = p;
+        p.towns.push(it.town);
+      }
+      p.list.push(it);
     }
-    filling = true;
-    cluster.addLayers([...towns].map(([town, [lat, lng, list]]) => {
-      const m = L.marker([lat, lng], { icon: townIcon(list, priced), pricedAs: priced, list, title: `${town} ${t("count", countLabel(list.length))}` })
-        .bindPopup((mk) => popup(town, inOrder(mk.options.list)), { autoPanPadding: [56, 56] });
-      m.beforeAdd = () => { if (m.options.pricedAs !== priced) { m.options.pricedAs = priced; m.options.icon = townIcon(list, priced); } };
-      return m;
-    }));
+    const index = new Supercluster({ radius: 48, extent: 256, maxZoom: CLUSTER_MAX,
+      map: (props) => ({ n: props.n }), reduce: (sum, props) => { sum.n += props.n; } });
+    index.load(points.map((p, i) => ({ type: "Feature", properties: { i, n: p.list.length }, geometry: { type: "Point", coordinates: [p.lng, p.lat] } })));
+    return { index, points, order: drawn.search };
+  }
+  function pointMarker(p) {
+    const towns = p.towns.join("・");
+    return L.marker([p.lat, p.lng], { icon: townIcon(p.list, priced), pricedAs: priced, point: p, title: `${towns} ${t("count", countLabel(p.list.length))}` })
+      .bindPopup(() => popup(towns, inOrder(p.list)), { autoPanPadding: [56, 56] });
+  }
+  function clusterMarker(f, index) {
+    const [lng, lat] = f.geometry.coordinates;
+    return L.marker([lat, lng], { icon: clusterIcon(f.properties.n) }).on("click", () => {  // zoomed in until it splits
+      const z = Math.min(index.getClusterExpansionZoom(f.properties.cluster_id), map.getMaxZoom());
+      map.setView(centreFor([lat, lng], z), z);
+    });
+  }
+  let clustering = null;        // the set being clustered (in a task of its own, after the list is drawn)
+  function drawMarkers() {
+    if (!map || !drawn.set) return;
+    if (!clusterSets.has(drawn.set)) {  // (the markers already there stay until the new ones are ready)
+      if (clustering !== drawn.set) {
+        const key = (clustering = drawn.set);
+        frame().then(() => {
+          if (clustering !== key) return;  // (another set was asked for meanwhile)
+          clustering = null;
+          if (drawn.set === key) { kept(clusterSets, key, clusterSet, drawn.base); drawMarkers(); }
+        });
+      }
+      return;
+    }
+    const set = kept(clusterSets, drawn.set, clusterSet, drawn.base);
+    if (set !== shownSet || shownLang !== S.lang) {  // other results (or labels): all new markers
+      markerLayer.clearLayers();
+      onMap.clear();
+      shownSet = set;
+      shownLang = S.lang;
+      layerOrder = set.order;
+    }
+    const z = map.getZoom(), b = map.getBounds().pad(0.25), want = new Map();
+    priced = z >= PRICE_ZOOM;
+    for (const f of set.index.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.floor(z))) {
+      want.set(f.properties.cluster ? `c${f.properties.cluster_id}` : `p${f.properties.i}`, f);
+    }
+    for (const [k, m] of onMap) {
+      if (want.has(k) || m.isPopupOpen()) continue;  // (an open popup stays, with its marker, until it's closed)
+      markerLayer.removeLayer(m);
+      onMap.delete(k);
+    }
+    for (const [k, f] of want) {
+      const m = onMap.get(k);
+      if (!m) {
+        const made = f.properties.cluster ? clusterMarker(f, set.index) : pointMarker(set.points[f.properties.i]);
+        onMap.set(k, made);
+        markerLayer.addLayer(made);
+      } else if (m.options.point && m.options.pricedAs !== priced) {  // zoomed past PRICE_ZOOM
+        m.options.pricedAs = priced;
+        m.setIcon(townIcon(m.options.point.list, priced));
+      }
+    }
   }
   // A town's homes in the results' order (the layer may have been drawn for another sort).
   function inOrder(list) {
@@ -1099,8 +1127,16 @@
   const loadRail = () => (railData ||= fetch("data/rail.json").then((r) => r.json()).then((d) => {
     railLoaded = d;
     for (const line of d.lines) {    // each line's box, to find what's in view
-      const pts = line[4].flat();
-      line.box = [Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0]))];
+      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+      for (const part of line[4]) {
+        for (const [lng, lat] of part) {
+          if (lat < s) s = lat;
+          if (lat > n) n = lat;
+          if (lng < w) w = lng;
+          if (lng > e) e = lng;
+        }
+      }
+      line.box = [s, w, n, e];
     }
     return d;
   }).catch(() => { railData = null; return null; }));
@@ -1114,22 +1150,22 @@
   let railStyled = null, radiusBand = null;  // how the lines and the stations are styled now (restyled on a change)
   let lineStyle = null;                      // ... as {z, base, focus, colour}, for the lines added later
   let railShapes = [];                       // per line [its paths, its coarse paths (zoomed out)] as Leaflet takes them
-  let railDots = [];                         // every station's marker; those near the view are in railStations
+  let railDots = [];                         // each station's marker (null until near the view); those near it are in railStations
+  let railCanvas = null;                     // the lines' and stations' canvas
   const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
 
   async function drawRail() {
     rail = await loadRail();
     if (!rail) return;  // the map works without it
-    const canvas = L.canvas({ padding: 0.3 });
+    const canvas = (railCanvas = L.canvas({ padding: 0.3 }));
     // (an older rail.json, from the service worker's cache, has no coarse copy: the paths serve for both)
     railShapes = rail.lines.map((line) => { const fine = latlngs(line[4]); return [fine, line[5] ? latlngs(line[5]) : fine]; });
     const coarse = map.getZoom() < COARSE_BELOW ? 1 : 0;
     railHalos = railShapes.map((shapes) => Object.assign(L.polyline(shapes[coarse], { renderer: canvas, interactive: false }), { shape: coarse }));
     railLines = rail.lines.map((line, i) => Object.assign(L.polyline(railShapes[i][coarse], { renderer: canvas, color: line[3], interactive: false }), { shape: coarse }));
-    // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
-    railDots = rail.stations.map(([name, lat, lng, lines]) => L.circleMarker([lat, lng], { renderer: canvas, radius: 4,
-      color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1, lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] })
-      .bindPopup(() => stationPopup(name, lines)));
+    // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in (each made
+    // the first time it's near the view: cullRail)
+    railDots = new Array(rail.stations.length).fill(null);
     railStations = L.layerGroup();
     railLabels = L.layerGroup();
     map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
@@ -1256,9 +1292,14 @@
     if (!map.hasLayer(railStations)) return;
     for (let k = 0; k < railDots.length; k++) {
       const [, lat, lng] = rail.stations[k], m = railDots[k], want = lat >= s && lat <= n && lng >= w && lng <= e;
-      if (want === railStations.hasLayer(m)) continue;
-      if (want) { if (m.band !== radiusBand) styleDot(m); railStations.addLayer(m); } else railStations.removeLayer(m);
+      if (want === (!!m && railStations.hasLayer(m))) continue;
+      if (want) { const dot = m || (railDots[k] = stationDot(rail.stations[k])); if (dot.band !== radiusBand) styleDot(dot); railStations.addLayer(dot); }
+      else railStations.removeLayer(m);
     }
+  }
+  function stationDot([name, lat, lng, lines]) {
+    return L.circleMarker([lat, lng], { renderer: railCanvas, radius: 4, color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1,
+      lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] }).bindPopup(() => stationPopup(name, lines));
   }
 
   // A station on the map: its lines, and its homes under the current conditions in one tap.
@@ -1820,8 +1861,19 @@
     $("unplaced").addEventListener("toggle", renderUnplaced);
     $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
     $("filters-body").addEventListener("toggle", (e) => {  // (toggle doesn't bubble: caught on the way down)
-      const k = e.target.dataset?.fold;
-      if (k) { if (e.target.open) openFolds.add(k); else openFolds.delete(k); }
+      const el = e.target, k = el.dataset?.fold, g = el.dataset?.group;
+      if (k) {
+        if (el.open) openFolds.add(k); else openFolds.delete(k);
+        if (el.open && !el.querySelector(".fold-body").dataset.drawn) {  // drawn now (the keyboard stays on it)
+          const focused = el.contains(document.activeElement);
+          renderFilters();
+          if (focused) $("filters-body").querySelector(`[data-fold="${k}"] > summary`)?.focus();
+        }
+      } else if (g != null) {
+        if (el.open) openGroups.add(el.dataset.name); else openGroups.delete(el.dataset.name);
+        const box = el.querySelector(".opts");
+        if (el.open && !box.firstChild) box.innerHTML = areaChips(+g);
+      }
     }, true);
     $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
       if (e.target.id !== "station-q" || e.key !== "Enter") return;
@@ -1974,20 +2026,26 @@
     return known.length ? known : [manifest.prefs[0][0]];
   }
 
+  // The next frame (or a moment, when the page isn't drawn: a hidden tab has no frames).
+  const frame = () => new Promise((ok) => {
+    const late = setTimeout(ok, 100);
+    requestAnimationFrame(() => setTimeout(() => { clearTimeout(late); ok(); }));
+  });
+
   async function loadPrefs(slugs) {
     const todo = slugs.filter((s) => !loaded.has(s));
-    let done = 0;
+    let done = 0, turn = Promise.resolve();
     await Promise.all(todo.map(async (slug) => {
-      const part = Filter.load(await (await fetch(`data/p/${slug}.json`)).json());
+      const index = await (await fetch(`data/p/${slug}.json`)).json();
+      await (turn = turn.then(frame));  // one prefecture a frame (all of Japan: the page keeps drawing meanwhile)
+      const part = Filter.load(index, { places: I18N.en.places });  // ("shibuya" finds 渋谷区)
       if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47 files
-      for (const it of part.items) {
-        it.alias = I18N.en.places[it.areaName];  // "shibuya" finds 渋谷区
-      }
       loaded.set(slug, part);
     }));
     allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
     dataChanged();
     offerNewer();
+    await frame();  // the count drawn before the first search
   }
 
   // The service worker (sw.js) shows a prefecture's index from this browser's cache, then fetches it again; when the

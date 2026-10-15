@@ -68,7 +68,8 @@ reads conditions from plain text (「渋谷 3LDK 6000万以下 徒歩10分 ペ�
 `Filter.parse` in site/filter.js; what it doesn't understand stays a text search.
 
 The site is public (GitHub Pages) but marked `noindex`. Photos load from SUUMO's image server; Leaflet loads from
-unpkg (with integrity hashes) only when a map is shown.
+unpkg (with integrity hashes) only when a map is shown, with the clustering (supercluster, ISC, in
+`site/supercluster.min.js`).
 
 ## Setting up on a new Mac
 
