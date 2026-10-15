@@ -191,11 +191,13 @@ and names are in `data/<pref>/areas.json` after a run.
    After that, new IDs and price changes become events. A listing missing from 2 complete crawls on different
    days (a day starts at 04:00) is deleted (row, archived page; a `removed` event), unless it's on the saved list:
    then it's kept as ended and still shown on the site in お気に入り. A deleted listing that comes back within 14
-   days is `relisted` with its original first-seen date. If an area loses more than 30% of at least 20 listings
+   days is `relisted` with its original first-seen date; an ID SUUMO moves to another type (e.g. 新築 → 中古)
+   keeps its first-seen date and isn't new. If an area loses more than 30% of at least 20 listings
    at once, it is marked `suspect` and nothing is removed that day; the next day compares against the new count.
 3. **Listing pages**: fetched once, for listings not stored yet (new first, then backfill), until the budget
-   runs out. One listing per property (`dup_key`) gets its page; another agent's copy only when that one goes
-   missing or ends (a group where one agent appears twice is several properties: each gets its page). A page that
+   runs out. One listing per property (`dup_key`) gets its page, and it stays the same one when SUUMO reorders
+   the results; another agent's copy only when that one goes
+   missing, ends or is gone (a group where one agent appears twice is several properties: each gets its page). A page that
    is gone (404) isn't asked for again. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
    parse failure is logged and the page can be re-parsed later.
 4. **Cleanup**: ended listings no longer saved are deleted; search-result snapshots are kept 14 days; event and

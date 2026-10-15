@@ -35,8 +35,9 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `~/suumo-refresh/all.sh` (not in git) | The one-off driver for the nationwide sweep and backfill (nohup + caffeinate): sweep, geocode, then 1 h listing-page runs with the stepped delay, the 04:00 crawl at 1.5 s. Replace with `local.suumo.plist` once the backfill is done |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
-Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo`/`site` →
-`detail`/`parse`/`db`/`archive`/`scope`/`http`/`catalog`. `parse`, `detail` and `catalog` are pure.
+Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `export`/`detail`; `cli` → `site` →
+`stations` → `geo`, with `site` and `stations` also using `catalog`; `cli` → `saved`/`rail`/`fx`/`gitdata`. All of
+them may use the bottom layer `parse`/`scope`/`db`/`archive`/`http`. `parse`, `detail` and `catalog` are pure.
 
 ## Data model
 
@@ -61,10 +62,14 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   data fixes under `PRAGMA user_version` (`maintenance.strip_list_fields`). Only writing commands run them, after
   taking the lock (`status` opens the DB with `migrate=False`): old code must keep working on the result.
 - IDs are SUUMO `nc_` numbers, per agent listing. The same property listed by several agents has several IDs;
-  `dup_key` (type + building/address + size + price) groups them. Only one listing per group gets its page fetched,
-  decided in `Pipeline.reconcile` only: a listing seen in this crawl whose page is stored (or queued) claims the
-  group, so when it goes missing or ends, a copy is queued and fetched. `_queue_order` only orders the queue (new
-  first, then the prefecture with the most listings; a land twin after its queued twin).
+  `dup_key` (type + building/address + size + price) groups them. Only one listing per group (its lead) gets its
+  page fetched, decided in `Pipeline._leads` only, among the listings seen in this crawl: one whose page is stored;
+  else the one already queued and not given up on (it keeps its place in line, `enqueued_at`, when SUUMO shows the
+  members in another order, which it does daily for ~20% of groups); else the first on the page not given up on.
+  So when the lead goes missing, ends or is gone (404), a copy is queued and fetched. Other agents' copies are never
+  fetched while the lead stands, by the owner's decision (2026-10-15: so their `deal_type`, e.g. 仲介手数料なし,
+  stays unknown). `_queue_order` only orders the queue (new first, then the prefecture with the most listings; a
+  land twin after its queued twin).
 - **A `dup_key` group in which a known `agent` appears twice is not one property** (an agent doesn't list one
   property twice), **nor is a condo group whose fetched listings have two different known `floor`s.** Their
   listings stand alone. The crawler applies the agent half when queueing (every listing of such a group gets its
@@ -95,7 +100,10 @@ Imports flow one way: `cli` → `pipeline`/`maintenance`/`export`/`gitdata`/`geo
   listings are held there, is reconciled as complete with 0 hits (same guards apply).
 - **Returns are relisted.** A deleted listing seen again while its tombstone lasts (14 days) gets back its
   `first_seen`, a `relisted` event (plus `price_changed` if the price differs) and its page queued again; later
-  it's `new`.
+  it's `new`. An id first seen under one type that is held under another (SUUMO re-types listings, e.g. new_house →
+  used_house, and lists some land under both new_house and land) keeps that row's `first_seen`, gets no `new`
+  event unless the other type's got a new/relisted one in the same run, and is queued at backfill (report count
+  `retyped`); the old type's row ends after its misses as usual.
 - **Baselines are silent.** An area's first complete crawl creates no events (so nothing is 新着); its listings
   queue as backfill.
 - **Archive before parse.** Every fetched page is saved to `archive/` before parsing; a parser exception is logged and
