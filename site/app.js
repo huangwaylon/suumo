@@ -978,22 +978,24 @@
   const PRICE_ZOOM = 15;
   const pins = new Map();
   const cachedIcon = (key, make) => pins.get(key) || pins.set(key, make()).get(key);
+  const countLabels = new Map();  // a marker's count as written (formatting tens of thousands of them adds up)
+  const countLabel = (n) => countLabels.get(S.lang + n) ?? countLabels.set(S.lang + n, num(n)).get(S.lang + n);
   function townIcon(list, priced) {
     if (!priced) {
-      const label = num(list.length);
+      const label = countLabel(list.length);
       return cachedIcon(`t${label}`, () => L.divIcon({ className: "", html: `<div class="pin">${label}</div>`, iconSize: [Math.max(28, 14 + label.length * 8), 24] }));
     }
     const lo = list.reduce((m, it) => (it.price != null && (m == null || it.price < m) ? it.price : m), null);
     const label = lo == null ? t("undecided") : t("pinPrice", lo), more = list.length > 1 ? list.length : 0;
     return cachedIcon(`p${label}|${more}`, () => {
       const w = 18 + label.length * (S.lang === "en" ? 7 : 10) + (more ? 10 + String(more).length * 7 : 0);
-      return L.divIcon({ className: "", html: `<div class="pin price">${esc(label)}${more ? `<i>${num(more)}</i>` : ""}</div>`,
+      return L.divIcon({ className: "", html: `<div class="pin price">${esc(label)}${more ? `<i>${countLabel(more)}</i>` : ""}</div>`,
         iconSize: [w, 26], iconAnchor: [w / 2, 32] });
     });
   }
   function clusterIcon(n) {
     const size = n < 10 ? 30 : n < 100 ? 36 : n < 1000 ? 44 : 52;
-    return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl" style="width:${size}px;height:${size}px">${num(n)}</div>`, iconSize: [size, size] }));
+    return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl" style="width:${size}px;height:${size}px">${countLabel(n)}</div>`, iconSize: [size, size] }));
   }
   let priced = false;  // the town markers show prices (zoomed in)
   function onZoom() {
@@ -1003,10 +1005,16 @@
     const layer = layers.get(drawn.markers)?.value;
     if (layer && !filling) reprice(layer);  // (a layer being filled is once it's done)
   }
+  // Only the town markers on the map now are redrawn; the others take the right icon as they're added (beforeAdd,
+  // below). Cluster icons show counts only: they stay.
   function reprice(layer) {
-    layer.cluster.eachLayer((m) => m.setIcon(townIcon(m.options.list, priced)));
-    layer.cluster.refreshClusters();
+    // (markercluster keeps what's drawn in _featureGroup: those markers and clusters, not the 100k towns)
+    (layer.cluster._featureGroup || layer.cluster).eachLayer((m) => { if (m._map && m.options.list && m.options.pricedAs !== priced) setPriced(m); });
     layer.priced = priced;
+  }
+  function setPriced(m) {
+    m.options.pricedAs = priced;
+    m.setIcon(townIcon(m.options.list, priced));
   }
 
   function createMap() {
@@ -1046,7 +1054,7 @@
   let filling = false;
   let layerOrder = null;        // the results (drawn.search) whose order the shown layer's towns list their homes in
   function newCluster() {
-    return L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true,
+    return L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, chunkedLoading: true, chunkInterval: 50,
       iconCreateFunction: (c) => clusterIcon(c.getAllChildMarkers().reduce((n, m) => n + m.options.list.length, 0)),
       chunkProgress: (done, total) => { if (done === total && filling) filled(); } });
   }
@@ -1078,8 +1086,12 @@
       towns.get(it.town)[2].push(it);
     }
     filling = true;
-    cluster.addLayers([...towns].map(([town, [lat, lng, list]]) =>
-      L.marker([lat, lng], { icon: townIcon(list, priced), list, title: `${town} ${t("count", num(list.length))}` }).bindPopup((m) => popup(town, inOrder(m.options.list)), { autoPanPadding: [56, 56] })));
+    cluster.addLayers([...towns].map(([town, [lat, lng, list]]) => {
+      const m = L.marker([lat, lng], { icon: townIcon(list, priced), pricedAs: priced, list, title: `${town} ${t("count", countLabel(list.length))}` })
+        .bindPopup((mk) => popup(town, inOrder(mk.options.list)), { autoPanPadding: [56, 56] });
+      m.beforeAdd = () => { if (m.options.pricedAs !== priced) { m.options.pricedAs = priced; m.options.icon = townIcon(list, priced); } };
+      return m;
+    }));
   }
   // A town's homes in the results' order (the layer may have been drawn for another sort).
   function inOrder(list) {
@@ -1229,8 +1241,10 @@
   }
 
   // Where the results are, without far outliers (islands, a stray geocode): the 2nd-98th percentile box; all of
-  // them when there are few.
-  function coreBounds(points) {
+  // them when there are few. (Of an even sample of at most CORE_SAMPLE of them: the box hardly changes.)
+  const CORE_SAMPLE = 5000;
+  function coreBounds(all) {
+    const step = Math.max(1, all.length / CORE_SAMPLE), points = step === 1 ? all : Array.from({ length: Math.floor(all.length / step) }, (_, k) => all[Math.floor(k * step)]);
     const pick = (i) => Float64Array.from(points, (p) => p[i]).sort(), cut = points.length < 20 ? 0 : 0.02;  // (numeric)
     const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor((a.length - 1) * f + 0.5))];
     return [[at(lat, cut), at(lng, cut)], [at(lat, 1 - cut), at(lng, 1 - cut)]];
