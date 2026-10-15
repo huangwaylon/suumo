@@ -4,6 +4,7 @@ The search rules themselves live in site/filter.js.
 
 Listing keys are "type:id" strings (e.g. "used_condo:20205670").
 """
+import functools
 import json
 import re
 import unicodedata
@@ -45,6 +46,7 @@ def plan_rank(layout):
     return max(ranks) if ranks else None
 
 
+@functools.cache
 def station_key(name):
     """The form station names are matched in: '市ヶ谷', '市ケ谷駅', '市が谷' -> '市ケ谷'; '浦安駅 (千葉県)' -> '浦安';
     '江曾島' -> '江曽島'; '江の島' -> '江ノ島'."""
@@ -213,7 +215,10 @@ class Snapshot:
         return at
 
     def is_new(self, item):
-        at = self.new(item)
+        return self.is_new_at(self.new(item))
+
+    def is_new_at(self, at):
+        """Whether new(item) == at makes the listing 新着 (within NEW_DAYS)."""
         return bool(at) and at[0] >= hour(self.today - timedelta(days=NEW_DAYS))
 
     def drop(self, item):

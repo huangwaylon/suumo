@@ -50,7 +50,9 @@ def _image(url, lid):
     other forms keep their path, or the whole URL."""
     if not url or not url.startswith(IMAGE_PREFIX):
         return url
-    path = unquote_plus(url[len(IMAGE_PREFIX):].partition("&")[0])
+    path = url[len(IMAGE_PREFIX):].partition("&")[0]
+    if "%" in path or "+" in path:
+        path = unquote_plus(path)
     m = _image_path.match(path)
     if not m or m.group(4) != lid:
         return path
@@ -173,8 +175,8 @@ def station_prefectures(reps, rail_stations=()):
     return {name: prefs for name, prefs in used.items() if name in far}
 
 
-def build_index(snap, reps, towns_cache, readings, station_prefs):
-    """The search index of these listings (one prefecture's, on the site)."""
+def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
+    """The search index of these listings (one prefecture's, on the site). meta: item -> (_name, snap.new)."""
 
     def station(name, pref):
         return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
@@ -183,14 +185,14 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
     stations = Table.by_count(station(name, i.pref) for i in reps for name, _ in i.stations)
     shown = {i: [f for f in i.features if f not in HIDDEN_TAGS] for i in reps}
     features = Table.by_count(f for fs in shown.values() for f in fs)  # so each tag set is a short bit string
-    names = Table.by_count(_name(i.rec) for i in reps)
+    names = Table.by_count(meta[i][0] for i in reps)
     layouts = Table.by_count(i.rec.get("layout") for i in reps)
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
                             "access", "stop", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit",
                             "town", "name", "layout", "image", "fees")}
     last_id = 0
     for i in sorted(reps, key=lambda i: (i.type, i.idn)):
-        r, new, drop = i.rec, snap.new(i), snap.drop(i)
+        (name, new), r, drop = meta[i], i.rec, snap.drop(i)
         town = town_of(r.get("address"), i.pref)
         row = {
             "id": i.idn - last_id, "type": types(i.type), "area": areas((i.area, i.pref)), "price": i.price_lo,
@@ -202,7 +204,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             "stop": list(min(i.stops, key=lambda s: s[1] if s[1] is not None else 999)) if i.stops else None,
             "features": _mask(features(f) for f in shown[i]),
             "flags": (FLAGS["leasehold"] * i.leasehold | FLAGS["conditional"] * i.conditional
-                      | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new(i)
+                      | FLAGS["post1981"] * i.post_1981 | FLAGS["new"] * snap.is_new_at(new)
                       | FLAGS["dropped"] * bool(drop) | FLAGS["saved"] * i.saved | FLAGS["gone"] * i.gone
                       | FLAGS["relisted"] * bool(new and new[1] == "relisted")
                       | FLAGS["south"] * i.south | FLAGS["top"] * i.top | FLAGS["upper"] * i.upper
@@ -214,7 +216,7 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
             "others": len(reps[i]), "newAt": new[0] if new else None, "drop": list(drop[:2]) if drop else None,
             "firstSeen": _date_int(i.first_seen),
             "unit": round(i.unit_price / 1000) if i.unit_price else None,   # 千円/㎡
-            "town": towns(town or None), "name": names(_name(r)), "layout": layouts(r.get("layout")),
+            "town": towns(town or None), "name": names(name), "layout": layouts(r.get("layout")),
             "image": _image(r.get("image"), r["id"]),
             "fees": round(i.fees / 100) if i.fees is not None else None,   # condos' monthly fees, ¥100
         }
@@ -233,12 +235,12 @@ def build_index(snap, reps, towns_cache, readings, station_prefs):
     }
 
 
-def listing_record(snap, item, others):
-    stops = {name for name, _ in item.stops}
+def listing_record(snap, item, others, name, new):
+    stops = {stop for stop, _ in item.stops}
     stations = [{**s, "bus_stop": True} if s.get("name") in stops else s for s in item.rec.get("stations") or []]
     return {**item.rec, "stations": stations or None, "history": snap.history.get(item.key, []),
-            "new_date": _new_date(snap.new(item)),
-            "name": _name(item.rec),
+            "new_date": _new_date(new),
+            "name": name,
             "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url"),
                         "deal_type": o.rec.get("deal_type")} for o in others]}
 
@@ -280,12 +282,13 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     by_pref = defaultdict(dict)
     for item, others in reps.items():
         by_pref[item.pref][item] = others
+    meta = {i: (_name(i.rec), snap.new(i)) for i in reps}  # each worked out once: the index and the record use them
     rail = rail and listing_spelling(rail, reps)
     station_prefs = station_prefectures(reps, rail["stations"] if rail else ())
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = {}
     for pref in sorted(by_pref, key=lambda p: (p != "tokyo", -len(by_pref[p]))):
-        built[pref] = build_index(snap, by_pref[pref], towns, readings, station_prefs)
+        built[pref] = build_index(snap, by_pref[pref], meta, towns, readings, station_prefs)
         (out / "data" / "p" / f"{pref}.json").write_text(_dump(built[pref]), encoding="utf-8")
     manifest = {"updated": updated,
                 # [slug, name, properties, share of them with their listing page fetched]
@@ -300,9 +303,10 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     listings = out / "data" / "l"
     for type_ in {i.type for i in reps}:
         (listings / type_).mkdir(parents=True)
+
     for item, others in reps.items():
         with open(f"{listings}/{item.type}/{item.rec['id']}.json", "w", encoding="utf-8") as f:
-            f.write(_dump(listing_record(snap, item, others)))
+            f.write(_dump(listing_record(snap, item, others, *meta[item])))
     sizes = ", ".join(f"{p} {(out / 'data' / 'p' / f'{p}.json').stat().st_size / 1e6:.1f} MB" for p in built)
     log(f"site: {len(reps):,} properties ({len(snap.items):,} listings); indexes: {sizes} → {out}")
     return {"manifest": manifest, **built}
