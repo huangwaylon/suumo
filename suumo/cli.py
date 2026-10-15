@@ -36,14 +36,21 @@ GEO_BUDGET = 600  # seconds a run spends on the address search, for towns 位置
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def crawl_due(db, now, hour):
-    """SUUMO updates its search results once a day: crawl them when the last crawl is from before today's
-    :hour (or yesterday's, before then)."""
+def crawled_since(db, now, hour):
+    """The prefectures whose search results were crawled since today's :hour (or yesterday's, before then)."""
     since = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     if now < since:
         since -= timedelta(days=1)
-    last = db.x("SELECT MAX(crawled_at) FROM prefs").fetchone()[0]
-    return last is None or datetime.fromisoformat(last) < since
+    return {r["pref"] for r in db.x("SELECT pref, crawled_at FROM prefs")
+            if datetime.fromisoformat(r["crawled_at"]) >= since}
+
+
+def crawl_due(db, now, hour, prefs=None):
+    """SUUMO updates its search results once a day: crawl them while one of prefs (the scope's; by default every
+    prefecture crawled before) wasn't crawled since today's :hour (or yesterday's, before then)."""
+    if prefs is None:
+        prefs = {r[0] for r in db.x("SELECT pref FROM prefs")}
+    return not prefs or not set(prefs) <= crawled_since(db, now, hour)
 
 
 def seconds_until_minute(now, minute):
@@ -86,10 +93,11 @@ def cmd_run(c: Ctx):
     client = Client(delay=a.delay)
     t0 = time.monotonic()
     p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
-    if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at):
+    prefs = {t.pref for t in c.targets}
+    if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at, prefs):
         print(f"search results: crawled since {a.crawl_at:02d}:00; this run works the listing-page queue")
-    elif not a.no_crawl:
-        p.crawl_lists()
+    elif not a.no_crawl:  # with --crawl-at, a daily crawl that stopped part-way resumes with the next prefecture
+        p.crawl_lists(skip=crawled_since(c.db, now, a.crawl_at) if a.crawl_at is not None else ())
     budget = a.budget
     if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
         budget = min(budget, seconds_until_minute(datetime.now(JST), a.until_minute))

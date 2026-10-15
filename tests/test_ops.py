@@ -13,7 +13,7 @@ import pytest
 
 from suumo import fx, geo, http, pipeline, saved
 from suumo.archive import Archive
-from suumo.cli import crawl_due, is_locked, print_progress, seconds_until_minute
+from suumo.cli import crawl_due, crawled_since, is_locked, print_progress, seconds_until_minute
 from suumo.db import DB, exclusive
 from suumo.export import export
 from suumo.geo import _municipality, _same_spelling, geocode, town_of
@@ -307,6 +307,46 @@ def test_search_results_are_crawled_once_a_day(tmp_path):
     assert not crawl_due(db, datetime(2026, 10, 7, 13, 0, tzinfo=jst), 4)                 # done today
     assert not crawl_due(db, datetime(2026, 10, 8, 3, 0, tzinfo=jst), 4)                  # before tomorrow's 04:00
     assert crawl_due(db, datetime(2026, 10, 8, 4, 5, tzinfo=jst), 4)                      # after it
+
+
+def test_the_daily_crawl_is_due_until_every_prefecture_is_done(tmp_path):
+    jst = ZoneInfo("Asia/Tokyo")
+    db = DB(tmp_path / "s.db")
+    db.x("INSERT INTO prefs VALUES ('tokyo', '2026-10-07T04:05:00+09:00'), ('chiba', '2026-10-06T04:05:00+09:00')")
+    now = datetime(2026, 10, 7, 13, 0, tzinfo=jst)
+    assert crawl_due(db, now, 4, {"tokyo", "chiba"}) and crawl_due(db, now, 4)    # chiba is yesterday's
+    assert not crawl_due(db, now, 4, {"tokyo"})
+    assert crawl_due(db, now, 4, {"tokyo", "osaka"})                               # never crawled
+    assert crawled_since(db, now, 4) == {"tokyo"}
+
+
+class _AreaPages:
+    """An area page without areas for every prefecture; stops the run (like a kill) at the one in stop_at."""
+    def __init__(self, stop_at=None):
+        self.stop_at, self.paths = stop_at, []
+
+    def get(self, path):
+        if self.stop_at and f"/{self.stop_at}/" in path:
+            raise KeyboardInterrupt
+        self.paths.append(path)
+        return "<html><body></body></html>"
+
+
+def test_a_daily_crawl_that_stopped_resumes_with_the_next_prefecture(tmp_path):
+    jst = ZoneInfo("Asia/Tokyo")
+    db = DB(tmp_path / "s.db")
+    targets = [Target(p, t, None) for p in ("tokyo", "chiba") for t in ("used_condo", "land")]
+    t1 = datetime(2026, 10, 7, 4, 5, tzinfo=jst)
+    with pytest.raises(KeyboardInterrupt):
+        Pipeline(db, Archive(tmp_path / "a"), _AreaPages(stop_at="chiba"), targets, t1, "r1", log=QUIET).crawl_lists()
+    assert [tuple(r) for r in db.x("SELECT pref, crawled_at FROM prefs")] == [("tokyo", t1.isoformat())]
+    t2 = datetime(2026, 10, 7, 4, 30, tzinfo=jst)
+    assert crawl_due(db, t2, 4, {"tokyo", "chiba"})
+    client = _AreaPages()
+    Pipeline(db, Archive(tmp_path / "a"), client, targets, t2, "r2", log=QUIET).crawl_lists(
+        skip=crawled_since(db, t2, 4))
+    assert client.paths == ["/ms/chuko/chiba/city/", "/tochi/chiba/city/"]
+    assert not crawl_due(db, t2, 4, {"tokyo", "chiba"})
 
 
 def test_a_second_geocoder_skips(tmp_path):

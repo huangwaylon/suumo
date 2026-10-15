@@ -11,7 +11,7 @@ A run crawls the search results (once a day with `--crawl-at`) and diffs them ag
 """
 import json
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
 from .archive import Archive
@@ -58,8 +58,16 @@ class Pipeline:
 
     # ---------- search results ----------
 
-    def crawl_lists(self):
-        for t in self.targets:
+    def crawl_lists(self, skip=()):
+        """Crawl every target's search results, except prefectures in skip (already crawled today). Each
+        prefecture's crawled_at is written as soon as its last target is done, so a crawl that stops part-way
+        resumes with the next prefecture (`run --crawl-at`)."""
+        targets = [t for t in self.targets if t.pref not in skip]
+        if len(targets) < len(self.targets):
+            self.log(f"search results: {len({t.pref for t in self.targets} & set(skip))} prefectures already "
+                     "crawled since the daily update; skipped")
+        left = Counter(t.pref for t in targets)
+        for t in targets:
             self.log(f"\n=== {t.pref} / {t.type} ===")
             try:
                 rep = self._crawl_target(t)
@@ -67,10 +75,10 @@ class Pipeline:
                 self.log(f"  ERROR {e!r}")
                 rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
             self.report["targets"].append(rep)
+            left[t.pref] -= 1
+            if not left[t.pref]:
+                self.db.x("INSERT OR REPLACE INTO prefs (pref, crawled_at) VALUES (?, ?)", t.pref, self.ts)
             self.db.commit()
-        for pref in dict.fromkeys(t.pref for t in self.targets):
-            self.db.x("INSERT OR REPLACE INTO prefs (pref, crawled_at) VALUES (?, ?)", pref, self.ts)
-        self.db.commit()
 
     def _crawl_target(self, t):
         html = self.client.get(f"/{TYPES[t.type]}/{t.pref}/city/")
