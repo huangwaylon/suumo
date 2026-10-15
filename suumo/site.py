@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, station_key
 from .geo import load_cache, town_of
 from .parse import TYPES
+from .rail import simplify
 from .scope import PREFS
 from .stations import names as station_names
 
@@ -31,6 +32,7 @@ JST = ZoneInfo("Asia/Tokyo")
 SPLIT_KM = 3  # same-named stations further apart than this are different stations
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
+RAIL_COARSE = 0.001  # degrees (~100 m): the lines' shape for the map zoomed out (below zoom 11)
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
          "relisted": 128, "south": 256, "top": 512, "upper": 1024, "nofee": 2048, "ready": 4096, "tower": 8192,
          "parking": 16384}
@@ -259,6 +261,45 @@ def _detail_share(items):
     return round(sum(1 for i in items if i.rec.get("has_detail")) / len(items), 3) if items else 0
 
 
+def _chains(parts):
+    """A line's sections joined end to end (the railway data splits lines at every station and junction): a few
+    long paths for the map to draw rather than thousands of short ones. Where lines branch, a path takes one way."""
+    parts = [[tuple(p) for p in part] for part in parts if len(part) > 1]
+    ends, used, out = defaultdict(list), [False] * len(parts), []
+    for k, part in enumerate(parts):
+        ends[part[0]].append(k)
+        ends[part[-1]].append(k)
+
+    def take(at):  # an unused section starting or ending at this point, oriented to start there
+        for k in ends[at]:
+            if not used[k]:
+                used[k] = True
+                return parts[k] if parts[k][0] == at else parts[k][::-1]
+        return None
+
+    for k, part in enumerate(parts):
+        if used[k]:
+            continue
+        used[k], chain = True, list(part)
+        for _ in range(2):  # grow at the end, then (reversed) at the start
+            while (more := take(chain[-1])) is not None:
+                chain += more[1:]
+            chain.reverse()
+        out.append(chain)
+    return out
+
+
+def rail_lines(lines):
+    """[operator, name, English, colour, sections] -> [..., paths, coarse paths]: sections joined into paths and
+    simplified again, plus a coarser copy for the map zoomed out (the page uses the paths when it's missing)."""
+    out = []
+    for *head, parts in lines:
+        chains = _chains(parts)
+        out.append([*head, [[list(p) for p in simplify(c)] for c in chains],
+                    [[list(p) for p in simplify(c, RAIL_COARSE)] for c in chains]])
+    return out
+
+
 def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
@@ -299,7 +340,7 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
         manifest["fx"] = json.loads(fx.read_text())
     (out / "data" / "index.json").write_text(_dump(manifest), encoding="utf-8")
     if rail:
-        (out / "data" / "rail.json").write_text(_dump(rail), encoding="utf-8")
+        (out / "data" / "rail.json").write_text(_dump({**rail, "lines": rail_lines(rail["lines"])}), encoding="utf-8")
     listings = out / "data" / "l"
     for type_ in {i.type for i in reps}:
         (listings / type_).mkdir(parents=True)

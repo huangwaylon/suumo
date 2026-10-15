@@ -321,6 +321,26 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     assert [p[0] for p in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
 
 
+def test_rail_sections_are_joined_into_paths_with_a_coarse_copy(tmp_path):
+    from tests.helpers import write
+    write(tmp_path / "data", [rec(1)])
+    a, b = [[139.0, 35.0], [139.01, 35.0004], [139.02, 35.0]], [[139.03, 35.001], [139.025, 35.0002], [139.02, 35.0]]
+    far = [[140.0, 36.0], [140.1, 36.1]]
+    rail = {"attribution": "x", "operators": [["op", "Op", "#000", "op"]], "stations": [],
+            "lines": [[0, "線", "Line", "#123456", [a, far, b]]]}   # a and b meet at 139.02 (b runs backwards)
+    (tmp_path / "rail.json").write_text(json.dumps(rail))
+    build(tmp_path / "data", tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
+    [[op, name, en, colour, paths, coarse]] = json.loads((tmp_path / "site/data/rail.json").read_text())["lines"]
+    assert (op, name, en, colour) == (0, "線", "Line", "#123456")
+    assert len(paths) == len(coarse) == 2                       # a + b joined; far on its own
+    joined = next(p for p in paths if len(p) > 2)
+    assert {tuple(joined[0]), tuple(joined[-1])} == {(139.0, 35.0), (139.03, 35.001)} and [139.02, 35.0] in joined
+    for p, c in zip(paths, coarse, strict=True):
+        assert len(c) <= len(p) and (c[0], c[-1]) == (p[0], p[-1])   # coarser, same ends
+    assert len(next(c for c in coarse if c[0] in (a[0], b[0]))) < len(joined)   # the small bends dropped
+    assert json.loads((tmp_path / "rail.json").read_text()) == rail   # geo/rail.json itself is unchanged
+
+
 def test_rail_stations_take_the_listings_spelling():
     from types import SimpleNamespace
 

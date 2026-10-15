@@ -1111,6 +1111,7 @@
     }
     return d;
   }).catch(() => { railData = null; return null; }));
+  const COARSE_BELOW = 11;  // zoom levels below this draw the lines' coarse copy
   const stationRadius = (z, lines) => (z < 13 ? 3 : z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
   const halo = () => (document.documentElement.dataset.theme === "dark" ? "#0d0f13" : "#ffffff");  // under each line
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
@@ -1119,6 +1120,7 @@
   let rail = null, railLines = [], railHalos = [], railStations = null, railLabels = null, railAsked = false;
   let railStyled = null, radiusBand = null;  // how the lines and the stations are styled now (restyled on a change)
   let lineStyle = null;                      // ... as {z, base, focus, colour}, for the lines added later
+  let railShapes = [];                       // per line [its paths, its coarse paths (zoomed out)] as Leaflet takes them
   let railDots = [];                         // every station's marker; those near the view are in railStations
   const hiddenOps = new Set([].concat(settings.railHidden || []));  // operators switched off (remembered)
 
@@ -1126,8 +1128,11 @@
     rail = await loadRail();
     if (!rail) return;  // the map works without it
     const canvas = L.canvas({ padding: 0.3 });
-    railHalos = rail.lines.map(([, , , , parts]) => L.polyline(latlngs(parts), { renderer: canvas, interactive: false }));
-    railLines = rail.lines.map(([, , , colour, parts]) => L.polyline(latlngs(parts), { renderer: canvas, color: colour, interactive: false }));
+    // (an older rail.json, from the service worker's cache, has no coarse copy: the paths serve for both)
+    railShapes = rail.lines.map((line) => { const fine = latlngs(line[4]); return [fine, line[5] ? latlngs(line[5]) : fine]; });
+    const coarse = map.getZoom() < COARSE_BELOW ? 1 : 0;
+    railHalos = railShapes.map((shapes) => Object.assign(L.polyline(shapes[coarse], { renderer: canvas, interactive: false }), { shape: coarse }));
+    railLines = rail.lines.map((line, i) => Object.assign(L.polyline(railShapes[i][coarse], { renderer: canvas, color: line[3], interactive: false }), { shape: coarse }));
     // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in
     railDots = rail.stations.map(([name, lat, lng, lines]) => L.circleMarker([lat, lng], { renderer: canvas, radius: 4,
       color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1, lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] })
@@ -1230,7 +1235,8 @@
   }
 
   function styleLine(i) {
-    const { z, base, focus, colour } = lineStyle, l = railLines[i], h = railHalos[i];
+    const { z, base, focus, colour } = lineStyle, l = railLines[i], h = railHalos[i], shape = z < COARSE_BELOW ? 1 : 0;
+    if (l.shape !== shape) { l.shape = h.shape = shape; l.setLatLngs(railShapes[i][shape]); h.setLatLngs(railShapes[i][shape]); }
     const lit = focus.has(i), faded = focus.size && !lit, weight = base + (lit ? 3 : 0);
     l.setStyle({ weight, opacity: faded ? 0.25 : z < 11 ? 0.75 : 0.95 });
     h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
