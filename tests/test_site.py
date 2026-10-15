@@ -656,7 +656,8 @@ def test_listings_are_handles_into_columns_made_objects_on_demand(tmp_path):
     recs = [rec(5, address="東京都狛江市東和泉", stations=[{"line": "小田急線", "name": "狛江", "walk": 5},
                                                          {"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2}]),
             rec(3, type_="land", price=None, **LAND), rec(4, removed_at="2026-10-05"),
-            rec(9, image="https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2Fsystem%2Fimg%2FNo.jpg")]
+            rec(9, image="https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2Fsystem%2Fimg%2FNo.jpg",
+                price=123_456_789, floor_m2=65.43)]   # (no float32 holds them: wider columns, the same values)
     site_queries(tmp_path, recs, [], towns=towns, saved={"used_condo:4"})
     out = json.loads(subprocess.run([NODE, "-e", STORE, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json")],
                                     capture_output=True, text=True, check=True).stdout)
@@ -671,7 +672,8 @@ def test_listings_are_handles_into_columns_made_objects_on_demand(tmp_path):
         "used_condo:5", 50_000_000, 50_000_000, "3LDK", "狛江市東和泉")
     assert (five["lat"], five["lng"], five["image"], five["stop"], five["fees"]) == (35.63, 139.58, None, None, None)
     assert (land["type"], land["price"], land["plan"], land["age"], land["lat"]) == ("land", None, None, None, None)
-    assert by_id["9"]["image"] == "gazo/bukken/system/img/No.jpg"
+    nine = by_id["9"]
+    assert (nine["image"], nine["price"], nine["size"]) == ("gazo/bukken/system/img/No.jpg", 123_456_789, 65.43)
     # a released index: its listings read as nothing, the others stay
     assert out["released"] == [None, None, -1, 3, 3]
 

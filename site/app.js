@@ -802,7 +802,7 @@
     chugoku: ["鳥取県", "島根県", "岡山県", "広島県", "山口県"], shikoku: ["徳島県", "香川県", "愛媛県", "高知県"],
     kyushu: ["福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
   };
-  // Every chosen prefecture is held in memory (all of Japan: ~11 MB to download, a few hundred MB loaded), so phones
+  // Every chosen prefecture is held in memory (all of Japan: ~11 MB to download, ~120 MB loaded), so phones
   // and small-memory devices take up to 5; others may choose all of Japan.
   const BIG = matchMedia("(min-width: 700px)").matches && (navigator.deviceMemory ?? 8) >= 4;
   const maxPrefs = () => (BIG ? manifest.prefs.length : 5);

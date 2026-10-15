@@ -58,13 +58,13 @@
   }
 
   // ---------- the store: each prefecture's listings as columns, a listing as a number ----------
-  // A loaded index (a "part") keeps its listings in typed arrays, one per field (NaN or -1: none). A listing is a
-  // handle: its part's number (one per load) × 2^20 + its row. Lists of listings (results, a map view) are
-  // Int32Arrays of handles. item(h) makes the plain object the page shows (a few thousand are cached); get.<field>(h)
-  // reads one field.
+  // A loaded index (a "part") keeps its listings in typed arrays, one per field (none: NaN in numbers, -1 in table
+  // positions, 0 in dates and counts). A listing is a handle: its part's number (one per load) × 2^20 + its row.
+  // Lists of listings (results, a map view) are Int32Arrays of handles. item(h) makes the plain object the page shows
+  // (a few thousand are cached); get.<field>(h) reads one field.
   const SHIFT = 20, ROWS = 1 << SHIFT, MASK = ROWS - 1, MAX_PARTS = 2048;
   const parts = [];                // part number -> the part (null once released)
-  const EMPTY = [];
+  const EMPTY = [];                // (a column an older index doesn't have)
   const nul = (v) => (v === v ? v : null);  // NaN -> null
 
   // A column in the narrowest typed array holding its values exactly (from a list: null, undefined or NaN: none).
