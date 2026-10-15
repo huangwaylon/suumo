@@ -1281,7 +1281,7 @@
       ["station", ([it]) => nowrapWalk(station(it)), [walk, "min"]],
       ["floors", ([, r]) => esc([r.floor != null && t("floorN", r.floor), r.floors_above && t("storeys", r.floors_above)].filter(Boolean).join(" / "))],
       ["structure", ([, r]) => esc(value(r.structure) || "")],
-      ["units", ([, r]) => esc(r.units ? t("unitsN", r.units) : "")], ["rights", ([, r]) => esc(value(r.land_rights) || "")],
+      ["units", ([, r]) => esc(r.total_units ? t("unitsN", num(r.total_units)) : "")], ["rights", ([, r]) => esc(value(r.land_rights) || "")],
       ["place", ([it]) => esc(it.town || areaName(it.area))],
     ];
     const bestOf = (best) => {

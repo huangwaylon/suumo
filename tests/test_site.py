@@ -202,6 +202,20 @@ def test_every_string_the_page_uses_exists():
     assert {k for k in used if not re.search(rf"\b{k}:", ja)} == set()
 
 
+def test_every_element_the_page_looks_up_exists():
+    app = (FILTER_JS.parent / "app.js").read_text()
+    html = (FILTER_JS.parent / "index.html").read_text() + app   # (some are in the templates app.js writes)
+    assert {i for i in re.findall(r'\$\("([\w-]+)"\)', app) if f'id="{i}"' not in html} == set()
+
+
+def test_every_record_field_the_page_reads_is_exported():
+    from suumo.export import FIELD_ORDER
+    app = (FILTER_JS.parent / "app.js").read_text()
+    extras = {"others", "history", "new_date", "bus_stop"}   # site.listing_record adds these
+    not_records = {"json", "left", "bottom"}                 # r is also a fetch response and a box in app.js
+    assert set(re.findall(r"\br\.([a-z_][a-z0-9_]*)", app)) - not_records - extras - set(FIELD_ORDER) == set()
+
+
 @needs_node
 def test_stations_by_kana_and_english(tmp_path):
     names = {"二子玉川": ["ふたこたまがわ", "Futako-Tamagawa"], "自由ケ丘": ["じゆうがおか", "Jiyūgaoka"],
