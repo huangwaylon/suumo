@@ -567,8 +567,8 @@ def hidden_recs():
 def test_tags_a_condition_covers_are_hidden_and_old_links_still_work(tmp_path):
     old = [{"features": ["南向き"]}, {"features": ["即引渡可"]}, {"features": ["最上階・上階なし"]},
            {"features": ["建築条件なし"], "types": ["land"]}, {"features": ["土地50坪以上"], "types": ["land"]}]
-    got = ids(tmp_path, hidden_recs(), *old)
-    assert got == [["1"], ["2"], ["4"], ["3"], ["3"]]     # a page older than the index: the tag's condition
+    got = [r["ids"] for r in site_queries(tmp_path, hidden_recs(), [{"query": q, "upgrade": True} for q in old])]
+    assert got == [["1"], ["2"], ["4"], ["3"], ["3"]]     # an old link: its tags as the conditions they are now
     index = json.loads((tmp_path / "site/data/p/tokyo.json").read_text())
     assert index["features"] == ["ペット相談"]                    # only tags no condition covers are offered
     assert "南向き" in json.loads((tmp_path / "site/data/l/used_condo/1.json").read_text())["features"]
@@ -595,4 +595,27 @@ def test_conditions_on_an_index_older_than_the_page(tmp_path, monkeypatch):
     monkeypatch.setattr(site, "HIDDEN_TAGS", set())                # an old index: the tags, no flag bits
     monkeypatch.setattr(site, "FLAGS", {**site.FLAGS, "south": 0, "ready": 0, "top": 0})
     got = ids(tmp_path, hidden_recs(), {"south": True}, {"ready": True}, {"top": True}, {"features": ["南向き"]})
-    assert got == [["1"], ["2"], ["4"], ["1"]]
+    assert got == [[], [], [], ["1"]]                             # a flag it doesn't have: no listing has it
+
+
+@needs_node
+def test_text_search_finds_areas_by_their_english_name(tmp_path):
+    recs = [rec(1), rec(2, area_code="13113", area="渋谷区")]
+    got = site_queries(tmp_path, recs, [{"query": {"text": "komae"}}, {"query": {"text": "SHIBUYA"}}],
+                       areas={"13219": "狛江市", "13113": "渋谷区"}, places={"狛江市": "Komae", "渋谷区": "Shibuya"})
+    assert [r["ids"] for r in got] == [["1"], ["2"]]
+
+
+@needs_node
+def test_listings_in_a_box_keep_the_results_order(tmp_path):
+    towns = {"東京都狛江市東和泉": [35.63, 139.58], "東京都狛江市岩戸北": [35.64, 139.57],
+             "東京都狛江市和泉本町": [35.70, 139.60]}
+    at = lambda i, town, price: rec(i, address=f"東京都狛江市{town}", price=price)  # noqa: E731
+    recs = [at(1, "東和泉", 30_000_000), at(2, "岩戸北", 20_000_000), at(3, "和泉本町", 10_000_000),
+            *[at(10 + k, "駒井町", 40_000_000 + k) for k in range(30)]]   # (no coordinates: never in a box)
+    boxes = [[35.6, 139.5, 35.65, 139.59], [35.0, 139.0, 36.0, 140.0], [35.64, 139.57, 35.64, 139.57],
+             [35.7, 139.61, 35.8, 139.7]]
+    got = site_queries(tmp_path, recs, [{"query": {"sort": "price_asc"}, "box": box} for box in boxes] +
+                       [{"query": {"sort": "price_asc", "priceMax": 30_000_000}, "box": boxes[1]}], towns=towns)
+    # edges are in; cheapest first, as searched (a few of many results, or most of them)
+    assert got == [["2", "1"], ["3", "2", "1"], ["2"], [], ["3", "2", "1"]]

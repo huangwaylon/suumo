@@ -47,10 +47,11 @@ RUNNER = """
 const Filter = require(process.argv[1]);
 const fs = require("fs"), path = require("path");
 const manifest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));  // every prefecture's index, as one
-const db = Filter.combine(manifest.prefs.map(([slug]) =>
-  Filter.load(JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[2]), "p", slug + ".json"), "utf8")))));
+const loadOpts = JSON.parse(process.argv[4]);
+const db = Filter.combine(manifest.prefs.map(([slug]) => Filter.load(
+  JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[2]), "p", slug + ".json"), "utf8")), loadOpts)));
 const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved, counts, suggest,
-                                                                        parse, opts}) => {
+                                                                        parse, opts, upgrade, box}) => {
   if (suggest != null) return Filter.suggest(db, suggest, opts);
   if (parse != null && query) {
     const applied = Filter.applyParse(Object.assign(Filter.emptyQuery(), query), Filter.parse(parse, db, opts));
@@ -60,7 +61,9 @@ const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, ch
   if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
     .filter(([, m]) => m < 3).sort((a, b) => a[1] - b[1]).map(([s]) => s);
-  const q = Object.assign(Filter.emptyQuery(), query);
+  let q = Object.assign(Filter.emptyQuery(), query);
+  if (upgrade) q = Filter.upgrade(q);
+  if (box) return Filter.spatial(Filter.search(db, q)).within(box).map((it) => it.id);
   if (choices) return Filter.facets(db, q, choices);
   if (counts) return Filter.counts(db, q, counts);
   const hits = Filter.search(db, q);
@@ -70,19 +73,26 @@ process.stdout.write(JSON.stringify(out));
 """
 
 
-def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY, stations=None, saved=()):
+def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY, stations=None, saved=(), places=None,
+                 towns=None):
     """Build the site from recs and run requests through site/filter.js in Node: {query} -> {ids, others, count},
+    {query, upgrade: true} -> the same for the query as an old link's (Filter.upgrade), {query, box} -> the ids of
+    its results within the box [s, w, n, e], in their order (Filter.spatial),
     {query, choices} -> the choice counts (Filter.facets), {query, counts: patches} -> Filter.counts,
     {station: typed} -> the matching stations, best first, {suggest: text, opts} -> Filter.suggest,
     {parse: text, opts} -> Filter.parse, {parse, opts, query} -> the query with it applied and its {query, ids}.
-    stations: the station-name cache ({name: [kana, english]})."""
+    stations: the station-name cache ({name: [kana, english]}); places: area name -> English (load's opts.places);
+    towns: the geocode cache ({"東京都狛江市東和泉": [lat, lng]})."""
     data, out = tmp_path / "data", tmp_path / "site"
     write(data, recs, areas, events)
     names = tmp_path / "stations.json"
     names.write_text(json.dumps(stations or {}, ensure_ascii=False), encoding="utf-8")
-    build(data, tmp_path / "no-geo.json", out, today=today, log=QUIET, stations_cache=names, saved=set(saved))
+    geo = tmp_path / "towns.json"
+    geo.write_text(json.dumps(towns or {}, ensure_ascii=False), encoding="utf-8")
+    build(data, geo, out, today=today, log=QUIET, stations_cache=names, saved=set(saved))
     req = tmp_path / "requests.json"
     req.write_text(json.dumps(requests, ensure_ascii=False), encoding="utf-8")
-    res = subprocess.run([NODE, "-e", RUNNER, str(FILTER_JS), str(out / "data/index.json"), str(req)],
+    res = subprocess.run([NODE, "-e", RUNNER, str(FILTER_JS), str(out / "data/index.json"), str(req),
+                          json.dumps({"places": places} if places else {}, ensure_ascii=False)],
                          capture_output=True, text=True, check=True)
     return json.loads(res.stdout)

@@ -35,30 +35,11 @@
     }
     return out;
   }
-  // The same, as the safety net of a query still asking for such a tag (a page older than the index): the tag's
-  // condition stands in for it where the item's index doesn't carry the tag any more.
-  const TAG_RULES = {
-    ...Object.fromEntries(SOUTH_TAGS.map((t) => [t, (it) => flagOf(it, "south")])),
-    ...Object.fromEntries(READY_TAGS.map((t) => [t, (it) => flagOf(it, "ready")])),
-    [TOP_TAG]: (it) => flagOf(it, "top"),
-    建築条件なし: (it) => !(it.flags & bit(it.part, "conditional")),
-    ...Object.fromEntries(Object.entries(LAND_TAGS).map(([t, m2]) => [t, (it) => it.land != null && it.land >= m2])),
-  };
   // A tag's position in its prefecture's table (index.features), null when that index doesn't have it.
   const tagPos = (part, f) => (part.tagPos ??= new Map(part.index.features.map((t, k) => [t, k]))).get(f) ?? null;
-  const hasTagId = (it, f) => { const k = tagPos(it.part, f); return k != null && it.tagIds.includes(k); };
-  const hasTag = (it, f) => {
-    const k = tagPos(it.part, f);
-    return k != null ? it.tagIds.includes(k) : !!TAG_RULES[f] && TAG_RULES[f](it);
-  };
-  // A flag of an item, read from its own prefecture's index; an index older than the flag answers from the tags it
-  // still has (the other way round from TAG_RULES).
-  const FLAG_TAGS = { south: SOUTH_TAGS, ready: READY_TAGS, top: [TOP_TAG] };
-  function flagOf(it, name) {
-    const b = it.part.flags[name];
-    if (b) return !!(it.flags & b);
-    return (FLAG_TAGS[name] || []).some((t) => hasTagId(it, t));
-  }
+  const hasTag = (it, f) => { const k = tagPos(it.part, f); return k != null && it.tagIds.includes(k); };
+  // A flag of an item, read from its own prefecture's index (0 in an index older than the flag: nothing has it).
+  const flagOf = (it, name) => !!(it.flags & bit(it.part, name));
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
   // all match, and so do "jiyugaoka" and "Jiyūgaoka".
@@ -92,10 +73,12 @@
     return `gazo/bukken/${a}/${b}/img/${c}/${id}/${id}_${file}`;
   }
 
-  function load(index) {
+  // opts.places: area name -> English name, for text search ("shibuya" finds 渋谷区).
+  function load(index, opts = {}) {
     const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map(), byKey = new Map();
     const towns = new Array(index.towns.length);  // each town's name without the prefecture, one string per town
-    const db = { index, items, flags: index.flags, stationNames: null, byKey, parts: null, stops: null };
+    const db = { index, items, flags: index.flags, stationNames: null, byKey, parts: null, stops: null,
+      places: opts.places || null };
     let id = 0;
     for (let i = 0; i < n; i++) {
       id += c.id[i];
@@ -146,21 +129,18 @@
       byKey: new Map(all((d) => [...d.byKey])), parts: all((d) => d.parts) };
   }
 
-  // Text search: a word matches an item when it is part of its name, town, area (or its English name, it.alias:
-  // set by the page), layout, a station (with 駅, kana or English) or its bus stop. Each prefecture's tables are
+  // Text search: a word matches an item when it is part of its name, town, area (or its English name, from load's
+  // opts.places), layout, a station (with 駅, kana or English) or its bus stop. Each prefecture's tables are
   // normalized once, the first time a text search runs; a search marks the table entries containing each word, and
   // items are tested by their positions in those tables.
   function textTables(part) {
     if (part.textTables) return part.textTables;
-    const ix = part.index, alias = new Array(ix.areas.length).fill(null), town = new Array(ix.towns.length).fill(null);
-    for (const it of part.items) {
-      if (it.alias && alias[it.areaId] == null) alias[it.areaId] = it.alias;
-      if (it.town && it.townId != null && town[it.townId] == null) town[it.townId] = it.town;
-    }
+    const ix = part.index, town = new Array(ix.towns.length).fill(null);
+    for (const it of part.items) if (it.town && it.townId != null && town[it.townId] == null) town[it.townId] = it.town;
     const norm = (v) => (v ? normalize(v) : null);
     return (part.textTables = {
       names: ix.names.map(norm), towns: town.map(norm), layouts: ix.layouts.map(norm),
-      areas: ix.areas.map((a, k) => [norm(a[1]), norm(alias[k])].filter(Boolean)),
+      areas: ix.areas.map((a) => [norm(a[1]), norm(part.places?.[a[1]])].filter(Boolean)),
       stations: ix.stations.map((st, k) => [st + "駅", ...(ix.stationNames?.[k] || [])].filter(Boolean).map(normalize)),
       stops: part.stops.map(norm),
     });
@@ -312,6 +292,63 @@
     let n = 0;
     for (const it of db.items) if (matches(db, it, q, conds)) n++;
     return n;
+  }
+
+  // The items with coordinates on a grid of GRID° cells, so those in a box (the map's view, at every pan) are found
+  // without testing every item: within([south, west, north, east]) -> the items in it, in the items' order.
+  const GRID = 0.05;
+  function spatial(items) {
+    const n = items.length, la = new Float64Array(n), lo = new Float64Array(n);  // (items are read once: NaN = none)
+    let s = Infinity, w = Infinity, north = -Infinity, e = -Infinity, placed = 0;
+    for (let i = 0; i < n; i++) {
+      const it = items[i], y = it.lat ?? NaN, x = it.lng ?? NaN;
+      la[i] = y;
+      lo[i] = x;
+      if (y !== y || x !== x) continue;
+      placed++;
+      if (y < s) s = y;
+      if (y > north) north = y;
+      if (x < w) w = x;
+      if (x > e) e = x;
+    }
+    if (!placed) return { within: () => [] };
+    const rows = Math.floor((north - s) / GRID) + 1, cols = Math.floor((e - w) / GRID) + 1;
+    const row = (lat) => Math.floor((lat - s) / GRID), col = (lng) => Math.floor((lng - w) / GRID);
+    // positions sorted by cell (a counting sort: each cell's items in their order), cell k at start[k]..start[k + 1]
+    const cell = new Int32Array(n).fill(-1), start = new Int32Array(rows * cols + 1);
+    for (let i = 0; i < n; i++) if (la[i] === la[i] && lo[i] === lo[i]) start[(cell[i] = row(la[i]) * cols + col(lo[i])) + 1]++;
+    for (let k = 0; k < rows * cols; k++) start[k + 1] += start[k];
+    const pos = new Int32Array(placed), lat = new Float64Array(placed), lng = new Float64Array(placed), next = start.slice();
+    for (let i = 0; i < n; i++) {
+      if (cell[i] < 0) continue;
+      const j = next[cell[i]]++;
+      pos[j] = i;
+      lat[j] = la[i];
+      lng[j] = lo[i];
+    }
+    const found = new Int32Array(placed);
+    let seen = null;
+    return {
+      within([bs, bw, bn, be]) {
+        const r0 = Math.max(0, row(bs)), r1 = Math.min(rows - 1, row(bn)), c0 = Math.max(0, col(bw)), c1 = Math.min(cols - 1, col(be));
+        let m = 0;
+        for (let r = r0; r <= r1; r++) {
+          for (let j = start[r * cols + c0], end = c1 >= c0 ? start[r * cols + c1 + 1] : j; j < end; j++) {
+            if (lat[j] >= bs && lat[j] <= bn && lng[j] >= bw && lng[j] <= be) found[m++] = pos[j];
+          }
+        }
+        const out = new Array(m);
+        if (m * 8 < n) {  // a few: sorted back into the items' order
+          const picked = found.subarray(0, m).sort();
+          for (let k = 0; k < m; k++) out[k] = items[picked[k]];
+        } else {  // most of them: marked, then taken in order
+          seen ??= new Uint8Array(n);
+          for (let k = 0; k < m; k++) seen[found[k]] = 1;
+          for (let i = 0, k = 0; k < m; i++) if (seen[i]) { seen[i] = 0; out[k++] = items[i]; }
+        }
+        return out;
+      },
+    };
   }
 
   // Threshold conditions as (value of an item, comparison): "max" choices pass items whose value is at most the
@@ -848,5 +885,5 @@
   }
 
   return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, matches, search, count, counts,
-    facets, stationMatch, suggest, parse, applyParse, nameKey };
+    facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
 });
