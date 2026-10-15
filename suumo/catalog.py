@@ -258,26 +258,15 @@ def hour(day):
     return int(day.strftime("%Y%m%d")) * 100
 
 
-def load(data_dir, today: date, saved=(), rail_stations=()):
-    """rail_stations (rail.json's): tell bus stops from stations by the railway near each prefecture."""
-    data_dir = Path(data_dir)
-    items, areas = [], {}
-    for pref_dir in sorted(p for p in data_dir.iterdir() if p.is_dir() and p.name != "events"):
-        recs = {t: [r for p in sorted((pref_dir / t).glob("*.jsonl")) for r in _read_jsonl(p)] for t in TYPES}
-        for path in sorted((pref_dir / "removed").glob("*.jsonl")):  # ended, kept because saved
-            recs[path.stem] += _read_jsonl(path)
-        land_ids = {r["id"] for r in recs["land"]}
-        railway = railway_near(listing_station_keys(r for rs in recs.values() for r in rs),
-                               rail_stations) if rail_stations else None
-        for type_key, rs in recs.items():
-            # land with a build condition is listed under both new_house and land: keep the land listing
-            items += [Item(r, today, pref_dir.name, railway) for r in rs
-                      if not (type_key == "new_house" and r["id"] in land_ids and "/tochi/" in r.get("url", ""))]
-        areas_file = pref_dir / "areas.json"
-        if areas_file.exists():
-            areas.update(json.loads(areas_file.read_text(encoding="utf-8")))
+def prefectures(data_dir):
+    """The prefectures data/ holds, in name order."""
+    return sorted(p.name for p in Path(data_dir).iterdir() if p.is_dir() and p.name != "events")
+
+
+def load_events(data_dir):
+    """data/events/ -> (history, new_at, drops), as Snapshot holds them (one read shared by every prefecture)."""
     history, new_at, drops, removed = defaultdict(list), {}, {}, {}
-    for path in sorted(data_dir.glob("events/*.json")):
+    for path in sorted(Path(data_dir).glob("events/*.json")):
         day, at = run_date(path.stem), run_hour(path.stem)
         for e in json.loads(path.read_text(encoding="utf-8")):
             key = f"{e['type']}:{e['id']}"
@@ -293,7 +282,32 @@ def load(data_dir, today: date, saved=(), rail_stations=()):
                 history[key].append((day, old, new))
                 if old and new and new < old:
                     drops[key] = (at, old, new)
+    return dict(history), new_at, drops
+
+
+def load(data_dir, today: date, saved=(), rail_stations=(), prefs=None, events=None):
+    """rail_stations (rail.json's): tell bus stops from stations by the railway near each prefecture. prefs: only
+    these prefectures (the site builds one at a time); events: load_events(data_dir), when already read. Nothing
+    crosses prefectures: duplicate groups and station spellings are per prefecture."""
+    data_dir = Path(data_dir)
+    items, areas = [], {}
+    for pref in prefectures(data_dir) if prefs is None else prefs:
+        pref_dir = data_dir / pref
+        recs = {t: [r for p in sorted((pref_dir / t).glob("*.jsonl")) for r in _read_jsonl(p)] for t in TYPES}
+        for path in sorted((pref_dir / "removed").glob("*.jsonl")):  # ended, kept because saved
+            recs[path.stem] += _read_jsonl(path)
+        land_ids = {r["id"] for r in recs["land"]}
+        railway = railway_near(listing_station_keys(r for rs in recs.values() for r in rs),
+                               rail_stations) if rail_stations else None
+        for type_key, rs in recs.items():
+            # land with a build condition is listed under both new_house and land: keep the land listing
+            items += [Item(r, today, pref, railway) for r in rs
+                      if not (type_key == "new_house" and r["id"] in land_ids and "/tochi/" in r.get("url", ""))]
+        areas_file = pref_dir / "areas.json"
+        if areas_file.exists():
+            areas.update(json.loads(areas_file.read_text(encoding="utf-8")))
+    history, new_at, drops = events or load_events(data_dir)
     for i in items:
         i.saved = i.key in saved
     unify_station_names(items)
-    return Snapshot(items, areas, dict(history), new_at, drops, today)
+    return Snapshot(items, areas, history, new_at, drops, today)

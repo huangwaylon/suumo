@@ -186,7 +186,7 @@ def cmd_geocode(args):
 
 def cmd_site(args):
     build_site(ROOT / args.data, ROOT / GEO_CACHE, ROOT / args.out, stations_cache=ROOT / STATIONS_CACHE,
-               saved=saved_mod.load(ROOT / SAVED))
+               saved=saved_mod.load(ROOT / SAVED), rail_path=ROOT / RAIL)
 
 
 def env(name):

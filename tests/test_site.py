@@ -25,16 +25,16 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     geo.write_text(json.dumps({"東京都狛江市岩戸北３": [35.63, 139.58]}, ensure_ascii=False))
     out = tmp_path / "site"
     (data / "fx.json").write_text('{"date": "2026-10-13", "jpy_per_usd": 158.12}')
-    built = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
+    manifest = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
     assets = {"index.html", "app.js", "filter.js", "i18n.js", "style.css", "sw.js", ".nojekyll"}
     assert assets <= {p.name for p in out.iterdir()}
     assert re.search(r'const VERSION = "[0-9a-f]{12}";', (out / "sw.js").read_text())  # stamped: a new page, new cache
-    manifest, index = json.loads((out / "data/index.json").read_text()), built["tokyo"]
+    assert json.loads((out / "data/index.json").read_text()) == manifest
+    index = json.loads((out / "data/p/tokyo.json").read_text())   # one index per prefecture
     [[slug, name, n, share]] = manifest["prefs"]
     assert (slug, name, n) == ("tokyo", "東京都", len(index["columns"]["id"])) and manifest["saved"] == {}
     assert 0 < share <= 1   # the share with their listing page fetched
     assert manifest["fx"] == {"date": "2026-10-13", "jpy_per_usd": 158.12}   # the page's USD prices
-    assert json.loads((out / "data/p/tokyo.json").read_text()) == index   # one index per prefecture
     cols = index["columns"]
     assert len(cols["id"]) < 46                               # 46 listings, duplicates folded
     assert index["areas"] == [["13219", "狛江市", "東京都", "shi"]]
@@ -319,11 +319,15 @@ def test_same_station_name_in_two_prefectures_is_two_stations(tmp_path):
     write(data, [rec(3, area_code="14131", stations=[futako])], areas={"14131": "川崎市川崎区"}, pref="kanagawa")
     (tmp_path / "rail.json").write_text(json.dumps({"lines": [], "stations": [   # where the railway data has them
         ["小川町", 35.6949, 139.7676, []], ["小川町", 36.0567, 139.2614, []], ["二子玉川", 35.6118, 139.6267, []]]}))
-    built = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
-    assert set(built["tokyo"]["stations"]) == {"小川町（東京）", "二子玉川"}
-    assert built["saitama"]["stations"] == ["小川町（埼玉）"]
-    assert built["kanagawa"]["stations"] == ["二子玉川"]          # one station near the border: one name
-    assert [p[0] for p in built["manifest"]["prefs"]][0] == "tokyo"          # Tokyo first
+    manifest = build(data, tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET,
+                     rail_path=tmp_path / "rail.json")
+
+    def stations(pref):
+        return json.loads((tmp_path / f"site/data/p/{pref}.json").read_text())["stations"]
+    assert set(stations("tokyo")) == {"小川町（東京）", "二子玉川"}
+    assert stations("saitama") == ["小川町（埼玉）"]
+    assert stations("kanagawa") == ["二子玉川"]          # one station near the border: one name
+    assert [p[0] for p in manifest["prefs"]][0] == "tokyo"          # Tokyo first
 
 
 def test_rail_sections_are_joined_into_paths_with_a_coarse_copy(tmp_path):
@@ -334,7 +338,8 @@ def test_rail_sections_are_joined_into_paths_with_a_coarse_copy(tmp_path):
     rail = {"attribution": "x", "operators": [["op", "Op", "#000", "op"]], "stations": [],
             "lines": [[0, "線", "Line", "#123456", [a, far, b]]]}   # a and b meet at 139.02 (b runs backwards)
     (tmp_path / "rail.json").write_text(json.dumps(rail))
-    build(tmp_path / "data", tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET)
+    build(tmp_path / "data", tmp_path / "no-geo.json", tmp_path / "site", today=date(2026, 10, 6), log=QUIET,
+          rail_path=tmp_path / "rail.json")
     [[op, name, en, colour, paths, coarse]] = json.loads((tmp_path / "site/data/rail.json").read_text())["lines"]
     assert (op, name, en, colour) == (0, "線", "Line", "#123456")
     assert len(paths) == len(coarse) == 2                       # a + b joined; far on its own
@@ -347,13 +352,11 @@ def test_rail_sections_are_joined_into_paths_with_a_coarse_copy(tmp_path):
 
 
 def test_rail_stations_take_the_listings_spelling():
-    from types import SimpleNamespace
-
     from suumo.site import listing_spelling
-    reps = [SimpleNamespace(stations=[("阿佐ケ谷", 5), ("江曽島", 9), ("藤沢（長野県）", 3), ("藤沢", 4)])]
+    used = {name: {"tokyo"} for name in ("阿佐ケ谷", "江曽島", "藤沢（長野県）", "藤沢")}   # station_uses()
     rail = {"stations": [["阿佐ヶ谷", 35.7, 139.6, []], ["江曾島", 36.5, 139.9, []], ["藤沢", 35.3, 139.5, []],
                          ["新宿", 35.69, 139.7, []]]}
-    assert [s[0] for s in listing_spelling(rail, reps)["stations"]] == ["阿佐ケ谷", "江曽島", "藤沢", "新宿"]
+    assert [s[0] for s in listing_spelling(rail, used)["stations"]] == ["阿佐ケ谷", "江曽島", "藤沢", "新宿"]
 
 
 @needs_node
