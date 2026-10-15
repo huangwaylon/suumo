@@ -48,6 +48,7 @@ const Filter = require(process.argv[1]);
 const fs = require("fs"), path = require("path");
 const manifest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));  // every prefecture's index, as one
 const loadOpts = JSON.parse(process.argv[4]);
+const items = (handles) => Array.from(handles, Filter.item), ids = (handles) => items(handles).map((it) => it.id);
 const db = Filter.combine(manifest.prefs.map(([slug]) => Filter.load(
   JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[2]), "p", slug + ".json"), "utf8")), loadOpts)));
 const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, choices, station, saved, counts, suggest,
@@ -55,18 +56,18 @@ const out = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map(({query, ch
   if (suggest != null) return Filter.suggest(db, suggest, opts);
   if (parse != null && query) {
     const applied = Filter.applyParse(Object.assign(Filter.emptyQuery(), query), Filter.parse(parse, db, opts));
-    return {query: applied, ids: Filter.search(db, applied).map((it) => it.id)};
+    return {query: applied, ids: ids(Filter.search(db, applied))};
   }
   if (parse != null) return Filter.parse(parse, db, opts);
-  if (saved) return [...db.byKey.values()].filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
+  if (saved) return items(Filter.every(db)).filter((it) => it.flags & db.flags.saved).map((it) => it.id).sort();
   if (station) return db.index.stations.map((s) => [s, Filter.stationMatch(db, s, station)])
     .filter(([, m]) => m < 3).sort((a, b) => a[1] - b[1]).map(([s]) => s);
   let q = Object.assign(Filter.emptyQuery(), query);
   if (upgrade) q = Filter.upgrade(q);
-  if (box) return Filter.spatial(Filter.search(db, q)).within(box).map((it) => it.id);
+  if (box) return ids(Filter.spatial(Filter.search(db, q)).within(box));
   if (choices) return Filter.facets(db, q, choices);
   if (counts) return Filter.counts(db, q, counts);
-  const hits = Filter.search(db, q);
+  const hits = items(Filter.search(db, q));
   return {ids: hits.map((it) => it.id), others: hits.map((it) => it.others), count: Filter.count(db, q)};
 });
 process.stdout.write(JSON.stringify(out));

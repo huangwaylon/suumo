@@ -14,8 +14,6 @@
   });
   const isCondo = (type) => type === "used_condo" || type === "new_condo";
   const isHouse = (type) => type === "used_house" || type === "new_house";
-  // A flag bit of the index; 0 when the index predates it (a cached old index after a deploy): nothing has it.
-  const bit = (db, name) => db.flags[name] || 0;
 
   // Tags the site now offers as conditions (the index no longer carries them, site.HIDDEN_TAGS).
   const SOUTH_TAGS = ["南向き", "全室南向き", "東南向き", "南西向き", "全室東南向き", "全室南西向き"];
@@ -35,11 +33,6 @@
     }
     return out;
   }
-  // A tag's position in its prefecture's table (index.features), null when that index doesn't have it.
-  const tagPos = (part, f) => (part.tagPos ??= new Map(part.index.features.map((t, k) => [t, k]))).get(f) ?? null;
-  const hasTag = (it, f) => { const k = tagPos(it.part, f); return k != null && it.tagIds.includes(k); };
-  // A flag of an item, read from its own prefecture's index (0 in an index older than the flag: nothing has it).
-  const flagOf = (it, name) => !!(it.flags & bit(it.part, name));
 
   // NFKC (full-width -> half-width), lower case, hiragana -> katakana, no accents: "ぱーく", "ﾊﾟｰｸ" and "パーク"
   // all match, and so do "jiyugaoka" and "Jiyūgaoka".
@@ -51,17 +44,8 @@
   // A station name as typed: "Futako-Tamagawa", "futakotamagawa" and "ふたこたまがわ" are the same.
   const stationKey = (s) => normalize(s).replace(/[\s\-・]/g, "");
 
-  // A listing's tags: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
+  // A listing's tags in the index: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
   const B64 = Object.fromEntries([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"].map((ch, v) => [ch, v]));
-  const NONE = Object.freeze([]);  // (no tags: one shared empty list)
-  function tagIds(mask) {
-    const out = [];
-    for (let k = 0; k < mask.length; k++) {
-      const v = B64[mask[k]];
-      for (let b = 0; b < 6; b++) if (v & (1 << b)) out.push(k * 6 + b);
-    }
-    return out;
-  }
 
   // A listing's photo as SUUMO's path (or the URL), from what the builder stored (site._image): a number is the
   // usual path, "dir/sub/n/file" a shortened one. Items keep what's stored (photo 0 is one); the page asks for the
@@ -73,51 +57,97 @@
     return `gazo/bukken/${a}/${b}/img/${c}/${id}/${id}_${file}`;
   }
 
+  // ---------- the store: each prefecture's listings as columns, a listing as a number ----------
+  // A loaded index (a "part") keeps its listings in typed arrays, one per field (NaN or -1: none). A listing is a
+  // handle: its part's number (one per load) × 2^20 + its row. Lists of listings (results, a map view) are
+  // Int32Arrays of handles. item(h) makes the plain object the page shows (a few thousand are cached); get.<field>(h)
+  // reads one field.
+  const SHIFT = 20, ROWS = 1 << SHIFT, MASK = ROWS - 1, MAX_PARTS = 2048;
+  const parts = [];                // part number -> the part (null once released)
+  const NO_ACCESS = -0x80000000;   // a station's access when none is known
+  const EMPTY = [];
+  const nul = (v) => (v === v ? v : null);  // NaN -> null
+
   // opts.places: area name -> English name, for text search ("shibuya" finds 渋谷区).
+  // An index older than this file may lack columns: they read as none.
   function load(index, opts = {}) {
-    const c = index.columns, n = c.id.length, items = new Array(n), stops = new Map(), byKey = new Map();
-    const towns = new Array(index.towns.length);  // each town's name without the prefecture, one string per town
-    const db = { index, items, flags: index.flags, stationNames: null, byKey, parts: null, stops: null,
-      places: opts.places || null };
-    let id = 0;
-    for (let i = 0; i < n; i++) {
-      id += c.id[i];
-      const type = index.types[c.type[i]], area = index.areas[c.area[i]], tid = c.town[i], town = index.towns[tid];
-      const st = c.stations[i], stations = [];
-      for (let j = 0; j < st.length; j++) {  // [name, walk minutes, bus minutes, car km] (nulls when not)
-        const m = c.access[i][j];
-        stations.push([index.stations[st[j]], m >= 0 && m < 1000 ? m : null, m < 0 ? -m : null, m >= 1000 ? (m - 1000) / 10 : null]);
-      }
-      const sid = String(id), it = {
-        id: sid, idn: id, type, key: type + ":" + sid, area: area[0], areaName: area[1],
-        price: c.price[i], priceHi: c.priceMax[i] ?? c.price[i], plan: c.plan[i], size: c.size[i],
-        land: c.land[i], age: c.age[i] == null ? null : Math.floor(c.age[i] / 12), ageMonths: c.age[i],
-        stations, stop: c.stop?.[i] ?? null, flags: c.flags[i],
-        others: c.others[i], newAt: c.newAt[i], newDate: c.newAt[i] ? Math.floor(c.newAt[i] / 100) : null,
-        dropAt: c.drop[i]?.[0] ?? null, prevPrice: c.drop[i]?.[1] ?? null, firstSeen: c.firstSeen[i], unit: c.unit[i],
-        town: town ? (towns[tid] ??= town[0].slice(area[2].length)) : null, lat: town ? town[1] : null, lng: town ? town[2] : null,
-        name: index.names[c.name[i]] ?? "", layout: index.layouts[c.layout[i]] ?? "", image: c.image[i],
-        fees: c.fees?.[i] != null ? c.fees[i] * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
-        // positions in this prefecture's tables (index.areas, .stations, .features), for counting
-        areaId: c.area[i], stationIds: st, tagIds: c.features[i] ? tagIds(c.features[i]) : NONE, part: db,
-        nameId: c.name[i], townId: c.town[i], layoutId: c.layout[i], stopId: null,
-      };
-      if (it.stop) {  // bus stops get a table of their own (for text search)
-        if (!stops.has(it.stop[0])) stops.set(it.stop[0], stops.size);
-        it.stopId = stops.get(it.stop[0]);
-      }
-      items[i] = it;
-      byKey.set(it.key, it);
+    const c = index.columns, n = c.id.length, no = parts.length;
+    if (no >= MAX_PARTS || n > ROWS) throw new RangeError("Filter.load: too many listings");
+    const col = (k) => c[k] || EMPTY;
+    const nums = (k, T = Float64Array) => { const v = col(k), out = new T(n); for (let i = 0; i < n; i++) out[i] = v[i] ?? NaN; return out; };
+    const ids = (k) => { const v = col(k), out = new Int32Array(n); for (let i = 0; i < n; i++) out[i] = v[i] ?? -1; return out; };
+    const idn = new Float64Array(n), priceHi = new Float64Array(n), others = new Int32Array(n), firstSeen = new Int32Array(n);
+    const cId = c.id, cMax = col("priceMax"), cPrice = col("price"), cOthers = col("others"), cFirst = col("firstSeen");
+    for (let i = 0, id = 0; i < n; i++) {
+      idn[i] = id += cId[i];
+      priceHi[i] = cMax[i] ?? cPrice[i] ?? NaN;
+      others[i] = cOthers[i] || 0;
+      firstSeen[i] = cFirst[i] || 0;
     }
-    index.columns = null;  // the items hold everything now; free the raw columns
-    const gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
-    // station -> [kana, English] (null for bus stops: kanji only)
-    const stationNames = new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null]));
-    db.items = items.filter((it) => !(it.flags & gone));
-    db.stationNames = stationNames;
-    db.parts = [db];  // the prefectures searched: one here, several after combine
-    db.stops = [...stops.keys()];
-    return db;
+    const dropAt = new Float64Array(n), prevPrice = new Float64Array(n), cDrop = col("drop");
+    for (let i = 0; i < n; i++) { const d = cDrop[i]; dropAt[i] = d?.[0] ?? NaN; prevPrice[i] = d?.[1] ?? NaN; }
+    // stations: row i's are stId/stAcc[stOff[i]..stOff[i + 1]] (access: minutes on foot; -minutes by bus; 1000 + km × 10 by car)
+    const cSt = col("stations"), cAcc = col("access");
+    let total = 0;
+    for (let i = 0; i < n; i++) total += cSt[i]?.length || 0;
+    const stOff = new Int32Array(n + 1), stId = new Int32Array(total), stAcc = new Int32Array(total);
+    for (let i = 0, j = 0; i < n; i++) {
+      const s = cSt[i], a = cAcc[i];
+      if (s) for (let k = 0; k < s.length; k++, j++) { stId[j] = s[k]; stAcc[j] = a?.[k] ?? NO_ACCESS; }
+      stOff[i + 1] = j;
+    }
+    // tags: W 32-bit words per row, bit k = index.features[k]
+    const W = Math.ceil(index.features.length / 32), tags = new Uint32Array(n * W), cTags = col("features");
+    for (let i = 0; i < n; i++) {
+      const s = cTags[i];
+      if (s) for (let k = 0; k < s.length; k++) {
+        const v = B64[s[k]];
+        for (let b = 0; b < 6; b++) if (v & (1 << b) && k * 6 + b < W * 32) tags[i * W + ((k * 6 + b) >>> 5)] |= 1 << ((k * 6 + b) & 31);
+      }
+    }
+    // the bus stop (one per listing at most): its name in a table of its own (for text search) and the minutes
+    const stops = new Map(), stopId = new Int32Array(n), stopWalk = new Float32Array(n), cStop = col("stop");
+    for (let i = 0; i < n; i++) {
+      const s = cStop[i];
+      if (!s) { stopId[i] = -1; stopWalk[i] = NaN; continue; }
+      if (!stops.has(s[0])) stops.set(s[0], stops.size);
+      stopId[i] = stops.get(s[0]);
+      stopWalk[i] = s[1] ?? NaN;
+    }
+    // photos: the usual number, or a path or URL (in a list of their own, as -2 - its position); -1 none
+    const image = new Int32Array(n), imageText = [], cImage = col("image");
+    for (let i = 0; i < n; i++) {
+      const v = cImage[i];
+      image[i] = typeof v === "number" ? v : v == null ? -1 : -2 - (imageText.push(v) - 1);
+    }
+    const area = ids("area"), town = ids("town");
+    // towns: coordinates, and the name without the prefecture (one string per town)
+    const T = index.towns.length, townLat = new Float64Array(T).fill(NaN), townLng = new Float64Array(T).fill(NaN);
+    const townName = new Array(T).fill(null);
+    for (let t = 0; t < T; t++) { townLat[t] = index.towns[t][1] ?? NaN; townLng[t] = index.towns[t][2] ?? NaN; }
+    for (let i = 0; i < n; i++) {
+      const t = town[i];
+      if (t >= 0 && townName[t] === null) townName[t] = index.towns[t][0].slice(index.areas[area[i]][2].length);
+    }
+    const cols = {
+      idn, type: Uint8Array.from(col("type")), area, price: nums("price"), priceHi, plan: nums("plan", Float32Array),
+      size: nums("size"), land: nums("land"), age: nums("age", Float32Array), flags: Int32Array.from(col("flags"), (v) => v || 0),
+      others, newAt: nums("newAt"), dropAt, prevPrice, firstSeen, unit: nums("unit", Float32Array), town, name: ids("name"),
+      layout: ids("layout"), image, fees: nums("fees", Float32Array), stopId, stopWalk, stOff, stId, stAcc, tags,
+    };
+    index.columns = null;  // the typed columns hold everything now; free the parsed JSON
+    const base = no * ROWS, gone = index.flags.gone || 0;  // ended listings kept because saved: in the saved list, never in search
+    let shown = 0;
+    for (let i = 0; i < n; i++) if (!(cols.flags[i] & gone)) shown++;
+    const items = new Int32Array(shown);
+    for (let i = 0, k = 0; i < n; i++) if (!(cols.flags[i] & gone)) items[k++] = base + i;
+    const part = { no, base, n, W, c: cols, index, items, flags: index.flags, places: opts.places || null,
+      townLat, townLng, townName, imageText, stops: [...stops.keys()], parts: null,
+      // station -> [kana, English] (null for bus stops: kanji only)
+      stationNames: new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null])) };
+    part.parts = [part];  // the prefectures searched: one here, several after combine
+    parts[no] = part;
+    return part;
   }
 
   // Several prefectures' indexes (each loaded with `load`) searched as one.
@@ -125,91 +155,225 @@
     const all = (f) => dbs.flatMap(f);
     const index = { types: [...new Set(all((d) => d.index.types))], areas: all((d) => d.index.areas),
       stations: [...new Set(all((d) => d.index.stations))], towns: all((d) => d.index.towns), flags: dbs[0].flags };
-    return { index, items: all((d) => d.items), flags: index.flags, stationNames: new Map(all((d) => [...d.stationNames])),
-      byKey: new Map(all((d) => [...d.byKey])), parts: all((d) => d.parts) };
+    const items = new Int32Array(dbs.reduce((n, d) => n + d.items.length, 0));
+    dbs.reduce((at, d) => (items.set(d.items, at), at + d.items.length), 0);
+    return { index, items, flags: index.flags, stationNames: new Map(all((d) => [...d.stationNames])), parts: all((d) => d.parts) };
   }
 
-  // Text search: a word matches an item when it is part of its name, town, area (or its English name, from load's
+  // Forgets loaded indexes (replaced by newer data): their handles read as nothing from now on.
+  function release(db) {
+    for (const p of db.parts) parts[p.no] = null;
+    for (const h of [...cache.keys()]) if (!parts[h >>> SHIFT]) cache.delete(h);
+  }
+
+  // Every listing of db, the ended ones kept because saved included (db.items: those searched).
+  function every(db) {
+    const out = new Int32Array(db.parts.reduce((n, p) => n + p.n, 0));
+    let k = 0;
+    for (const p of db.parts) for (let r = 0; r < p.n; r++) out[k++] = p.base + r;
+    return out;
+  }
+
+  // A listing by its key ("used_condo:12345"): its handle, or -1. Each type's rows are one run of ascending ids (as
+  // site.build_index writes them): a binary search; an index written otherwise gets a map.
+  function find(db, key) {
+    const at = key.indexOf(":"), type = key.slice(0, at), id = +key.slice(at + 1);
+    for (const p of db.parts) {
+      const t = p.index.types.indexOf(type), k = (p.keys ??= keyed(p));
+      if (t < 0 || parts[p.no] !== p) continue;  // (released)
+      if (k.map) { const r = k.map.get(`${t}:${id}`); if (r != null) return p.base + r; continue; }
+      let lo = k.start[t], hi = k.end[t];
+      while (lo < hi) { const m = (lo + hi) >> 1; if (p.c.idn[m] < id) lo = m + 1; else hi = m; }
+      if (lo < k.end[t] && p.c.idn[lo] === id) return p.base + lo;
+    }
+    return -1;
+  }
+  function keyed(p) {
+    const { type, idn } = p.c, start = new Int32Array(p.index.types.length), end = new Int32Array(p.index.types.length);
+    for (let r = 0; r < p.n; r++) {
+      const t = type[r];
+      if (end[t] === 0) { start[t] = r; end[t] = r + 1; } else if (end[t] === r && idn[r] > idn[r - 1]) end[t] = r + 1;
+      else return { map: new Map(Array.from({ length: p.n }, (_, i) => [`${type[i]}:${idn[i]}`, i])) };
+    }
+    return { start, end };
+  }
+
+  // A station's [name, walk minutes, bus minutes, car km] (nulls when not) from its access value.
+  const walkOf = (a) => (a >= 0 && a < 1000 ? a : null);
+  const station = (p, j) => {
+    const a = p.c.stAcc[j];
+    return [p.index.stations[p.c.stId[j]], walkOf(a), a < 0 && a !== NO_ACCESS ? -a : null, a >= 1000 ? (a - 1000) / 10 : null];
+  };
+
+  // The listing as an object (the page's cards, popups and listing view): null when its index was released.
+  const cache = new Map(), CACHE = 3000;
+  function item(h) {
+    let it = cache.get(h);
+    if (it) return it;
+    const p = parts[h >>> SHIFT], r = h & MASK;
+    if (!p || r >= p.n) return null;
+    const c = p.c, ix = p.index, type = ix.types[c.type[r]], area = ix.areas[c.area[r]], id = String(c.idn[r]);
+    const stations = [];
+    for (let j = c.stOff[r]; j < c.stOff[r + 1]; j++) stations.push(station(p, j));
+    const t = c.town[r], age = c.age[r], newAt = c.newAt[r], img = c.image[r], fees = c.fees[r];
+    it = {
+      h, id, idn: c.idn[r], type, key: type + ":" + id, area: area[0], areaName: area[1],
+      price: nul(c.price[r]), priceHi: nul(c.priceHi[r]), plan: nul(c.plan[r]), size: nul(c.size[r]), land: nul(c.land[r]),
+      age: age === age ? Math.floor(age / 12) : null, ageMonths: nul(age), stations,
+      stop: c.stopId[r] >= 0 ? [p.stops[c.stopId[r]], nul(c.stopWalk[r])] : null, flags: c.flags[r], others: c.others[r],
+      newAt: nul(newAt), newDate: newAt ? Math.floor(newAt / 100) : null, dropAt: nul(c.dropAt[r]), prevPrice: nul(c.prevPrice[r]),
+      firstSeen: c.firstSeen[r], unit: nul(c.unit[r]), town: t >= 0 ? p.townName[t] : null,
+      lat: t >= 0 ? nul(p.townLat[t]) : null, lng: t >= 0 ? nul(p.townLng[t]) : null,
+      name: ix.names[c.name[r]] ?? "", layout: ix.layouts[c.layout[r]] ?? "",
+      image: img >= 0 ? img : img === -1 ? null : p.imageText[-2 - img],
+      fees: fees === fees ? fees * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
+    };
+    if (cache.size >= CACHE) cache.delete(cache.keys().next().value);
+    cache.set(h, it);
+    return it;
+  }
+  // One field of a listing without making its object (null: none, or released).
+  const reader = (fn) => (h) => { const p = parts[h >>> SHIFT]; return p ? fn(p, h & MASK, p.c) : null; };
+  const get = {
+    key: reader((p, r, c) => `${p.index.types[c.type[r]]}:${c.idn[r]}`),
+    type: reader((p, r, c) => p.index.types[c.type[r]]),
+    area: reader((p, r, c) => p.index.areas[c.area[r]][0]),
+    price: reader((p, r, c) => nul(c.price[r])),
+    unit: reader((p, r, c) => nul(c.unit[r])),
+    ageMonths: reader((p, r, c) => nul(c.age[r])),
+    newDate: reader((p, r, c) => (c.newAt[r] ? Math.floor(c.newAt[r] / 100) : null)),
+    flags: reader((p, r, c) => c.flags[r]),
+    lat: reader((p, r, c) => (c.town[r] >= 0 ? nul(p.townLat[c.town[r]]) : null)),
+    lng: reader((p, r, c) => (c.town[r] >= 0 ? nul(p.townLng[c.town[r]]) : null)),
+    town: reader((p, r, c) => (c.town[r] >= 0 ? p.townName[c.town[r]] : null)),
+    // its town as a number (towns of different prefectures differ)
+    townKey: reader((p, r, c) => (c.town[r] >= 0 ? p.base + c.town[r] : null)),
+  };
+  // The loaded index a listing is in (its .items: that prefecture's listings).
+  const partOf = (h) => parts[h >>> SHIFT] || null;
+  // Each listing's position in a list: h -> position, -1 when it isn't there (a row per listing of the prefectures in it).
+  function positions(list) {
+    const at = new Map();  // part number -> per row its position + 1
+    for (let i = 0; i < list.length; i++) {
+      const h = list[i], no = h >>> SHIFT;
+      let a = at.get(no);
+      if (!a) at.set(no, (a = new Int32Array(parts[no]?.n || 0)));
+      a[h & MASK] = i + 1;
+    }
+    return (h) => (at.get(h >>> SHIFT)?.[h & MASK] ?? 0) - 1;
+  }
+
+  // A tag's position in its prefecture's table (index.features), null when that index doesn't have it.
+  const tagPos = (p, f) => (p.tagPos ??= new Map(p.index.features.map((t, k) => [t, k]))).get(f) ?? null;
+  // Per position of a table, whether it's one of the chosen values: marks(["a", "b", "c"], ["c"]) -> [0, 0, 1]
+  const marksOf = (table, chosen) => Uint8Array.from(table, (v) => (chosen.includes(v) ? 1 : 0));
+
+  // Text search: a word matches a listing when it is part of its name, town, area (or its English name, from load's
   // opts.places), layout, a station (with 駅, kana or English) or its bus stop. Each prefecture's tables are
   // normalized once, the first time a text search runs; a search marks the table entries containing each word, and
-  // items are tested by their positions in those tables.
-  function textTables(part) {
-    if (part.textTables) return part.textTables;
-    const ix = part.index, town = new Array(ix.towns.length).fill(null);
-    for (const it of part.items) if (it.town && it.townId != null && town[it.townId] == null) town[it.townId] = it.town;
-    const norm = (v) => (v ? normalize(v) : null);
-    return (part.textTables = {
-      names: ix.names.map(norm), towns: town.map(norm), layouts: ix.layouts.map(norm),
-      areas: ix.areas.map((a) => [norm(a[1]), norm(part.places?.[a[1]])].filter(Boolean)),
+  // listings are tested by their positions in those tables.
+  function textTables(p) {
+    if (p.textTables) return p.textTables;
+    const ix = p.index, norm = (v) => (v ? normalize(v) : null);
+    return (p.textTables = {
+      names: ix.names.map(norm), towns: p.townName.map(norm), layouts: ix.layouts.map(norm),
+      areas: ix.areas.map((a) => [norm(a[1]), norm(p.places?.[a[1]])].filter(Boolean)),
       stations: ix.stations.map((st, k) => [st + "駅", ...(ix.stationNames?.[k] || [])].filter(Boolean).map(normalize)),
-      stops: part.stops.map(norm),
+      stops: p.stops.map(norm),
     });
   }
   const marks = (list, w) => Uint8Array.from(list, (v) => (v && v.includes(w) ? 1 : 0));
   const marksAny = (list, w) => Uint8Array.from(list, (vs) => (vs.some((v) => v.includes(w)) ? 1 : 0));
   let textCache = [null, new Map()];  // the last text searched, and per prefecture the marks of each of its words
-  function wordMarks(part, v) {
+  function wordMarks(p, v) {
     if (textCache[0] !== v) textCache = [v, new Map()];
-    let m = textCache[1].get(part);
+    let m = textCache[1].get(p);
     if (!m) {
-      const t = textTables(part);
-      textCache[1].set(part, m = words(v).map((w) => ({ names: marks(t.names, w), towns: marks(t.towns, w),
+      const t = textTables(p);
+      textCache[1].set(p, m = words(v).map((w) => ({ names: marks(t.names, w), towns: marks(t.towns, w),
         layouts: marks(t.layouts, w), areas: marksAny(t.areas, w), stations: marksAny(t.stations, w), stops: marks(t.stops, w) })));
     }
     return m;
   }
-  function textMatches(it, v) {
-    for (const m of wordMarks(it.part, v)) {
-      if ((it.nameId != null && m.names[it.nameId]) || (it.townId != null && m.towns[it.townId]) || m.areas[it.areaId]
-        || (it.layoutId != null && m.layouts[it.layoutId]) || (it.stopId != null && m.stops[it.stopId])) continue;
-      let hit = false;
-      for (const s of it.stationIds) if (m.stations[s]) { hit = true; break; }
-      if (!hit) return false;
-    }
-    return true;
+  function textTest(p, v) {
+    const ms = wordMarks(p, v), { name, town, area, layout, stopId, stOff, stId } = p.c;
+    return (r) => {
+      for (const m of ms) {
+        const nm = name[r], tw = town[r], ly = layout[r], sp = stopId[r];
+        if ((nm >= 0 && m.names[nm]) || (tw >= 0 && m.towns[tw]) || m.areas[area[r]] || (ly >= 0 && m.layouts[ly])
+          || (sp >= 0 && m.stops[sp])) continue;
+        let hit = false;
+        for (let j = stOff[r]; j < stOff[r + 1]; j++) if (m.stations[stId[j]]) { hit = true; break; }
+        if (!hit) return false;
+      }
+      return true;
+    };
   }
 
-  function walkTo(it, chosen) {
-    let best = null;
-    for (const [s, w] of it.stations) {
-      if (w != null && (!chosen.length || chosen.includes(s)) && (best == null || w < best)) best = w;
+  // The shortest walk from a row to a station (one of the chosen ones: marks of the prefecture's stations, or null:
+  // any), NaN when none is on foot.
+  function walkTo(p, r, chosen) {
+    const { stOff, stId, stAcc } = p.c;
+    let best = NaN;
+    for (let j = stOff[r]; j < stOff[r + 1]; j++) {
+      const a = stAcc[j];
+      if (a >= 0 && a < 1000 && (!chosen || chosen[stId[j]]) && !(a >= best)) best = a;
     }
     return best;
   }
+  const chosenStations = (p, q) => (q.stations.length ? marksOf(p.index.stations, q.stations) : null);
 
   const STATION_WORDS = new Set(["station", "sta", "sta.", "駅"]);  // "Shibuya Station" finds what "Shibuya" does
-  let typed = [null, []];  // the last text searched and its words: split once per search, not once per item
+  let typed = [null, []];  // the last text searched and its words: split once per search, not once per listing
   const words = (v) => (typed[0] === v ? typed : (typed = [v, normalize(v).split(/\s+/).filter((w) => w && !STATION_WORDS.has(w))]))[1];
 
-  // One check per condition: (item, value, query) -> passes. Empty values pass.
+  // A flag bit of a prefecture's index; 0 when the index predates it (a cached old index after a deploy): nothing has it.
+  const bit = (p, name) => p.flags[name] || 0;
+  const ALWAYS = () => true, NEVER = () => false;
+  const flagTest = (p, name, set) => {
+    const b = bit(p, name), flags = p.c.flags;
+    if (!b) return set ? NEVER : ALWAYS;
+    return set ? (r) => (flags[r] & b) !== 0 : (r) => (flags[r] & b) === 0;
+  };
+  const condoTypes = (p) => Uint8Array.from(p.index.types, (t) => (isCondo(t) ? 1 : 0));
+
+  // One check per condition: (prefecture, value, query) -> a test of its rows (row -> passes). Only set values are
+  // checked (see conditions).
   const CHECKS = {
-    types: (it, v) => !v.length || v.includes(it.type),
-    areas: (it, v) => !v.length || v.includes(it.area),
-    stations: (it, v) => !v.length || it.stations.some(([s]) => v.includes(s)),
-    walk: (it, v, q) => v == null || (walkTo(it, q.stations) ?? Infinity) <= v,
-    priceMax: (it, v) => v == null || (it.price != null && it.price <= v),
-    priceMin: (it, v) => v == null || (it.priceHi != null && it.priceHi >= v),
-    landMin: (it, v) => v == null || (it.land != null && it.land >= v),
-    features: (it, v) => v.every((f) => hasTag(it, f)),
-    freehold: (it, v, q, db) => !v || !(it.flags & db.flags.leasehold),
-    noCondition: (it, v, q, db) => !v || !(it.flags & db.flags.conditional),
-    newOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.new),
-    dropsOnly: (it, v, q, db) => !v || !!(it.flags & db.flags.dropped),
+    types: (p, v) => { const m = marksOf(p.index.types, v), type = p.c.type; return (r) => m[type[r]] === 1; },
+    areas: (p, v) => { const m = marksOf(p.index.areas.map((a) => a[0]), v), area = p.c.area; return (r) => m[area[r]] === 1; },
+    stations: (p, v) => {
+      const m = marksOf(p.index.stations, v), { stOff, stId } = p.c;
+      return (r) => { for (let j = stOff[r]; j < stOff[r + 1]; j++) if (m[stId[j]]) return true; return false; };
+    },
+    walk: (p, v, q) => { const chosen = chosenStations(p, q); return (r) => walkTo(p, r, chosen) <= v; },
+    priceMax: (p, v) => { const a = p.c.price; return (r) => a[r] <= v; },
+    priceMin: (p, v) => { const a = p.c.priceHi; return (r) => a[r] >= v; },
+    landMin: (p, v) => { const a = p.c.land; return (r) => a[r] >= v; },
+    features: (p, v) => {
+      const pos = v.map((f) => tagPos(p, f));
+      if (pos.includes(null)) return NEVER;
+      const { tags } = p.c, W = p.W, word = pos.map((k) => k >>> 5), mask = pos.map((k) => 1 << (k & 31));
+      return (r) => { for (let i = 0; i < pos.length; i++) if (!(tags[r * W + word[i]] & mask[i])) return false; return true; };
+    },
+    freehold: (p) => flagTest(p, "leasehold", false),
+    noCondition: (p) => flagTest(p, "conditional", false),
+    newOnly: (p) => flagTest(p, "new", true),
+    dropsOnly: (p) => flagTest(p, "dropped", true),
     // new or cheaper since an hour (YYYYMMDDHH): "since your last visit"
-    since: (it, v) => v == null || it.newAt > v || it.dropAt > v,
+    since: (p, v) => { const { newAt, dropAt } = p.c; return (r) => newAt[r] > v || dropAt[r] > v; },
     // flags of the listing (top and upper: condos only; parking: houses and land only)
-    ...Object.fromEntries(["south", "top", "upper", "nofee", "ready", "tower", "parking"]
-      .map((f) => [f, (it, v) => !v || flagOf(it, f)])),
+    ...Object.fromEntries(["south", "top", "upper", "nofee", "ready", "tower", "parking"].map((f) => [f, (p) => flagTest(p, f, true)])),
     // monthly fees (yen) of condos; houses and land have none and pass
-    feesMax: (it, v) => v == null || !isCondo(it.type) || (it.fees != null && it.fees <= v),
-    text: (it, v) => !v || textMatches(it, v),
+    feesMax: (p, v) => { const condo = condoTypes(p), { type, fees } = p.c; return (r) => !condo[type[r]] || fees[r] * 100 <= v; },
+    text: (p, v) => textTest(p, v),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
-    plan: (it, v) => v == null || (it.plan != null && it.plan >= v),
-    sizeMin: (it, v) => v == null || (it.size != null && it.size >= v),
-    ageMax: (it, v) => v == null || (it.age != null && it.age <= v),
-    post1981: (it, v, q, db) => !v || !!(it.flags & db.flags.post1981),
+    plan: (p, v) => { const a = p.c.plan; return (r) => a[r] >= v; },
+    sizeMin: (p, v) => { const a = p.c.size; return (r) => a[r] >= v; },
+    ageMax: (p, v) => { const a = p.c.age; return (r) => Math.floor(a[r] / 12) <= v; },
+    post1981: (p) => flagTest(p, "post1981", true),
   };
   const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
   // The yes/no conditions (FLAGS) as bits of the index: [flag name, passes when set (true) or when not set (false)]
@@ -217,91 +381,128 @@
     dropsOnly: ["dropped", true], post1981: ["post1981", true], south: ["south", true], top: ["top", true],
     upper: ["upper", true], nofee: ["nofee", true], ready: ["ready", true], tower: ["tower", true],
     parking: ["parking", true] };
-  const FLAGS = Object.keys(FLAG_BITS);
+  const FLAGS = Object.keys(FLAG_BITS), FLAG_AT = new Map(FLAGS.map((f, k) => [f, k]));
   const ALL = [...Object.entries(CHECKS).map(([d, check]) => [d, check, false]),
     ...Object.entries(BUILDING).map(([d, check]) => [d, check, true])];
 
-  // The query's conditions that are set, as [name, check, on the building]: the others pass every item.
-  const conditions = (q) => ALL.filter(([d]) => {
-    const v = q[d];
-    return v != null && v !== false && v !== "" && !(Array.isArray(v) && !v.length);
-  });
+  const isSet = (v) => v != null && v !== false && v !== "" && !(Array.isArray(v) && !v.length);
+  // The query's conditions that are set, as [name, check, on the building]: the others pass every listing.
+  const conditions = (q) => ALL.filter(([d]) => isSet(q[d]));
 
-  // The conditions an item fails (at most 2 are collected: that's all faceting needs).
-  function failing(db, it, q, conds = conditions(q)) {
-    const out = [];
-    const exempt = it.type === "land" && q.types.includes("land");
-    for (const [d, check, building] of conds) {
-      if ((building && exempt) || check(it, q[d], q, db)) continue;
+  // The conditions compiled for each prefecture (made the first time a listing of it is tested): its tests, which
+  // are on the building, each one's dimension for faceting, and whether its land is exempt (土地 chosen).
+  function compiler(q, conds) {
+    const made = new Map(), landChosen = q.types.includes("land");
+    return (p) => {
+      let c = made.get(p);
+      if (!c) {
+        const landId = p.index.types.indexOf("land");
+        made.set(p, c = { tests: conds.map(([d, check]) => check(p, q[d], q)), building: conds.map((x) => x[2]),
+          dims: conds.map(([d]) => GROUP[d] || d), landId, exempt: landChosen && landId >= 0, type: p.c.type });
+      }
+      return c;
+    };
+  }
+  // Whether a row passes the compiled conditions (stops at the first failure).
+  function passes(c, r) {
+    const tests = c.tests, exempt = c.exempt && c.type[r] === c.landId;
+    for (let k = 0; k < tests.length; k++) if (!(exempt && c.building[k]) && !tests[k](r)) return false;
+    return true;
+  }
+  // The conditions a row fails, by dimension: how many (2 at most are counted: that's all faceting needs); the
+  // first goes into out[0].
+  function failing(c, r, out) {
+    const tests = c.tests, land = c.landId >= 0 && c.type[r] === c.landId, exempt = c.exempt && land;
+    let n = 0;
+    for (let k = 0; k < tests.length; k++) {
+      if ((c.building[k] && exempt) || tests[k](r)) continue;
       // land isn't a building: choosing 土地 is what would let it through
-      const dim = building && it.type === "land" ? "types" : GROUP[d] || d;
-      if (!out.includes(dim) && out.push(dim) > 1) return out;
+      const dim = c.building[k] && land ? "types" : c.dims[k];
+      if (n === 0) { out[0] = dim; n = 1; } else if (out[0] !== dim) return 2;
     }
+    return n;
+  }
+  // Calls fn(c, r, h) for each listing (handles of any prefectures), with the conditions compiled for its prefecture.
+  function each(items, at, fn) {
+    let no = -1, c = null;
+    for (let i = 0; i < items.length; i++) {
+      const h = items[i];
+      if (h >>> SHIFT !== no) { no = h >>> SHIFT; c = parts[no] ? at(parts[no]) : null; }
+      if (c) fn(c, h & MASK, h);
+    }
+  }
+
+  const matches = (db, h, q) => { const p = parts[h >>> SHIFT]; return !!p && passes(compiler(q, conditions(q))(p), h & MASK); };
+
+  const onlyLand = (q) => q.types.length > 0 && q.types.every((t) => t === "land");
+  const onlyHouses = (q) => q.types.length > 0 && q.types.every(isHouse);
+  const orLast = (v) => (v === v ? v : Infinity);  // missing (NaN) last
+  // The sort's keys for a prefecture's rows: [row -> number], compared in turn (ties: the results' order).
+  function sortKeys(p, q) {
+    const c = p.c, { idn, price, priceHi, type, size, land, age, unit, fees, prevPrice, newAt, firstSeen } = c;
+    const typeIs = (f) => Uint8Array.from(p.index.types, (t) => (f(t) ? 1 : 0)), byId = (r) => idn[r];
+    switch (q.sort) {
+      case "price_asc": return [(r) => orLast(price[r]), byId];
+      case "price_desc": return [(r) => -(priceHi[r] || 0), byId];
+      // land after the buildings, unless only land is chosen
+      case "size_desc": {
+        const last = typeIs((t) => t === "land" && !onlyLand(q));
+        return [(r) => last[type[r]], (r) => -(size[r] || land[r] || 0), byId];
+      }
+      case "walk_asc": { const chosen = chosenStations(p, q); return [(r) => orLast(walkTo(p, r, chosen)), byId]; }
+      case "age_asc": return [(r) => orLast(age[r]), byId];
+      // a house's price per ㎡ of building isn't comparable with a condo's or a plot's: houses last unless only
+      // houses are chosen
+      case "unit_asc": { const last = typeIs((t) => isHouse(t) && !onlyHouses(q)); return [(r) => (last[type[r]] ? Infinity : orLast(unit[r])), byId]; }
+      case "fees_asc": { const condo = condoTypes(p); return [(r) => (condo[type[r]] ? orLast(fees[r] * 100) : Infinity), byId]; }
+      case "drop_desc": return [(r) => (prevPrice[r] && price[r] ? price[r] / prevPrice[r] : Infinity), byId];  // biggest cut first
+      // newest first (missing last), then the newest listed, then the highest id
+      default: return [(r) => (newAt[r] ? -Math.floor(newAt[r] / 100) : Infinity), (r) => (firstSeen[r] ? -firstSeen[r] : Infinity), (r) => -idn[r]];
+    }
+  }
+
+  // The matching listings (of all, or of the given handles), sorted: an Int32Array of handles.
+  function search(db, q, items = db.items) {
+    const hits = new Int32Array(items.length);
+    let n = 0;
+    each(items, compiler(q, conditions(q)), (c, r, h) => { if (passes(c, r)) hits[n++] = h; });
+    if (n < 2) return hits.slice(0, n);
+    // sort keys in columns of numbers, and a stable sort of positions
+    const keyFns = new Map(), keyOf = (p) => keyFns.get(p) || keyFns.set(p, sortKeys(p, q)).get(p);
+    const width = keyOf(parts[hits[0] >>> SHIFT]).length, keys = Array.from({ length: width }, () => new Float64Array(n));
+    for (let i = 0, no = -1, fns = null; i < n; i++) {
+      const h = hits[i];
+      if (h >>> SHIFT !== no) { no = h >>> SHIFT; fns = keyOf(parts[no]); }
+      for (let l = 0; l < width; l++) keys[l][i] = fns[l](h & MASK);
+    }
+    const [a0, a1, a2] = keys, order = new Int32Array(n);
+    for (let i = 0; i < n; i++) order[i] = i;
+    const cmp = (x, y, a) => (a[x] < a[y] ? -1 : a[x] > a[y] ? 1 : 0);
+    order.sort(width === 2 ? (x, y) => cmp(x, y, a0) || cmp(x, y, a1) || x - y
+      : (x, y) => cmp(x, y, a0) || cmp(x, y, a1) || cmp(x, y, a2) || x - y);
+    const out = new Int32Array(n);
+    for (let i = 0; i < n; i++) out[i] = hits[order[i]];
     return out;
   }
 
-  // Whether an item passes the given conditions (stops at the first failure).
-  function passes(db, it, q, conds) {
-    const exempt = it.type === "land" && q.types.includes("land");
-    for (const [d, check, building] of conds) if (!(building && exempt) && !check(it, q[d], q, db)) return false;
-    return true;
-  }
-  const matches = (db, it, q, conds = conditions(q)) => passes(db, it, q, conds);
-
-  const newest = (d) => (d ? -d : Infinity);  // newest first, missing last
-  const onlyLand = (q) => q.types.length > 0 && q.types.every((t) => t === "land");
-  const onlyHouses = (q) => q.types.length > 0 && q.types.every(isHouse);
-  const orLast = (v) => (v == null ? Infinity : v);
-  function sortKey(it, q) {
-    switch (q.sort) {
-      case "price_asc": return [orLast(it.price), it.idn];
-      case "price_desc": return [-(it.priceHi || 0), it.idn];
-      // land after the buildings, unless only land is chosen
-      case "size_desc": return [it.type === "land" && !onlyLand(q) ? 1 : 0, -(it.size || it.land || 0), it.idn];
-      case "walk_asc": return [orLast(walkTo(it, q.stations)), it.idn];
-      case "age_asc": return [orLast(it.ageMonths), it.idn];
-      // a house's price per ㎡ of building isn't comparable with a condo's or a plot's: houses last unless only
-      // houses are chosen
-      case "unit_asc": return [orLast(isHouse(it.type) && !onlyHouses(q) ? null : it.unit), it.idn];
-      case "fees_asc": return [orLast(isCondo(it.type) ? it.fees : null), it.idn];
-      case "drop_desc": return [it.prevPrice && it.price ? it.price / it.prevPrice : Infinity, it.idn];  // biggest cut first
-      default: return [newest(it.newDate), newest(it.firstSeen), -it.idn];
-    }
-  }
-
-  // The matching items (of all, or of the given ones), sorted.
-  function search(db, q, items = db.items) {
-    const conds = conditions(q), hits = [];
-    for (const it of items) if (passes(db, it, q, conds)) hits.push(it);
-    // sort keys in columns of numbers (a stable sort of positions, so ties keep the items' order)
-    const n = hits.length, width = n ? sortKey(hits[0], q).length : 0;
-    const keys = Array.from({ length: width }, () => new Float64Array(n));
-    for (let i = 0; i < n; i++) {
-      const k = sortKey(hits[i], q);
-      for (let l = 0; l < width; l++) keys[l][i] = k[l];
-    }
-    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => {
-      for (let l = 0; l < width; l++) if (keys[l][a] !== keys[l][b]) return keys[l][a] < keys[l][b] ? -1 : 1;
-      return 0;
-    });
-    return order.map((i) => hits[i]);
-  }
-
   function count(db, q) {
-    const conds = conditions(q);
     let n = 0;
-    for (const it of db.items) if (matches(db, it, q, conds)) n++;
+    each(db.items, compiler(q, conditions(q)), (c, r) => { if (passes(c, r)) n++; });
     return n;
   }
 
-  // The items with coordinates on a grid of GRID° cells, so those in a box (the map's view, at every pan) are found
-  // without testing every item: within([south, west, north, east]) -> the items in it, in the items' order.
+  // The listings with coordinates on a grid of GRID° cells, so those in a box (the map's view, at every pan) are
+  // found without testing every one: within([south, west, north, east]) -> the handles in it, in the list's order.
   const GRID = 0.05;
   function spatial(items) {
-    const n = items.length, la = new Float64Array(n), lo = new Float64Array(n);  // (items are read once: NaN = none)
+    const n = items.length, la = new Float64Array(n).fill(NaN), lo = new Float64Array(n).fill(NaN);  // (NaN = none)
     let s = Infinity, w = Infinity, north = -Infinity, e = -Infinity, placed = 0;
-    for (let i = 0; i < n; i++) {
-      const it = items[i], y = it.lat ?? NaN, x = it.lng ?? NaN;
+    for (let i = 0, no = -1, p = null; i < n; i++) {
+      const h = items[i];
+      if (h >>> SHIFT !== no) { no = h >>> SHIFT; p = parts[no]; }
+      const t = p ? p.c.town[h & MASK] : -1;
+      if (t < 0) continue;
+      const y = p.townLat[t], x = p.townLng[t];
       la[i] = y;
       lo[i] = x;
       if (y !== y || x !== x) continue;
@@ -311,10 +512,10 @@
       if (x < w) w = x;
       if (x > e) e = x;
     }
-    if (!placed) return { within: () => [] };
+    if (!placed) return { within: () => new Int32Array(0) };
     const rows = Math.floor((north - s) / GRID) + 1, cols = Math.floor((e - w) / GRID) + 1;
     const row = (lat) => Math.floor((lat - s) / GRID), col = (lng) => Math.floor((lng - w) / GRID);
-    // positions sorted by cell (a counting sort: each cell's items in their order), cell k at start[k]..start[k + 1]
+    // positions sorted by cell (a counting sort: each cell's listings in their order), cell k at start[k]..start[k + 1]
     const cell = new Int32Array(n).fill(-1), start = new Int32Array(rows * cols + 1);
     for (let i = 0; i < n; i++) if (la[i] === la[i] && lo[i] === lo[i]) start[(cell[i] = row(la[i]) * cols + col(lo[i])) + 1]++;
     for (let k = 0; k < rows * cols; k++) start[k + 1] += start[k];
@@ -337,8 +538,8 @@
             if (lat[j] >= bs && lat[j] <= bn && lng[j] >= bw && lng[j] <= be) found[m++] = pos[j];
           }
         }
-        const out = new Array(m);
-        if (m * 8 < n) {  // a few: sorted back into the items' order
+        const out = new Int32Array(m);
+        if (m * 8 < n) {  // a few: sorted back into the list's order
           const picked = found.subarray(0, m).sort();
           for (let k = 0; k < m; k++) out[k] = items[picked[k]];
         } else {  // most of them: marked, then taken in order
@@ -351,13 +552,18 @@
     };
   }
 
-  // Threshold conditions as (value of an item, comparison): "max" choices pass items whose value is at most the
-  // choice, "min" ones items whose value is at least it; null: the item passes no choice, true: every choice.
+  // Threshold conditions as (value of a row, comparison): "max" choices pass rows whose value is at most the
+  // choice, "min" ones rows whose value is at least it; NaN: the row passes no choice, true: every choice.
+  // (prefecture, query) -> row -> value
   const THRESHOLDS = {
-    priceMax: ["max", (it) => it.price], priceMin: ["min", (it) => it.priceHi], plan: ["min", (it) => it.plan],
-    sizeMin: ["min", (it) => it.size], landMin: ["min", (it) => it.land], ageMax: ["max", (it) => it.age],
-    walk: ["max", (it, q) => walkTo(it, q.stations)],
-    feesMax: ["max", (it) => (isCondo(it.type) ? it.fees : true)],
+    priceMax: ["max", (p) => { const a = p.c.price; return (r) => a[r]; }],
+    priceMin: ["min", (p) => { const a = p.c.priceHi; return (r) => a[r]; }],
+    plan: ["min", (p) => { const a = p.c.plan; return (r) => a[r]; }],
+    sizeMin: ["min", (p) => { const a = p.c.size; return (r) => a[r]; }],
+    landMin: ["min", (p) => { const a = p.c.land; return (r) => a[r]; }],
+    ageMax: ["max", (p) => { const a = p.c.age; return (r) => Math.floor(a[r] / 12); }],
+    walk: ["max", (p, q) => { const chosen = chosenStations(p, q); return (r) => walkTo(p, r, chosen); }],
+    feesMax: ["max", (p) => { const condo = condoTypes(p), { type, fees } = p.c; return (r) => (condo[type[r]] ? fees[r] * 100 : true); }],
   };
   const sortedChoices = new WeakMap();  // choice list -> its distinct values ascending
   function ascending(values) {
@@ -366,66 +572,71 @@
     return s;
   }
   // Position of the first value >= x (max) or the last value <= x (min) in ascending values (-1 / length: none).
-  function bucket(values, x, kind) {
-    let lo = 0, hi = values.length;
-    if (kind === "max") {  // first values[i] >= x
-      while (lo < hi) { const m = (lo + hi) >> 1; if (values[m] >= x) hi = m; else lo = m + 1; }
-      return lo;
-    }
-    while (lo < hi) { const m = (lo + hi) >> 1; if (values[m] <= x) lo = m + 1; else hi = m; }
-    return lo - 1;  // last values[i] <= x
+  // (A scan: choice lists are short.)
+  function bucketMax(values, x) {
+    let i = 0;
+    while (i < values.length && values[i] < x) i++;
+    return i;
+  }
+  function bucketMin(values, x) {
+    let i = values.length - 1;
+    while (i >= 0 && values[i] > x) i--;
+    return i;
   }
 
   // Counts per position of a table (Int32Array) plus the order positions were first counted in, so the result keeps
-  // the order a plain object filled item by item would have.
+  // the order a plain object filled listing by listing would have.
   class Tally {
     constructor(n) { this.n = new Int32Array(n); this.order = []; }
     add(k) { if (this.n[k]++ === 0) this.order.push(k); }
     into(out, name) { for (const k of this.order) out[name(k)] = (out[name(k)] || 0) + this.n[k]; }
   }
 
-  // Counts for every choice of every condition, in one pass: an item that fails no condition counts for
+  // Counts for every choice of every condition, in one pass: a listing that fails no condition counts for
   // all choices it satisfies; one that fails exactly one condition counts for that condition's choices.
   // choices: {condition: [values]} for thresholds (priceMax, plan, walk...); sets are counted by value.
   function facets(db, q, choices) {
     const out = { total: 0, types: {}, areas: {}, stations: {}, features: {} };
-    const dims = [];  // {d, group, kind, value, values, hist}
+    const dims = [];  // {d, group, kind, max, values (and as numbers), hist}
     for (const d in choices) {
       const t = THRESHOLDS[d], values = ascending(choices[d]);
-      dims.push({ d, group: GROUP[d] || d, kind: t ? t[0] : null, value: t ? t[1] : null, values,
+      dims.push({ d, group: GROUP[d] || d, kind: t ? t[0] : null, max: t?.[0] === "max", values, nums: Float64Array.from(values),
         hist: new Int32Array(values.length) });
     }
-    // flags as bit tests: [name, bit, passes when the bit is set (or when it isn't: freehold, noCondition)]
-    const bitsOf = (p) => FLAGS.map((f) => [f, bit(p, FLAG_BITS[f][0]), FLAG_BITS[f][1]]);  // per prefecture's index
-    let flagBits = null;
     const flagN = new Int32Array(FLAGS.length);
-    const tallies = new Map();  // prefecture -> its area, station and tag tallies
-    const tallyOf = (part) => {
-      let t = tallies.get(part);
-      if (!t) tallies.set(part, t = { areas: new Tally(part.index.areas.length), stations: new Tally(part.index.stations.length),
-        tags: new Tally(part.index.features.length) });
+    // per prefecture: its compiled conditions, tallies, flags as bit tests (bits, and whether a flag passes when set or
+    // when not: freehold, noCondition), and per dimension the value of a row (or, without a known shape, a test per choice)
+    const conds = conditions(q), compiled = compiler(q, conds), walk = q.walk;
+    const tallies = new Map();
+    const at = (p) => {
+      let t = tallies.get(p);
+      if (!t) {
+        tallies.set(p, t = { p, c: compiled(p), areas: new Tally(p.index.areas.length), stations: new Tally(p.index.stations.length),
+          tags: new Tally(p.index.features.length), types: new Tally(p.index.types.length),
+          bits: Int32Array.from(FLAGS, (f) => bit(p, FLAG_BITS[f][0])), want: Uint8Array.from(FLAGS, (f) => (FLAG_BITS[f][1] ? 1 : 0)),
+          values: dims.map((dim) => (dim.kind ? THRESHOLDS[dim.d][1](p, q)
+            : dim.values.map((v) => (isSet(v) ? (CHECKS[dim.d] || BUILDING[dim.d])(p, v, q) : ALWAYS)))) });
+      }
       return t;
     };
-    const conds = conditions(q), walk = q.walk, types = out.types, none = [];
-    let part = null, tally = null;
-    for (const it of db.items) {
-      const f = conds.length ? failing(db, it, q, conds) : none;
-      if (f.length > 1) continue;
-      if (it.part !== part) { part = it.part; tally = tallyOf(part); flagBits = bitsOf(part); }
-      const only = f.length ? f[0] : null, free = only === null;
+    const failed = [null];
+    each(db.items, at, (t, r) => {
+      const n = conds.length ? failing(t.c, r, failed) : 0;
+      if (n > 1) return;
+      const p = t.p, c = p.c, only = n ? failed[0] : null, free = only === null;
       if (free) {
         out.total++;
-        // a tag counts when the item has all chosen tags but it, i.e. (it is among its tags) all of them
-        const ids = it.tagIds;
-        for (let k = 0; k < ids.length; k++) tally.tags.add(ids[k]);
+        // a tag counts when the listing has all chosen tags but it, i.e. (it is among its tags) all of them
+        for (let w = 0, o = r * p.W; w < p.W; w++) {
+          for (let x = c.tags[o + w]; x; x &= x - 1) t.tags.add(w * 32 + 31 - Math.clz32(x & -x));
+        }
       }
-      if (free || only === "types") types[it.type] = (types[it.type] || 0) + 1;
-      if (free || only === "areas") tally.areas.add(it.areaId);
+      if (free || only === "types") t.types.add(c.type[r]);
+      if (free || only === "areas") t.areas.add(c.area[r]);
       if (free || only === "stations") {
-        const sts = it.stations;
-        for (let j = 0; j < sts.length; j++) {
-          const w = sts[j][1];
-          if (walk == null || (w != null && w <= walk)) tally.stations.add(it.stationIds[j]);
+        for (let j = c.stOff[r]; j < c.stOff[r + 1]; j++) {
+          const a = c.stAcc[j];
+          if (walk == null || (a >= 0 && a < 1000 && a <= walk)) t.stations.add(c.stId[j]);
         }
       }
       for (let k = 0; k < dims.length; k++) {
@@ -433,26 +644,24 @@
         if (!free && only !== dim.group) continue;
         const values = dim.values, hist = dim.hist;
         if (!dim.kind) {  // a condition without a known shape: check every choice
-          const check = CHECKS[dim.d] || BUILDING[dim.d];
-          for (let i = 0; i < values.length; i++) if (check(it, values[i], q, db)) hist[i]++;
+          const tests = t.values[k];
+          for (let i = 0; i < values.length; i++) if (tests[i](r)) hist[i]++;
           continue;
         }
-        const x = dim.value(it, q);
-        if (x == null) continue;
-        if (x === true) hist[dim.kind === "max" ? 0 : values.length - 1]++;
-        else {
-          const b = bucket(values, x, dim.kind);
+        const x = t.values[k](r);
+        if (x === true) hist[dim.max ? 0 : values.length - 1]++;
+        else if (x === x) {
+          const b = dim.max ? bucketMax(dim.nums, x) : bucketMin(dim.nums, x);
           if (b >= 0 && b < values.length) hist[b]++;
         }
       }
-      const flags = it.flags;
-      for (let k = 0; k < flagBits.length; k++) {
-        const fb = flagBits[k];
-        if ((free || only === fb[0]) && ((flags & fb[1]) !== 0) === fb[2]) flagN[k]++;
-      }
-    }
+      const flags = c.flags[r], bits = t.bits, want = t.want;
+      if (free) { for (let k = 0; k < bits.length; k++) if (((flags & bits[k]) !== 0) === (want[k] === 1)) flagN[k]++; }
+      else if (FLAG_AT.has(only)) { const k = FLAG_AT.get(only); if (((flags & bits[k]) !== 0) === (want[k] === 1)) flagN[k]++; }
+    });
     for (let k = 0; k < FLAGS.length; k++) out[FLAGS[k]] = flagN[k];
     for (const [p, t] of tallies) {
+      t.types.into(out.types, (k) => p.index.types[k]);
       t.areas.into(out.areas, (k) => p.index.areas[k][0]);
       t.stations.into(out.stations, (k) => p.index.stations[k]);
       t.tags.into(out.features, (k) => p.index.features[k]);
@@ -468,27 +677,30 @@
     return out;
   }
 
-  // The number of items matching q, and q changed by each patch ({name: {condition: value}}), in one pass:
+  // The number of listings matching q, and q changed by each patch ({name: {condition: value}}), in one pass:
   // counts(db, q, {fresh: {newOnly: true}, cheaper: {dropsOnly: true}}) -> {total, fresh, cheaper}.
   function counts(db, q, patches = {}) {
     const names = Object.keys(patches), touched = new Set();
     for (const n of names) for (const d in patches[n]) touched.add(d);
     if (touched.has("stations")) touched.add("walk");             // walk is measured to the chosen stations
     if (touched.has("types")) for (const d in BUILDING) touched.add(d);  // land is exempt when 土地 is chosen
-    const conds = conditions(q), shared = conds.filter(([d]) => !touched.has(d)), own = conds.filter(([d]) => touched.has(d));
+    const conds = conditions(q), shared = compiler(q, conds.filter(([d]) => !touched.has(d))),
+      own = compiler(q, conds.filter(([d]) => touched.has(d)));
     const variants = names.map((n) => {
       const qq = { ...q, ...patches[n] };
-      return [n, qq, conditions(qq).filter(([d]) => touched.has(d))];
+      return compiler(qq, conditions(qq).filter(([d]) => touched.has(d)));
     });
-    const out = { total: 0 };
-    for (const n of names) out[n] = 0;
-    for (const it of db.items) {
-      if (!passes(db, it, q, shared)) continue;
-      if (passes(db, it, q, own)) out.total++;
-      for (const [n, qq, cs] of variants) if (passes(db, it, qq, cs)) out[n]++;
-    }
+    const out = { total: 0 }, n = new Int32Array(names.length);
+    const made = new Map(), at = (p) => made.get(p) || made.set(p, [shared(p), own(p), variants.map((v) => v(p))]).get(p);
+    each(db.items, at, ([s, o, vs], r) => {
+      if (!passes(s, r)) return;
+      if (passes(o, r)) out.total++;
+      for (let k = 0; k < vs.length; k++) if (passes(vs[k], r)) n[k]++;
+    });
+    names.forEach((name, k) => { out[name] = n[k]; });
     return out;
   }
+
 
   // How well a station's kanji, kana or English name matches what was typed: 0 same, 1 starts with it,
   // 2 contains it, 3 no match.
@@ -562,12 +774,14 @@
     const ix = part.index, n = (len) => new Int32Array(len);
     const areaN = n(ix.areas.length), stationN = n(ix.stations.length), townN = n(ix.towns.length),
       nameN = n(ix.names.length), tagN = n(ix.features.length), town = new Array(ix.towns.length).fill(null);
-    for (const it of part.items) {
-      areaN[it.areaId]++;
-      for (const s of it.stationIds) stationN[s]++;
-      if (it.townId != null) { townN[it.townId]++; town[it.townId] ??= it.town; }
-      if (it.nameId != null) nameN[it.nameId]++;
-      for (const k of it.tagIds) tagN[k]++;
+    const c = part.c, W = part.W;
+    for (let i = 0; i < part.items.length; i++) {
+      const r = part.items[i] & MASK, t = c.town[r];
+      areaN[c.area[r]]++;
+      for (let j = c.stOff[r]; j < c.stOff[r + 1]; j++) stationN[c.stId[j]]++;
+      if (t >= 0) { townN[t]++; town[t] ??= part.townName[t]; }
+      if (c.name[r] >= 0) nameN[c.name[r]]++;
+      for (let w = 0; w < W; w++) for (let x = c.tags[r * W + w]; x; x &= x - 1) tagN[w * 32 + 31 - Math.clz32(x & -x)]++;
     }
     const meanings = new Map(), add = (key, m) => { if (key) (meanings.get(key) || meanings.set(key, []).get(key)).push(m); };
     const candidates = [];
@@ -884,6 +1098,6 @@
     return out;
   }
 
-  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, matches, search, count, counts,
-    facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
+  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, release, every, find, item, get,
+    partOf, positions, matches, search, count, counts, facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
 });

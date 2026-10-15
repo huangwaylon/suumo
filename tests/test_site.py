@@ -262,7 +262,7 @@ def loaded(tmp_path, recs, field):
     script = """
     const Filter = require(process.argv[1]);
     const db = Filter.load(JSON.parse(require("fs").readFileSync(process.argv[2], "utf8")));
-    process.stdout.write(JSON.stringify(db.items.map((it) => it[process.argv[3]] ?? null)));
+    process.stdout.write(JSON.stringify(Array.from(db.items, (h) => Filter.item(h)[process.argv[3]] ?? null)));
     """
     site_queries(tmp_path, recs, [])
     out = subprocess.run([NODE, "-e", script, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json"), field],
@@ -622,3 +622,92 @@ def test_listings_in_a_box_keep_the_results_order(tmp_path):
                        [{"query": {"sort": "price_asc", "priceMax": 30_000_000}, "box": boxes[1]}], towns=towns)
     # edges are in; cheapest first, as searched (a few of many results, or most of them)
     assert got == [["2", "1"], ["3", "2", "1"], ["2"], [], ["3", "2", "1"]]
+
+
+STORE = """
+const Filter = require(process.argv[1]), fs = require("fs");
+const load = (f) => Filter.load(JSON.parse(fs.readFileSync(f, "utf8")));
+const db = Filter.combine([load(process.argv[2]), load(process.argv[2])]);   // the same index twice: two parts
+const [a, b] = db.parts, hits = Filter.search(db, Filter.emptyQuery()), out = {};
+out.handles = hits instanceof Int32Array && hits.length === 2 * a.items.length;
+out.same = Filter.item(hits[0]) === Filter.item(hits[0]);                      // cached
+const [x, y] = [Filter.item(a.items[0]), Filter.item(b.items[0])];
+out.parts = [x.h !== y.h, x.id === y.id];
+const fields = Object.keys(Filter.get).filter((f) => f !== "townKey");
+out.get = Array.from(Filter.every(db)).every((h) => fields.every((f) => Filter.get[f](h) === Filter.item(h)[f]));
+out.townKeys = new Set(Array.from(db.items, Filter.get.townKey)).size;
+out.find = Array.from(Filter.every(a), (h) => Filter.find(a, Filter.item(h).key) === h).every(Boolean);
+out.missing = [Filter.find(db, "used_condo:999"), Filter.find(db, "nothing:1"), Filter.item(-1)];
+const at = Filter.positions(hits.subarray(2));
+out.positions = [at(hits[2]), at(hits[5]), at(hits[0])];
+out.items = Array.from(a.items, Filter.item).map(({ h, ...it }) => it);
+out.ended = Array.from(Filter.every(a), Filter.item).filter((it) => it.flags & a.flags.gone).map((it) => it.id);
+for (let k = 0; k < 5000; k++) Filter.item(hits[k % hits.length]);   // (the cache stays bounded)
+Filter.release({ parts: [b] });
+out.released = [Filter.item(b.items[0]), Filter.get.price(b.items[0]), Filter.find({ parts: [b] }, x.key),
+  Filter.count(Filter.combine([a]), Filter.emptyQuery()), Filter.search(db, Filter.emptyQuery()).length];
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+@needs_node
+def test_listings_are_handles_into_columns_made_objects_on_demand(tmp_path):
+    towns = {"東京都狛江市東和泉": [35.63, 139.58]}
+    recs = [rec(5, address="東京都狛江市東和泉", stations=[{"line": "小田急線", "name": "狛江", "walk": 5},
+                                                         {"line": "小田急線", "name": "喜多見", "bus": 8, "walk": 2}]),
+            rec(3, type_="land", price=None, **LAND), rec(4, removed_at="2026-10-05"),
+            rec(9, image="https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2Fsystem%2Fimg%2FNo.jpg")]
+    site_queries(tmp_path, recs, [], towns=towns, saved={"used_condo:4"})
+    out = json.loads(subprocess.run([NODE, "-e", STORE, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json")],
+                                    capture_output=True, text=True, check=True).stdout)
+    assert out["handles"] and out["same"] and out["parts"] == [True, True] and out["get"] and out["find"]
+    assert out["townKeys"] == 3                   # a town per prefecture loaded (and none), not per name
+    assert out["missing"] == [-1, -1, None] and out["positions"] == [0, 3, -1]
+    by_id = {it["id"]: it for it in out["items"]}
+    assert set(by_id) == {"3", "5", "9"} and out["ended"] == ["4"]   # ended: kept (saved), never searched
+    five, land = by_id["5"], by_id["3"]
+    assert five["stations"] == [["狛江", 5, None, None], ["喜多見", None, 8, None]]
+    assert (five["key"], five["price"], five["priceHi"], five["layout"], five["town"]) == (
+        "used_condo:5", 50_000_000, 50_000_000, "3LDK", "狛江市東和泉")
+    assert (five["lat"], five["lng"], five["image"], five["stop"], five["fees"]) == (35.63, 139.58, None, None, None)
+    assert (land["type"], land["price"], land["plan"], land["age"], land["lat"]) == ("land", None, None, None, None)
+    assert by_id["9"]["image"] == "gazo/bukken/system/img/No.jpg"
+    # a released index: its listings read as nothing, the others stay
+    assert out["released"] == [None, None, -1, 3, 3]
+
+
+OLD_INDEX = """
+const Filter = require(process.argv[1]), fs = require("fs");
+const db = Filter.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+const E = Filter.emptyQuery(), ids = (q) => Array.from(Filter.search(db, { ...E, ...q }), (h) => Filter.item(h).id);
+process.stdout.write(JSON.stringify({
+  all: ids({}), cheap: ids({ priceMax: 40000000 }), fees: ids({ feesMax: 20000 }), text: ids({ text: "狛江" }),
+  item: Filter.item(Filter.find(db, "used_condo:2")),
+  find: [1, 2, 3].map((id) => Filter.find(db, "used_condo:" + id) >= 0),
+  facets: Filter.facets(db, { ...E, priceMax: 40000000 }, { priceMax: [40000000, 60000000] }).priceMax,
+}));
+"""
+
+
+@needs_node
+def test_an_index_older_than_the_page_still_loads(tmp_path):
+    recs = [rec(1, mgmt_fee=10_000, repair_fee=5_000), rec(2, price=30_000_000), rec(3, price=60_000_000)]
+    site_queries(tmp_path, recs, [])
+    path = tmp_path / "site/data/p/tokyo.json"
+    index = json.loads(path.read_text())
+    for col in ("fees", "stop", "priceMax", "image", "drop"):   # columns added since
+        del index["columns"][col]
+    del index["stationNames"]
+    cols = index["columns"]   # rows in another order (ids are deltas): a key is still found
+    ids_, order = [sum(cols["id"][:k + 1]) for k in range(len(cols["id"]))], [2, 0, 1]
+    index["columns"] = {k: [v[i] for i in order] for k, v in cols.items()}
+    index["columns"]["id"] = [ids_[i] - (ids_[order[k - 1]] if k else 0) for k, i in enumerate(order)]
+    path.write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
+    out = json.loads(subprocess.run([NODE, "-e", OLD_INDEX, str(FILTER_JS), str(path)],
+                                    capture_output=True, text=True, check=True).stdout)
+    assert out["all"] == ["3", "2", "1"] and out["cheap"] == ["2"] and out["find"] == [True, True, True]
+    assert out["fees"] == [] and out["text"] == ["3", "2", "1"]   # no fees known: no condo passes a limit
+    it = out["item"]
+    assert (it["id"], it["price"], it["priceHi"], it["fees"], it["image"], it["stop"], it["dropAt"]) == (
+        "2", 30_000_000, 30_000_000, None, None, None, None)
+    assert out["facets"] == {"40000000": 1, "60000000": 3}

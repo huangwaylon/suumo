@@ -69,7 +69,7 @@
   const FEES = [15000, 20000, 25000, 30000, 35000, 40000, 50000];  // condos' monthly fees, yen
   const PICKS = ["freehold", "south", "upper", "top", "nofee", "ready", "noCondition", "tower", "parking"];  // こだわり
   const QUICK = ["newOnly", "dropsOnly"];  // also one tap away above the results
-  const PAGE = 30, { FLAGS, TSUBO } = Filter;
+  const PAGE = 30, { FLAGS, TSUBO, get, item } = Filter;
   const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
   const TILES = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
   const MAP_FILES = [  // (supercluster, the markers' clustering, is ours: no integrity needed)
@@ -82,15 +82,16 @@
 
   // ---------- state ----------
 
+  // Listings are handles (numbers, see filter.js), lists of them Int32Arrays: Filter.item(h) is the object shown,
+  // Filter.get.<field>(h) one field of it.
   let db = null;                // the chosen prefectures' listings, searched as one
   let manifest = null;          // data/index.json: the prefectures there are, the saved list, when updated
   const loaded = new Map();     // prefecture slug -> its loaded index (Filter.load)
   let chosen = [];              // the prefectures searched (URL p=, default: the first, Tokyo)
-  let allByKey = new Map();     // every loaded listing (favorites can be in prefectures not chosen)
   let q = Filter.emptyQuery();
   let mode = "search";          // search | favorites (the shared saved list)
-  let hits = [], shown = 0;
-  let mapHits = [];             // the results, on the map (hits: those in its view)
+  let hits = new Int32Array(0), shown = 0;
+  let mapHits = hits;           // the results, on the map (hits: those in its view)
   let byDay = false;            // the list has a heading per day (what's new, newest first)
   let lastFocus = null;
   let facets = null, facetsFor = null;
@@ -98,6 +99,9 @@
   let sayTimer = null;          // the count is said aloud shortly after the conditions change
   let listSig = null;           // what the drawn cards show (render skips redrawing the same)
   let areaNames = new Map();
+  // A loaded listing by its key ("used_condo:123"; favorites can be in prefectures not chosen): its handle, or -1
+  const byKey = (key) => { for (const d of loaded.values()) { const h = Filter.find(d, key); if (h >= 0) return h; } return -1; };
+  const listing = (key) => item(byKey(key));  // ... as an object, or null
   let lastVisit = null;            // YYYYMMDDHH of the data seen on the previous visit (for "since your last visit")
   let dataHour = null;             // YYYYMMDDHH of the data shown now
   // Saved searches (this browser): [{c: conditions as URL parameters, seen: dataHour when last opened}]
@@ -261,7 +265,7 @@
     return e.value;
   }
   const results = new Map(), facetCache = new Map();
-  let rank = null;              // item -> its place in the results (a kept marker layer can be in another order)
+  let rank = null;              // listing -> its place in the results (a kept marker layer can be in another order)
   let unplaced = null;          // the results without coordinates
   function dataChanged() {
     dataVersion++;
@@ -274,7 +278,7 @@
     if (mode === "search") return Filter.search(db, q);
     const away = [...new Set([...favs].map((k) => manifest.saved[k] ?? pending[k]?.[2]).filter((p) => p && !loaded.has(p)))];
     if (away.length) loadPrefs(away).then(() => { fitNext = "results"; render(); });  // saved listings in prefectures not loaded yet
-    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map((k) => allByKey.get(k)).filter(Boolean));
+    return Filter.search(db, { ...Filter.emptyQuery(), sort: q.sort }, [...favs].map(byKey).filter((h) => h >= 0));
   }
 
   function update(top = true) {
@@ -364,10 +368,10 @@
 
   // The results the map can't show (no coordinates): in every view, folded at the end of the list.
   function renderUnplaced() {
-    const box = $("unplaced"), list = mode === "search" && view ? (unplaced ??= mapHits.filter((it) => it.lat == null)) : [];
+    const box = $("unplaced"), list = mode === "search" && view ? (unplaced ??= mapHits.filter((h) => get.lat(h) == null)) : [];
     box.hidden = !list.length;
     box.querySelector("summary").textContent = t("unplaced", num(list.length));
-    box.querySelector(".grid").innerHTML = box.open ? list.map((it) => card(it)).join("") : "";
+    box.querySelector(".grid").innerHTML = box.open ? Array.from(list, (h) => card(item(h))).join("") : "";
   }
 
   // The favorites are a view of their own: a history entry (back returns to the search, its place and its map).
@@ -397,13 +401,13 @@
     if (shown >= hits.length) return;
     let html = "";
     for (let i = shown; i < Math.min(shown + PAGE, hits.length); i++) {
-      const d = hits[i].newDate;
-      if (byDay && (i === 0 || hits[i - 1].newDate !== d)) {  // a heading for each day (then the price cuts)
+      const d = get.newDate(hits[i]);
+      if (byDay && (i === 0 || get.newDate(hits[i - 1]) !== d)) {  // a heading for each day (then the price cuts)
         let n = 0;
-        for (let j = i; j < hits.length && hits[j].newDate === d; j++) n++;
+        for (let j = i; j < hits.length && get.newDate(hits[j]) === d; j++) n++;
         html += `<h3 class="day">${esc(d ? weekday(d) : t("tag.dropped"))}<span>${esc(t("count", num(n)))}</span></h3>`;
       }
-      html += card(hits[i], i < 4);  // the first photos are in sight: not lazy
+      html += card(item(hits[i]), i < 4);  // the first photos are in sight: not lazy
     }
     $("list").insertAdjacentHTML("beforeend", html);
     shown += PAGE;
@@ -939,7 +943,7 @@
   // The open listing on the map: a ring at its town, outside the clusters (also when the conditions leave it out).
   let openMarker = null;
   function markOpen() {
-    const it = isListing() && allByKey.get(tab);
+    const it = isListing() && listing(tab);
     openMarker?.remove();
     openMarker = it?.lat != null && map ? L.marker([it.lat, it.lng], { icon: L.divIcon({ className: "", html: '<div class="open-pin"></div>', iconSize: [30, 30] }),
       interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map) : null;
@@ -947,16 +951,17 @@
 
   // Moves the map as fitNext says, once it's there.
   function placeMap() {
-    const how = fitNext, it = how?.id && allByKey.get(how.id), [lat, lng, z] = how?.m?.split(",").map(Number) ?? [];
+    const how = fitNext, it = how?.id && listing(how.id), [lat, lng, z] = how?.m?.split(",").map(Number) ?? [];
     if (!map || !how) return;
     fitNext = null;
     if (how.m) map.setView(centreFor([lat, lng], z), z);
     else if (how.b) map.fitBounds([[how.b[0], how.b[1]], [how.b[2], how.b[3]]], { paddingBottomRight: [0, hidden()] });
     else if (it?.lat != null) map.setView(centreFor([it.lat, it.lng], 15), 15);
     else {  // the results (none: the prefectures)
-      const placed = mapHits.filter((x) => x.lat != null).map((x) => [x.lat, x.lng]);
-      const points = placed.length ? placed : db.index.towns.filter((tw) => tw[1] != null).map((tw) => tw.slice(1));
-      if (points.length) map.fitBounds(coreBounds(points), { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()], maxZoom: 15 });
+      const placed = mapHits.filter((h) => get.lat(h) != null);
+      const bounds = placed.length ? coreBounds(placed, (h) => [get.lat(h), get.lng(h)])
+        : coreBounds(db.index.towns.filter((tw) => tw[1] != null), (tw) => tw.slice(1));
+      if (bounds) map.fitBounds(bounds, { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + hidden()], maxZoom: 15 });
     }
     onMapMove();  // (also when it was there already)
   }
@@ -984,7 +989,7 @@
       const label = countLabel(list.length);
       return cachedIcon(`t${label}`, () => L.divIcon({ className: "", html: `<div class="pin">${label}</div>`, iconSize: [Math.max(28, 14 + label.length * 8), 24] }));
     }
-    const lo = list.reduce((m, it) => (it.price != null && (m == null || it.price < m) ? it.price : m), null);
+    const lo = list.reduce((m, h) => { const p = get.price(h); return p != null && (m == null || p < m) ? p : m; }, null);
     const label = lo == null ? t("undecided") : t("pinPrice", lo), more = list.length > 1 ? list.length : 0;
     return cachedIcon(`p${label}|${more}`, () => {
       const w = 18 + label.length * (S.lang === "en" ? 7 : 10) + (more ? 10 + String(more).length * 7 : 0);
@@ -1035,23 +1040,24 @@
   // unfiltered one are kept, so going back to one (clearing the conditions) is quick. Towns at one point are one
   // marker. A cluster counts the homes in it.
   const CLUSTER_MAX = 16;       // zoomed in further, every town has its marker
-  const clusterSets = new Map();  // drawn.set -> {index, points: [{lat, lng, towns, list}], order}
+  const clusterSets = new Map();  // drawn.set -> {index, points: [{lat, lng, towns, list: handles}], order}
   const onMap = new Map();      // the markers on the map: "c" + cluster id or "p" + point -> marker
   let markerLayer = null, shownSet = null, shownLang = null;
   let layerOrder = null;        // the results (drawn.search) whose order the shown set's towns list their homes in
   function clusterSet() {
-    const points = [], at = new Map(), byTown = new Map();  // (prefecture -> per town its point)
-    for (const it of mapHits) {
-      if (it.lat == null) continue;
-      let towns = byTown.get(it.part), p;
-      if (!towns) byTown.set(it.part, (towns = []));
-      if (!(p = towns[it.townId])) {
-        const k = `${it.lat},${it.lng}`;
-        if (!(p = at.get(k))) { at.set(k, (p = { lat: it.lat, lng: it.lng, towns: [], list: [] })); points.push(p); }
-        towns[it.townId] = p;
-        p.towns.push(it.town);
+    const points = [], at = new Map(), byTown = new Map();  // (town -> its point)
+    for (let i = 0; i < mapHits.length; i++) {
+      const h = mapHits[i], lat = get.lat(h);
+      if (lat == null) continue;
+      const town = get.townKey(h);
+      let p = byTown.get(town);
+      if (!p) {
+        const lng = get.lng(h), k = `${lat},${lng}`;
+        if (!(p = at.get(k))) { at.set(k, (p = { lat, lng, towns: [], list: [] })); points.push(p); }
+        byTown.set(town, p);
+        p.towns.push(get.town(h));
       }
-      p.list.push(it);
+      p.list.push(h);
     }
     const index = new Supercluster({ radius: 48, extent: 256, maxZoom: CLUSTER_MAX,
       map: (props) => ({ n: props.n }), reduce: (sum, props) => { sum.n += props.n; } });
@@ -1117,8 +1123,8 @@
   // A town's homes in the results' order (the layer may have been drawn for another sort).
   function inOrder(list) {
     if (layerOrder === drawn.search || list.length < 2) return list;
-    rank ??= new Map(mapHits.map((it, i) => [it, i]));
-    const at = (it) => rank.get(it) ?? Infinity;  // (markers of the previous results, while the new ones are made)
+    rank ??= Filter.positions(mapHits);
+    const at = (h) => { const i = rank(h); return i < 0 ? Infinity : i; };  // (markers of the previous results, while the new ones are made)
     return [...list].sort((a, b) => at(a) - at(b) || 0);
   }
 
@@ -1312,17 +1318,19 @@
   }
 
   // Where the results are, without far outliers (islands, a stray geocode): the 2nd-98th percentile box; all of
-  // them when there are few. (Of an even sample of at most CORE_SAMPLE of them: the box hardly changes.)
+  // them when there are few; null for none. (Of an even sample of at most CORE_SAMPLE of them: the box hardly
+  // changes.) point: an element of the list -> [lat, lng].
   const CORE_SAMPLE = 5000;
-  function coreBounds(all) {
-    const step = Math.max(1, all.length / CORE_SAMPLE), points = step === 1 ? all : Array.from({ length: Math.floor(all.length / step) }, (_, k) => all[Math.floor(k * step)]);
+  function coreBounds(all, point) {
+    if (!all.length) return null;
+    const step = Math.max(1, all.length / CORE_SAMPLE), points = Array.from({ length: Math.floor(all.length / step) }, (_, k) => point(all[Math.floor(k * step)]));
     const pick = (i) => Float64Array.from(points, (p) => p[i]).sort(), cut = points.length < 20 ? 0 : 0.02;  // (numeric)
     const lat = pick(0), lng = pick(1), at = (a, f) => a[Math.min(a.length - 1, Math.floor((a.length - 1) * f + 0.5))];
     return [[at(lat, cut), at(lng, cut)], [at(lat, 1 - cut), at(lng, 1 - cut)]];
   }
 
   function popup(town, list) {
-    return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map((it) =>
+    return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${list.slice(0, 40).map(item).filter(Boolean).map((it) =>
       `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image != null ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
         <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
   }
@@ -1386,7 +1394,7 @@
   // A listing's page into box (its tab).
   // Resolves to the record, or null when it couldn't be loaded (ended, offline) or box moved on to another.
   async function renderListing(box, key) {
-    const it = allByKey.get(key);
+    const it = listing(key);
     box.dataset.key = key;
     box.innerHTML = '<div class="d-head"><div class="skeleton"></div></div>';
     let r;
@@ -1510,8 +1518,9 @@
   function market(it) {
     if (!it.unit || !(isCondo(it.type) || it.type === "land")) return "";
     const band = it.type.startsWith("used") && it.ageMonths != null, units = [];
-    for (const o of (it.part || db).items) {
-      if (o.area === it.area && o.type === it.type && o.unit && (!band || (o.ageMonths != null && Math.abs(o.ageMonths - it.ageMonths) <= 120))) units.push(o.unit);
+    for (const h of Filter.partOf(it.h)?.items || []) {
+      const unit = get.unit(h), months = band && get.ageMonths(h);
+      if (unit && get.area(h) === it.area && get.type(h) === it.type && (!band || (months != null && Math.abs(months - it.ageMonths) <= 120))) units.push(unit);
     }
     if (units.length < 10) return "";
     units.sort((a, b) => a - b);
@@ -1547,7 +1556,7 @@
   }
   // Favorites side by side: they open as tabs (the newest twelve), shown in 比較.
   function compareFavs(push = true) {
-    addTabs(hits.slice(0, MAX_TABS).map((it) => it.key));
+    addTabs(Array.from(hits.subarray(0, MAX_TABS), get.key));
     if (push) openTab("compare"); else showTab("compare");
   }
   // drawn again (another language, USD on or off)
@@ -1600,12 +1609,12 @@
     if (tab === "compare") {
       body.dataset.key = "compare";
       body.innerHTML = '<div class="skeleton"></div>';
-      compareHtml(tabs.map((k) => allByKey.get(k)).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
+      compareHtml(tabs.map(listing).filter(Boolean)).then((html) => { if (body.dataset.key === "compare") body.innerHTML = html; });
     } else if (body.dataset.key !== tab) {
       const key = tab;
       renderListing(body, key).then((r) => {
         if (body.dataset.key !== key) return;
-        const ended = !r || allByKey.get(key)?.flags & db.flags.gone;  // ended: SUUMO's page is gone too
+        const ended = !r || listing(key)?.flags & db.flags.gone;  // ended: SUUMO's page is gone too
         if (!ended || favs.has(key)) body.insertAdjacentHTML("beforeend", `<div class="actions">
           <button class="btn fav-btn" data-fav="${esc(key)}" aria-pressed="${favs.has(key)}">${icon("heart")}<span>${esc(t(favs.has(key) ? "saved" : "save"))}</span></button>
           ${ended ? "" : `<a class="btn primary" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">${esc(t("openSuumo"))}${icon("external")}</a>`}</div>`);  // (ended: only unsaved)
@@ -1626,7 +1635,7 @@
       x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
     strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : view ? "listTab" : "listAll")} ${num(hits.length)}`) +
       tabs.map((key) => {
-        const it = allByKey.get(key);
+        const it = listing(key);
         return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : typeName(key.split(":")[0]) || key, true);
       }).join("") + (tabs.length > 1 ? button("compare", t("compareTab")) : "") +
       `<button class="tab-all" data-tab-close="all">${esc(t("closeAll"))}</button>`;
@@ -1740,7 +1749,7 @@
     const title = `${save ? "save" : "unsave"} ${key}`;  // read by suumo/saved.py
     window.open(`${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(t("issueBody", location.origin + location.pathname + hashFor({ id: key })))}`,
       "_blank", "noopener");
-    pending[key] = [save, Date.now(), [...loaded].find(([, d]) => d.byKey.has(key))?.[0]];  // (its prefecture: loaded to list it)
+    pending[key] = [save, Date.now(), [...loaded].find(([, d]) => Filter.find(d, key) >= 0)?.[0]];  // (its prefecture: loaded to list it)
     refreshFavs();
     setFavButtons(key);
     toast(t(save ? "favAdded" : "favRemoved"));
@@ -2049,7 +2058,6 @@
         if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47
       });
     }));
-    allByKey = new Map([...loaded.values()].flatMap((d) => [...d.byKey]));
     dataChanged();
     offerNewer();
     await frame();  // the count drawn before the first search
@@ -2075,9 +2083,11 @@
   }
 
   async function reloadPref(slug) {
+    const old = loaded.get(slug);
     loaded.delete(slug);
     await loadPrefs([slug]);
     choosePrefs(chosen);
+    if (old) Filter.release(old);  // (what's still drawn from it reads as nothing until it's redrawn)
     listSig = null;  // the same listings may have changed
     render();
   }
