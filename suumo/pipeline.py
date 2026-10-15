@@ -11,6 +11,7 @@ A run crawls the search results (once a day with `--crawl-at`) and diffs them ag
 """
 import json
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from .archive import Archive
@@ -154,13 +155,22 @@ class Pipeline:
                    and hits < prev_hits * (1 - SUSPECT_DROP))
         counts = {"new": 0, "price_changed": 0, "relisted": 0, "removed": 0, "missing": 0}
         held = {r["id"]: r for r in self.db.area_listings(pref, type_key, a["code"])}
-        # one listing page per property: another agent's listing of one that has (or is getting) its page isn't queued;
-        # only listings seen in this crawl count (a missing one may be ending, and a copy should take over)
+        # One listing page per property (the only place this rule lives): another agent's listing of one that has
+        # (or is getting) its page isn't queued. Only listings seen in this crawl count (a missing one may be
+        # ending, and a copy should take over). A group in which an agent appears twice isn't one property
+        # (an agent doesn't list the same one twice): every listing in it gets its page.
+        agents = defaultdict(list)
+        for rec in recs.values():
+            if (k := dup_key({**rec, "type": type_key})) and rec.get("agent"):
+                agents[k].append(rec["agent"])
+        distinct = {k for k, names in agents.items() if len(names) != len(set(names))}
         claimed = {dup_key({**json.loads(r["list_json"]), "type": type_key})
                    for r in held.values() if r["detail_json"] and r["id"] in recs} - {None}
 
         def wanted(rec):
             k = dup_key({**rec, "type": type_key})
+            if k in distinct:
+                return True
             if k in claimed:
                 return False
             if k:
@@ -324,29 +334,16 @@ class Pipeline:
         self.log(f"\nlisting pages: fetched={done} failed={failed} gone={gone} remaining_in_queue={remaining}")
 
     def _queue_order(self, rows):
-        """The listings to fetch, in order: new ones first, then by prefecture, the one with the most listings first
-        (where most people look). Another agent's listing of a property that has (or will get) a page (dup_key)
-        isn't fetched: the site shows one listing per property; it's queued again by the next crawl if that
-        page's listing ends. Land also listed under new_house waits for its twin's page (/tochi/), then copies it."""
+        """The queued listings in fetch order: new ones first, then by prefecture, the one with the most listings
+        first (where most people look). Which listings are queued at all is reconcile's decision. Land also listed
+        under new_house (one /tochi/ page) waits for its queued twin's page, then copies it (_copy_twin)."""
         size = dict(self.db.x("SELECT pref, COUNT(*) FROM listings WHERE status='active' GROUP BY pref").fetchall())
-        def keys(type_key, rec):
-            return {dup_key({**rec, "type": type_key})} - {None}
-        covered, pages = set(), set()
-        for r in self.db.x("SELECT type, id, list_json FROM listings WHERE detail_json IS NOT NULL"):
-            covered |= keys(r["type"], rec := json.loads(r["list_json"]))
-            pages.add(rec.get("path"))
-        ranked = []
+        pages, ranked = set(), []
         for n, r in enumerate(rows):
-            rec = json.loads(r["list_json"]) if r["list_json"] else {}
-            k = keys(r["type"], rec)
-            if k & covered:
-                self.db.dequeue(r["type"], r["id"])
-                continue
-            covered |= k
-            twin = "/tochi/" in rec.get("path", "") and rec["path"] in pages  # its twin's page comes first
-            pages.add(rec.get("path"))
+            path = (json.loads(r["list_json"]) if r["list_json"] else {}).get("path") or ""
+            twin = "/tochi/" in path and path in pages  # its twin is queued before it: that page comes first
+            pages.add(path)
             ranked.append((-r["priority"], twin, -size.get(r["pref"], 0), n, r))
-        self.db.commit()
         return [r for *_, r in sorted(ranked, key=lambda x: x[:4])]
 
     def _copy_twin(self, r):

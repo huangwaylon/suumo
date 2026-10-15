@@ -447,3 +447,54 @@ def test_an_incomplete_first_pass_is_crawled_again_and_unioned(env, monkeypatch)
     out = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET).crawl_area("tokyo", "used_condo", AREA)
     assert len(client.paths) == 4                                       # page 2 came back empty: a second pass
     assert (out["status"], out["parsed"]) == ("complete", 67)
+
+
+def _fetch_queue(db, archive, targets):
+    """Work the queue with a client serving a fixture page; returns the fetched listing ids."""
+    page = Archive.read(FIXTURES / "detail_used_condo_20205670.html.gz")
+    fetched = []
+
+    class Client:
+        delay = 1.0
+
+        def get(self, path):
+            fetched.append(path.rstrip("/").split("nc_")[1])
+            return page
+    db.x("INSERT OR IGNORE INTO runs (run_id, started) VALUES ('q', 'x')")
+    Pipeline(db, archive, Client(), targets, T0, "q", log=QUIET).process_queue(3600)
+    return fetched
+
+
+SAME = {"name": "狛江ハイツ", "built": "2005-04"}   # the same property listed by several agents (dup_key)
+
+
+def test_a_copy_is_fetched_once_the_fetched_listing_goes_missing(env):
+    db, archive, targets, crawl, _ = env
+    crawl(0, [rec(1, **SAME), rec(2, **SAME)])
+    assert _fetch_queue(db, archive, targets) == ["1"]
+    crawl(1, [rec(2, **SAME)])                                  # 1 missing (maybe ending): 2 takes over
+    assert db.listing("used_condo", "1")["missed"] == 1
+    assert _fetch_queue(db, archive, targets) == ["2"]
+
+
+def test_a_copy_of_a_saved_ended_listing_gets_its_page(env):
+    db, archive, targets, crawl, _ = env
+    saved = {"used_condo:1"}
+    crawl(0, [rec(1, **SAME)], saved=saved)
+    assert _fetch_queue(db, archive, targets) == ["1"]
+    crawl(1, [], saved=saved)
+    crawl(2, [], saved=saved)
+    assert status(db, 1) == "removed"
+    crawl(3, [rec(2, **SAME)], saved=saved)                     # another agent's listing of it, later
+    assert _fetch_queue(db, archive, targets) == ["2"]
+
+
+def test_a_group_with_a_repeated_agent_is_not_one_property(env):
+    db, _, _, crawl, _ = env
+    queued = lambda: [r["id"] for r in db.x("SELECT id FROM queue ORDER BY id")]  # noqa: E731
+    crawl(0, [rec(1, agent="A不動産", **SAME), rec(2, agent="A不動産", **SAME), rec(3, agent="B不動産", **SAME)])
+    assert queued() == ["1", "2", "3"]                          # the same agent twice: separate units, all pages
+    db.x("DELETE FROM queue")
+    db.x("DELETE FROM listings")
+    crawl(1, [rec(4, agent="A不動産", **SAME), rec(5, agent="B不動産", **SAME)])
+    assert queued() == ["4"]                                    # different agents: one property, one page

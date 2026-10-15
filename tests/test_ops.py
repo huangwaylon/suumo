@@ -328,14 +328,12 @@ def test_geocode_takes_bulk_places_first_and_asks_only_for_the_rest(tmp_path, mo
     assert json.loads(cache.read_text()) == {"茨城県水戸市見川３": [36.4, 140.4], "茨城県水戸市赤塚１": [36.38, 140.41]}
 
 
-def test_queue_fetches_one_listing_per_property_and_copies_land_twins(tmp_path):
+def test_queue_fetches_what_is_queued_and_copies_land_twins(tmp_path):
     db = DB(tmp_path / "s.db")
     archive = Archive(tmp_path / "a")
     condo = {"name": "狛江ハイツ", "floor_m2": 60.0, "layout": "3LDK", "built": "2000-01", "price": 30_000_000}
-    rows = [  # (type, id, list fields, fetched page): 1 is fetched; 2 is another agent's 1; 3 and 4 are one property
-        ("used_condo", "1", condo, '{"a":1}'), ("used_condo", "2", condo, None),
-        ("used_condo", "3", {**condo, "price": 1}, None), ("used_condo", "4", {**condo, "price": 1}, None),
-        ("used_condo", "5", {**condo, "price": 2}, None),
+    rows = [  # (type, id, list fields, fetched page): 1 is fetched; 2 and 3 are queued copies of it (reconcile's call)
+        ("used_condo", "1", condo, '{"a":1}'), ("used_condo", "2", condo, None), ("used_condo", "3", condo, None),
         ("new_house", "6", {"path": "/tochi/tokyo/sc_komae/nc_6/"}, None),
         ("land", "6", {"path": "/tochi/tokyo/sc_komae/nc_6/"}, None)]
     for type_, lid, rec_, detail in rows:
@@ -355,7 +353,7 @@ def test_queue_fetches_one_listing_per_property_and_copies_land_twins(tmp_path):
     targets = [Target("tokyo", t, None) for t in ("used_condo", "new_house", "land")]
     Pipeline(db, archive, Client(), targets, NOW, "r", log=QUIET).process_queue(3600)
     ids = [p.rstrip("/").split("nc_")[1] for p in fetched]
-    assert ids == ["3", "5", "6"]   # one per property; other agents' copies (2, 4) not fetched; land 6 fetched once
+    assert ids == ["2", "3", "6"]   # everything queued is fetched; land 6 fetched once, for both types
     assert db.listing("land", "6")["detail_json"] == db.listing("new_house", "6")["detail_json"]
     assert archive.detail_path("tokyo", "land", "6").exists() and db.x("SELECT COUNT(*) FROM queue").fetchone()[0] == 0
 
