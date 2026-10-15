@@ -121,9 +121,10 @@ uv run python -m suumo geocode                                       # map coord
 
 Follow it with `tail -f logs/backfill.log` (a progress line every 200 pages: done/total, s/page, ETA, current
 delay) or `uv run python -m suumo status` from another Terminal (shows the current run while it holds the lock).
-`data/` is exported every hour. Stopping it (Ctrl-C) is safe: the next run continues the queue. If SUUMO pushes
+`data/` is exported every hour. Stopping it (Ctrl-C, or `kill`) is safe: the open transaction is rolled back, the
+run is marked interrupted, and the next run exports its events and continues the queue. If SUUMO pushes
 back, the delay rises on its own (up to 10 s) and comes back down; if it's unreachable, the run pauses 10 minutes
-at a time without giving up on those listings.
+at a time without giving up on those listings (a page our own network couldn't send never counts against it).
 
 ### 5. Hourly schedule
 
@@ -144,7 +145,9 @@ day, around 03:00–04:00, so the first run after 04:00 crawls all search result
 minutes) and the others only fetch listing pages of listings not stored yet, until :50. Every run pulls (for
 `saved.json`), geocodes new towns, then commits `data/` and `geo/` and pushes, which rebuilds the site. A
 listing missing from 2 daily crawls is removed (so within about two days; a second crawl on the same day
-doesn't count). A daily crawl that stopped part-way resumes with the next prefecture. `--push` needs a git remote that pushes without a prompt (an SSH key in the
+doesn't count). A daily crawl that stopped part-way resumes with the next prefecture; one stopped because the
+network is down (two targets in a row unreachable) ends the run with an error, without listing pages. Before a
+commit, a rebase left by a failed pull is aborted and a stale `.git/index.lock` (over 10 min) removed. `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
 `launchctl bootout gui/$(id -u)/local.suumo`.
 
@@ -185,8 +188,11 @@ and names are in `data/<pref>/areas.json` after a run.
 
 1. **Search results**: every page of every area in scope (100 listings per page, one request at a time),
    saved to `archive/`, with the parsed count checked against SUUMO's count. Short areas are retried once,
-   then marked `incomplete`; a page without SUUMO's count is an `error`. Each prefecture is marked crawled as
-   soon as it's done.
+   then marked `incomplete`; a page without SUUMO's count is an `error`. An area page with no areas, or whose
+   counts add up to less than 70% of the (≥20) listings held there, is an error and nothing of it is reconciled.
+   A failed area page or area is tried once more at the end of the crawl. Each prefecture is marked crawled as
+   soon as it's done (retry included). Areas listed as "(0)" (and new_condo areas the other types know but the
+   new_condo page doesn't list) count as crawled with 0, so their first listing is new.
 2. **Changes**: the results are diffed against `state.db`. An area's first complete crawl is a silent baseline.
    After that, new IDs and price changes become events. A listing missing from 2 complete crawls on different
    days (a day starts at 04:00) is deleted (row, archived page; a `removed` event), unless it's on the saved list:
@@ -198,12 +204,13 @@ and names are in `data/<pref>/areas.json` after a run.
    runs out. One listing per property (`dup_key`) gets its page, and it stays the same one when SUUMO reorders
    the results; another agent's copy only when that one goes
    missing, ends or is gone (a group where one agent appears twice is several properties: each gets its page). A page that
-   is gone (404) isn't asked for again. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
+   is gone (404, or a redirect: status and Location are logged and kept in the queue) isn't asked for again. Search-result fields (price etc.) are refreshed every crawl. Pages are archived before parsing; a
    parse failure is logged and the page can be re-parsed later.
-4. **Cleanup**: ended listings no longer saved are deleted; search-result snapshots are kept 14 days; event and
-   run rows 90 days.
+4. **Cleanup**: ended listings no longer saved are deleted (leaving a 14-day tombstone, so a return is relisted);
+   search-result snapshots are kept 14 days; event and run rows 90 days.
 5. **Export**: `data/` is rewritten deterministically (an unchanged day is an empty git diff) and the run's
-   events go to `data/events/<run_id>.json` (the site's 新着, 値下げ and price history come from them).
+   events go to `data/events/<run_id>.json` (the site's 新着, 値下げ and price history come from them; an
+   interrupted run's are written by the next run).
 6. **Geocoding**: towns of new listings are placed from MLIT's 位置参照情報 (大字・町丁目 points, one download per
    prefecture), the few it doesn't know from 国土地理院's address search (one request a second, ≤10 min per run).
 
@@ -257,6 +264,7 @@ IDs are per agent listing; `dup_key` groups the same property listed by several 
 | Scheduled run fails with `Operation not permitted` | the repo is under Documents/Desktop/Downloads; move it to `~/suumo` |
 | `parse failures: N` in `status` | fix the parser, then `reparse` (the pages are already archived) |
 | An area shows `incomplete` or `suspect` | transient on SUUMO's side; no listings are removed for it; the next run retries |
+| `ERROR area page: ...` in the log | the area page looked broken (no areas, or far fewer listings than held); nothing was reconciled; tried again at the end of the crawl, and the next day |
 | The site didn't update | Actions tab on GitHub: the `Site` workflow runs tests first; a failing test blocks the deploy |
 | 「地図に表示できない物件が…」 on the map | towns not geocoded yet (`uv run python -m suumo geocode`), or found by neither 位置参照情報 nor the address search |
 
