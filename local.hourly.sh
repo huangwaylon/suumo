@@ -11,5 +11,5 @@ while true; do
   now=$(date +%s); (( now < next )) && sleep $(( next - now ))
   next=$(( $(date +%s) + 3600 ))
   echo "=== $(date '+%F %T') ===" >> logs/run.log
-  caffeinate -i uv run python -u -m suumo "$@" run --crawl-at 4 --budget 3h --until-minute 50 --push >> logs/run.log 2>&1
+  caffeinate -i uv run python -u -m suumo "$@" run --page-delay 0.3 --crawl-at 4 --budget 3h --until-minute 50 --push >> logs/run.log 2>&1
 done

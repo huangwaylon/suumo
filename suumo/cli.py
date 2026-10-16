@@ -33,6 +33,8 @@ STATIONS_CACHE = "geo/stations.json"
 RAIL = "geo/rail.json"  # railway lines and stations for the map (`rail`)
 SAVED = "saved.json"  # the shared saved list (updated on GitHub by the Saved workflow)
 GEO_BUDGET = 600  # seconds a run spends on the address search, for towns 位置参照情報 doesn't place
+MIN_PAGE_DELAY = 0.3   # listing pages never faster than this (the owner's decision, 2026-10-16)
+THROTTLED_DELAY = 1.0  # ...and never faster than this once SUUMO has pushed back (a 429/403 in any run kept)
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCOPE = "scope.toml"
 
@@ -52,6 +54,16 @@ def crawl_due(db, now, hour, prefs):
     return not set(prefs) <= crawled_since(db, now, hour)
 
 
+def page_delay(db, wanted):
+    """The listing pages' base delay: wanted, but THROTTLED_DELAY at least once a run on record got a 429/403 from
+    SUUMO (runs are kept pipeline.EVENT_DAYS, 90; after that the faster delay is tried again)."""
+    if wanted < THROTTLED_DELAY and db.x("SELECT 1 FROM runs WHERE json_extract(report, '$.pushbacks') > 0 "
+                                         "LIMIT 1").fetchone():
+        print(f"listing pages at {THROTTLED_DELAY}s, not {wanted}s: SUUMO pushed back (429/403) in an earlier run")
+        return THROTTLED_DELAY
+    return wanted
+
+
 def seconds_until_minute(now, minute):
     """Seconds from now to the next time the clock shows :minute (0 when that's under a minute away)."""
     left = (minute - now.minute) % 60 * 60 - now.second
@@ -63,6 +75,13 @@ def parse_budget(s):
     if not m:
         raise argparse.ArgumentTypeError("use e.g. 90s, 3m, 2h, or 0")
     return float(m.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600}[m.group(2)]
+
+
+def page_delay_arg(s):
+    v = float(s)
+    if v < MIN_PAGE_DELAY:
+        raise argparse.ArgumentTypeError(f"at least {MIN_PAGE_DELAY}")
+    return v
 
 
 class Ctx:
@@ -118,6 +137,8 @@ def cmd_run(c: Ctx):
         if a.until_minute is not None:  # an hourly run: listing pages until then, so the next run starts on time
             budget = min(budget, seconds_until_minute(datetime.now(JST), a.until_minute))
         if budget > 0:
+            if a.page_delay is not None:  # listing pages at their own pace (search results keep --delay)
+                client.rebase(page_delay(c.db, a.page_delay))
             p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
         p.purge()
         p.report.update(export=export(c.db, c.targets, c.data, run_id), **stats())
@@ -265,6 +286,8 @@ def main():
         return p
 
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
+    r.add_argument("--page-delay", type=page_delay_arg, metavar="S",
+                   help=f"base seconds between listing pages (default: --delay; at least {MIN_PAGE_DELAY})")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
     r.add_argument("--crawl-at", type=int, choices=range(24), metavar="0-23",
                    help="crawl search results only once a day, at the first run after this hour (SUUMO's daily update)")

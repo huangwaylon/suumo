@@ -138,10 +138,13 @@ launchctl kickstart gui/$(id -u)/local.suumo     # run once now to check
 tail -f logs/run.log
 ```
 
-The job runs `python -m suumo run --crawl-at 4 --budget 3h --until-minute 50 --push` every hour at :05 (once on
+The job runs `python -m suumo run --page-delay 0.3 --crawl-at 4 --budget 3h --until-minute 50 --push` every hour
+at :05 (once on
 wake if the Mac was asleep; a run still going makes the next one exit). SUUMO updates its search results once a
 day, around 03:00–04:00, so the first run after 04:00 crawls all search results (~800 requests for Tokyo, ~25
-minutes) and the others only fetch listing pages of listings not stored yet, until :50. Every run pulls (for
+minutes) at 1.5 s between requests, and the others only fetch listing pages of listings not stored yet, until :50,
+at 0.3 s (`--page-delay`, never lower; 1.0 s from the first run SUUMO answers with a 429/403, for as long as that
+run is on record, 90 days). Every run pulls (for
 `saved.json`), geocodes new towns, then commits `data/` and `geo/` and pushes, which rebuilds the site. A
 listing missing from 2 daily crawls is removed (so within about two days; a second crawl on the same day
 doesn't count). A daily crawl that stopped part-way resumes with the next prefecture; one stopped because the

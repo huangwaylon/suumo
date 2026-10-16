@@ -32,7 +32,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `site/app.js`, `index.html`, `style.css` | The page, map-first: the map plus a panel listing what's in its view (`m=lat,lng,zoom` in the URL, replaced on every move; the map moves only on the refit triggers), the panel's tabs (the list, opened listings, 比較 of the open tabs; `id=`, favorites' `cmp=1`), one filter panel (rail on desktop, sheet elsewhere), favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests), last search (localStorage `suumo.last`). Listings are filter.js handles everywhere (results, map points, favorites, tabs by key); objects only for what's drawn (`Filter.item`). Opening a listing, the favorites view and the overlays are history entries, so back closes them. An app shell (the page never scrolls): ≥1024 map, divider (`settings.panel`), panel; below, a bottom sheet over the map (peek/half/full, `settings.sheet`); ≥1280 the filter rail. Card columns follow the panel's width (container queries) |
 | `site/supercluster.min.js` | Vendored supercluster 8.0.1 (ISC): app.js clusters the results' towns once per result set, and only the clusters and towns in view are Leaflet markers |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
-| `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 4 --budget 3h --until-minute 50 --push`) |
+| `local.suumo.plist` | launchd template (hourly at :05, `run --page-delay 0.3 --crawl-at 4 --budget 3h --until-minute 50 --push`) |
 | `local.hourly.sh` | The same schedule without launchd (a loop in a terminal, for a repo launchd can't read) |
 | `~/suumo-refresh/all.sh` (not in git) | The one-off driver for the nationwide sweep and backfill (nohup + caffeinate): sweep, geocode, then 1 h listing-page runs with the stepped delay, the 04:00 crawl at 1.5 s. Replace with `local.suumo.plist` once the backfill is done |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
@@ -96,7 +96,9 @@ Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `ex
   results. Listing pages during a backfill (or a one-off sweep of new prefectures) may go down to 0.3 s, by the
   owner's decisions (2026-10-14: 0.5 s; 2026-10-16, after 0.5 s drew no pushback: 0.3 s): the driver lowers it 0.1 s per clean run and goes back to 1.0 s for good on
   throttling (any 429/403 — `Client.pushbacks` in the run report — or 3+ slow-downs in a run); 2 slow-downs
-  pause the step-down, a single stray 5xx is ignored. Never lower than 0.3 s. At most two crawlers at once, by the owner's decision: the
+  pause the step-down, a single stray 5xx is ignored. Never lower than 0.3 s. After the backfill listing pages (owner, 2026-10-17)
+  stay at 0.3 s (`run --page-delay`, floor `cli.MIN_PAGE_DELAY`); a run on record with a 429/403 holds them at
+  1.0 s (`cli.page_delay`). At most two crawlers at once, by the owner's decision: the
   hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml).
   `http.Client` slows itself down on 429/5xx/network errors/slow responses (doubling, max 10 s, honours
   `Retry-After`) and eases back; keep that behaviour.

@@ -54,6 +54,10 @@ class Client:
             self.delay = new
             self.slowdowns += count
 
+    def rebase(self, base):
+        """A new base delay (listing pages after search results); a slow-down in effect carries over in proportion."""
+        self.delay, self.base = self.delay * base / self.base, base
+
     def _ease(self):
         if self.delay > self.base:
             self.delay = max(self.base, self.delay * EASE)
