@@ -34,7 +34,7 @@ def unreachable(e):
 
 
 class Client:
-    def __init__(self, delay=1.5, log=print):
+    def __init__(self, delay=0.3, log=print):
         self.base = self.delay = delay
         self.log = log
         self.session = requests.Session()
@@ -53,10 +53,6 @@ class Client:
             self.log(f"  ~ {why}: slowing down, delay {self.delay:.2f}s -> {new:.2f}s")
             self.delay = new
             self.slowdowns += count
-
-    def rebase(self, base):
-        """A new base delay (listing pages after search results); a slow-down in effect carries over in proportion."""
-        self.delay, self.base = self.delay * base / self.base, base
 
     def _ease(self):
         if self.delay > self.base:

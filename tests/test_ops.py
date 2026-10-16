@@ -770,24 +770,15 @@ def test_git_aborts_a_rebase_a_failed_pull_left_and_clears_a_stale_lock(tmp_path
     assert commit_data(b, "r2", log=QUIET) and not lock.exists()
 
 
-def test_page_delay_holds_back_after_a_pushback_and_has_a_floor(tmp_path, capsys):
+def test_run_delay_holds_back_after_a_pushback_and_has_a_floor(tmp_path, capsys):
     db = DB(tmp_path / "s.db")
-    assert cli.page_delay(db, 0.3) == 0.3
+    assert cli.run_delay(db, 0.3) == 0.3
     db.x("INSERT INTO runs (run_id, started, report) VALUES ('r1', 'x', ?)", json.dumps({"pushbacks": 0}))
-    assert cli.page_delay(db, 0.3) == 0.3                   # a run without a 429/403: full speed
+    assert cli.run_delay(db, 0.3) == 0.3                    # a run without a 429/403: full speed
     db.x("INSERT INTO runs (run_id, started, report) VALUES ('r2', 'x', ?)", json.dumps({"pushbacks": 2}))
-    assert cli.page_delay(db, 0.3) == cli.THROTTLED_DELAY   # SUUMO pushed back once: 1.0 s from then on
-    assert cli.page_delay(db, 1.5) == 1.5                   # (slower than that: as asked)
+    assert cli.run_delay(db, 0.3) == cli.THROTTLED_DELAY    # SUUMO pushed back once: 1.0 s from then on
+    assert cli.run_delay(db, 1.5) == 1.5                    # (slower than that: as asked)
     assert "pushed back" in capsys.readouterr().out
     with pytest.raises(argparse.ArgumentTypeError):
-        cli.page_delay_arg("0.2")                           # never under the floor
-    assert cli.page_delay_arg("0.3") == 0.3
-
-
-def test_client_rebase_keeps_a_slowdown_in_proportion():
-    c = http.Client(delay=1.5, log=QUIET)
-    c.rebase(0.3)
-    assert (c.base, c.delay) == (0.3, pytest.approx(0.3))
-    c.delay = 0.6                                           # slowed down (doubled)
-    c.rebase(1.0)
-    assert (c.base, c.delay) == (1.0, pytest.approx(2.0))
+        cli.delay_arg("0.2")                                # never under the floor
+    assert cli.delay_arg("0.3") == 0.3
