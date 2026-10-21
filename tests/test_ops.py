@@ -782,3 +782,22 @@ def test_run_delay_holds_back_after_a_pushback_and_has_a_floor(tmp_path, capsys)
     with pytest.raises(argparse.ArgumentTypeError):
         cli.delay_arg("0.2")                                # never under the floor
     assert cli.delay_arg("0.3") == 0.3
+
+
+def test_crawl_slots_several_hours_a_day(tmp_path):
+    jst = ZoneInfo("Asia/Tokyo")
+    at = lambda d, h, m=0: datetime(2026, 10, d, h, m, tzinfo=jst)  # noqa: E731
+    hours = cli.parse_hours("18,4,12")
+    assert hours == [4, 12, 18]
+    assert cli.crawl_slot(at(21, 3), hours) == at(20, 18)       # before 04:00: yesterday's last
+    assert cli.crawl_slot(at(21, 4, 5), hours) == at(21, 4)
+    assert cli.crawl_slot(at(21, 17, 59), hours) == at(21, 12)
+    assert cli.crawl_slot(at(21, 23), hours) == at(21, 18)
+    assert cli.crawl_slot(at(21, 3), 4) == at(20, 4)            # one hour: once a day, as before
+    db = DB(tmp_path / "s.db")
+    db.x("INSERT INTO prefs (pref, crawled_at) VALUES ('tokyo', ?)", at(21, 4, 30).isoformat())
+    assert not crawl_due(db, at(21, 11, 0), hours, {"tokyo"})   # crawled since 04:00
+    assert crawl_due(db, at(21, 12, 5), hours, {"tokyo"})       # 12:00 has come
+    for bad in ("24", "x", "4,,12"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            cli.parse_hours(bad)

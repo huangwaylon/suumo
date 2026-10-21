@@ -1,6 +1,6 @@
 """Crawl search results, reconcile each area's listings, fetch listing pages from the queue, clean up.
 
-A run crawls the search results (once a day with `--crawl-at`) and diffs them against the DB. Lifecycle of a listing:
+A run crawls the search results (at the `--crawl-at` hours) and diffs them against the DB. Lifecycle of a listing:
   first seen -> stored; its listing page is fetched once (never again: later crawls refresh the search-result
     fields, so price changes still show)
   missing from REMOVE_AFTER_MISSES consecutive complete crawls of its area -> `removed` event, then

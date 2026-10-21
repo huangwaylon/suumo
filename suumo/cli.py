@@ -39,19 +39,35 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCOPE = "scope.toml"
 
 
-def crawled_since(db, now, hour):
-    """The prefectures whose search results were crawled since today's :hour (or yesterday's, before then)."""
-    since = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-    if now < since:
-        since -= timedelta(days=1)
+def crawl_slot(now, hours):
+    """The latest of the crawl hours (an int, or several) that has come: today's, or yesterday's last before then."""
+    hours = sorted({hours} if isinstance(hours, int) else set(hours))
+    today = [h for h in hours if h <= now.hour]
+    since = now.replace(hour=today[-1] if today else hours[-1], minute=0, second=0, microsecond=0)
+    return since if today else since - timedelta(days=1)
+
+
+def crawled_since(db, now, hours):
+    """The prefectures whose search results were crawled since the latest crawl hour (crawl_slot)."""
+    since = crawl_slot(now, hours)
     return {r["pref"] for r in db.x("SELECT pref, crawled_at FROM prefs")
             if datetime.fromisoformat(r["crawled_at"]) >= since}
 
 
-def crawl_due(db, now, hour, prefs):
-    """SUUMO updates its search results once a day: crawl them while one of prefs (the scope's) wasn't crawled
-    since today's :hour (or yesterday's, before then)."""
-    return not set(prefs) <= crawled_since(db, now, hour)
+def crawl_due(db, now, hours, prefs):
+    """SUUMO's big update lands once a day (~04:00), new listings trickle in during the day: crawl the search results
+    while one of prefs (the scope's) wasn't crawled since the latest crawl hour."""
+    return not set(prefs) <= crawled_since(db, now, hours)
+
+
+def parse_hours(s):
+    try:
+        hours = sorted({int(h) for h in s.split(",")})
+    except ValueError:
+        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 4 or 4,12,18") from None
+    if not hours or not all(0 <= h < 24 for h in hours):
+        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 4 or 4,12,18")
+    return hours
 
 
 def run_delay(db, wanted):
@@ -130,7 +146,7 @@ def cmd_run(c: Ctx):
     try:
         prefs = {t.pref for t in c.targets}
         if a.crawl_at is not None and not crawl_due(c.db, now, a.crawl_at, prefs):
-            print(f"search results: crawled since {a.crawl_at:02d}:00; this run works the listing-page queue")
+            print(f"search results: crawled since {crawl_slot(now, a.crawl_at):%H}:00; this run works the queue")
         elif not a.no_crawl:  # with --crawl-at, a daily crawl that stopped part-way resumes with the next prefecture
             online = p.crawl_lists(skip=crawled_since(c.db, now, a.crawl_at) if a.crawl_at is not None else ())
         budget = a.budget if online else 0  # offline: no listing pages either
@@ -286,8 +302,8 @@ def main():
 
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
-    r.add_argument("--crawl-at", type=int, choices=range(24), metavar="0-23",
-                   help="crawl search results only once a day, at the first run after this hour (SUUMO's daily update)")
+    r.add_argument("--crawl-at", type=parse_hours, metavar="H[,H...]",
+                   help="crawl search results only at the first run after each of these hours (e.g. 4,12,18)")
     r.add_argument("--no-geocode", action="store_true",
                    help="leave geo/ alone (a second crawler next to the hourly one; that one geocodes all of data/)")
     r.add_argument("--until-minute", type=int, choices=range(60), metavar="0-59",

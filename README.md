@@ -138,15 +138,16 @@ launchctl kickstart gui/$(id -u)/local.suumo     # run once now to check
 tail -f logs/run.log
 ```
 
-The job runs `python -m suumo run --crawl-at 4 --budget 3h --until-minute 50 --push` every hour at :05 (once on
-wake if the Mac was asleep; a run still going makes the next one exit). SUUMO updates its search results once a
-day, around 03:00–04:00, so the first run after 04:00 crawls all search results (~800 requests for Tokyo, ~5
-minutes), and the others only fetch listing pages of listings not stored yet, until :50. Requests are 0.3 s apart
+The job runs `python -m suumo run --crawl-at 4,12,18 --budget 3h --until-minute 50 --push` every hour at :05 (once
+on wake if the Mac was asleep; a run still going makes the next one exit). SUUMO's big update lands around
+03:00–04:00 (most price changes and removals), and new listings keep coming during the day (by 17:00, about 40% as
+many as overnight), so the first runs after 04:00, 12:00 and 18:00 crawl all search results (~8,300 requests for
+the whole country, ~1h50m), and the others only fetch listing pages of listings not stored yet, until :50. Requests are 0.3 s apart
 (`--delay`, never lower; 1.0 s from the first run SUUMO answers with a 429/403, for as long as that run is on
 record, 90 days). Every run pulls (for
 `saved.json`), geocodes new towns, then commits `data/` and `geo/` and pushes, which rebuilds the site. A
-listing missing from 2 daily crawls is removed (so within about two days; a second crawl on the same day
-doesn't count). A daily crawl that stopped part-way resumes with the next prefecture; one stopped because the
+listing missing from 2 crawls on different crawl days is removed (a day starts at 04:00; further crawls on the same
+day don't count again). A crawl that stopped part-way resumes with the next prefecture; one stopped because the
 network is down (two targets in a row unreachable) ends the run with an error, without listing pages. Before a
 commit, a rebase left by a failed pull is aborted and a stale `.git/index.lock` (over 10 min) removed. `--push` needs a git remote that pushes without a prompt (an SSH key in the
 agent/Keychain); a failed push is logged and retried next run. To stop it:
@@ -162,7 +163,7 @@ a terminal; restart it after a reboot. Runs resume where an interrupted one stop
 | `uv run python -m suumo run` | crawl search results, fetch listing pages for up to `--budget` (default `3h`), clean up, export `data/`, geocode new towns |
 | `run --budget 30m` / `--budget 0` | smaller / no listing-page budget; the queue continues next run |
 | `run --no-crawl` | only work the listing-page queue |
-| `run --crawl-at 4` | crawl search results only while a prefecture in scope wasn't crawled since 04:00 (SUUMO's daily update), skipping those that were |
+| `run --crawl-at 4,12,18` | crawl search results only while a prefecture in scope wasn't crawled since the latest of these hours (04:00: SUUMO's daily update), skipping those that were |
 | `run --commit` / `--push` | commit `data/` and `geo/` after the run / commit and push (rebuilds the site) |
 | `uv run python -m suumo status` | per pref/type: active listings, % with listing-page details, queue, area states, the current run's progress |
 | `uv run python -m suumo prune [--yes]` | delete data no longer in `scope.toml` (dry run without `--yes`) |
