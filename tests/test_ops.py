@@ -605,6 +605,19 @@ def _unreachable():
     return http.requests.ConnectionError(MaxRetryError(None, "https://suumo.jp/x/", reason=reason))
 
 
+def test_client_nothing_but_5xx_is_unavailable(monkeypatch):
+    monkeypatch.setattr(http.time, "sleep", lambda s: None)
+    c = http.Client(delay=1.0, log=QUIET)
+    c.session.get = lambda url, timeout, allow_redirects: FakeResponse(503)
+    with pytest.raises(http.Unavailable):                        # SUUMO's maintenance page for every path
+        c.get("/x/")
+    replies = iter([FakeResponse(503), FakeResponse(429), FakeResponse(503), FakeResponse(503)])
+    c.session.get = lambda url, timeout, allow_redirects: next(replies)
+    with pytest.raises(RuntimeError) as e:
+        c.get("/x/")
+    assert not isinstance(e.value, http.Unavailable)             # a 429 among them: SUUMO answered, pushing back
+
+
 def test_client_network_unreachable_is_a_network_error_not_a_slowdown(monkeypatch):
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
     c = http.Client(delay=1.0, log=QUIET)

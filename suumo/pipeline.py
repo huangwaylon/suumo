@@ -20,7 +20,7 @@ from .archive import Archive
 from .db import dumps
 from .detail import parse_detail
 from .export import dup_key
-from .http import NetworkError
+from .http import NetworkError, Unavailable
 from .parse import PAGE_SIZE, TYPES, page_count, parse_areas, parse_list_page
 from .scope import by_key, in_scope
 
@@ -31,7 +31,9 @@ SUSPECT_DROP = 0.30      # an area losing more than this share at once is distru
 SUSPECT_MIN_HITS = 20    # ...but only when it had at least this many (small areas swing naturally)
 TOMBSTONE_DAYS = 14      # a deleted listing's tombstone (ended table) is kept this long
 MAX_DETAIL_ATTEMPTS = 3
-NET_STREAK = 2           # targets (or areas of one) in a row failing with a network error stop the crawl (or it)
+NET_STREAK = 2           # targets (or areas of one) in a row failing because SUUMO or the network is down stop the
+                         # crawl (or the target): http.NetworkError (never reached) or http.Unavailable (5xx only)
+DOWN = (NetworkError, Unavailable)
 PROGRESS_EVERY = 200      # listing pages between progress lines (also saved to runs.progress for `status`)
 CHECKPOINT_SECONDS = 3600  # long runs export data/ this often, so the site shows what's fetched so far
 OUTAGE_STREAK = 5          # this many failed listing pages in a row = SUUMO (or the network) is down...
@@ -72,8 +74,9 @@ class Pipeline:
         failed (its area page, or some of its areas) is crawled again once at the end (only the failed areas when
         its area page was fine). A prefecture's crawled_at is written once all its targets are done, retry included
         (success or not), so a crawl that stops part-way resumes with the next prefecture (`run --crawl-at`).
-        NET_STREAK targets in a row failing with a network error (http.NetworkError: our network, not SUUMO) stop
-        the crawl: returns False, and the prefectures not done are left to the next run."""
+        NET_STREAK targets in a row failing because SUUMO or our network is down (DOWN: never reached, or nothing but
+        5xx, e.g. SUUMO's maintenance page) stop the crawl: returns False, and the prefectures not done are left to
+        the next run."""
         targets = [t for t in self.targets if t.pref not in skip]
         if len(targets) < len(self.targets):
             self.log(f"search results: {len({t.pref for t in self.targets} & set(skip))} prefectures already "
@@ -91,7 +94,7 @@ class Pipeline:
                 offline = offline + 1 if rep.get("network") else 0
                 if offline >= NET_STREAK:
                     self.db.commit()
-                    self.log(f"\n! {NET_STREAK} targets in a row failed with a network error: the network is down; "
+                    self.log(f"\n! {NET_STREAK} targets in a row failed: SUUMO or the network is down; "
                              "the search results not crawled yet are left to the next run")
                     self.report["offline"] = True
                     return False
@@ -112,7 +115,7 @@ class Pipeline:
         except Exception as e:  # e.g. the area page itself failed; other targets still run
             self.log(f"  ERROR {e}" if isinstance(e, AreaPageError) else f"  ERROR {e!r}")
             rep = {"pref": t.pref, "type": t.type, "error": repr(e)}
-            if isinstance(e, NetworkError):
+            if isinstance(e, DOWN):
                 rep["network"] = True
             return rep, True, None
         again = rep.pop("again")
@@ -133,7 +136,8 @@ class Pipeline:
                 rep["again"].append(a)
             offline = offline + 1 if out.get("network") else 0
             if offline >= NET_STREAK:
-                self.log(f"  ! {NET_STREAK} areas in a row failed with a network error; stopping {t.pref}/{t.type}")
+                self.log(f"  ! {NET_STREAK} areas in a row failed (SUUMO or the network is down); stopping "
+                         f"{t.pref}/{t.type}")
                 rep["network"] = True
                 rep["again"] += areas[k + 1:]
                 break
@@ -229,7 +233,7 @@ class Pipeline:
             self.db.x("UPDATE areas SET last_status='error' WHERE pref=? AND type=? AND code=?",
                       pref, type_key, a["code"])
             out = {"code": a["code"], "name": a["name"], "status": "error", "error": repr(e)}
-            if isinstance(e, NetworkError):
+            if isinstance(e, DOWN):
                 out["network"] = True
             return out
         complete = not errors and len(recs) >= hits

@@ -24,6 +24,10 @@ class NetworkError(RuntimeError):
     """No attempt reached SUUMO: our network (or proxy) is down. Callers don't hold it against the page."""
 
 
+class Unavailable(RuntimeError):
+    """Every attempt got a 5xx: SUUMO itself is down (e.g. its maintenance page, a 503 for every path)."""
+
+
 def unreachable(e):
     """Whether a requests exception means the request never reached SUUMO: a proxy error, or a connection that
     couldn't be made (NewConnectionError, incl. name resolution). Timeouts, resets, decoding errors: maybe SUUMO."""
@@ -64,7 +68,7 @@ class Client:
         we chose are fetched), with the status and the redirect's Location as its message. NetworkError when no
         attempt reached SUUMO, RuntimeError for other failures."""
         url = BASE + path
-        offline = 0  # attempts that never reached SUUMO
+        offline = down = 0  # attempts that never reached SUUMO; that got a 5xx
         for attempt in range(1, RETRIES + 1):
             wait = self.delay + random.uniform(0, self.delay * 0.5) - (time.monotonic() - self._last)
             if wait > 0:
@@ -89,6 +93,7 @@ class Client:
                     raise FileNotFoundError(f"{r.status_code} {r.headers.get('Location', '')}".strip())
                 err = f"HTTP {r.status_code}"
                 self.pushbacks += r.status_code in (403, 429)
+                down += r.status_code >= 500
                 self._slow_down(err)  # 429, 403 (blocked?), 5xx: SUUMO is pushing back
                 retry_after = r.headers.get("Retry-After", "")
                 if retry_after.isdigit():
@@ -108,4 +113,6 @@ class Client:
             time.sleep(backoff)
         if offline == RETRIES:
             raise NetworkError(f"network unreachable ({RETRIES} attempts): {url}")
+        if down == RETRIES:
+            raise Unavailable(f"SUUMO unavailable ({RETRIES} attempts, {err}): {url}")
         raise RuntimeError(f"failed after {RETRIES} attempts: {url}")

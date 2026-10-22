@@ -182,7 +182,7 @@ def cmd_run(c: Ctx):
         commit_data(ROOT, run_id, push=a.push)
     c.out_of_scope_hint()
     if not online:  # non-zero, so a driver waits before the next try
-        raise SystemExit(f"run {run_id}: the network is down; search results not crawled yet are left to the next run")
+        raise SystemExit(f"run {run_id}: SUUMO or the network is down; the search results left are crawled later")
 
 
 def cmd_status(c: Ctx):

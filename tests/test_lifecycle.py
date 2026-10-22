@@ -10,7 +10,7 @@ from suumo import pipeline
 from suumo.archive import Archive
 from suumo.db import DB
 from suumo.export import export
-from suumo.http import NetworkError
+from suumo.http import NetworkError, Unavailable
 from suumo.pipeline import Pipeline
 from suumo.scope import Target
 from tests.helpers import FIXTURES, QUIET
@@ -651,6 +651,16 @@ def test_network_errors_in_a_row_stop_the_crawl(env):
     # two areas in a row end the target; the next target's area page fails too: the crawl stops (chiba not asked)
     assert client.paths == [CITY, "/ms/chuko/tokyo/sc_0/?pc=100", "/ms/chuko/tokyo/sc_1/?pc=100", "/tochi/tokyo/city/"]
     assert p.report["offline"] and db.x("SELECT COUNT(*) FROM prefs").fetchone()[0] == 0
+
+
+def test_suumo_down_stops_the_crawl(env):
+    db, archive, _, _, _ = env
+    targets = [Target("tokyo", "used_condo", None), Target("tokyo", "land", None), Target("chiba", "land", None)]
+    client = _Pages({}, default=Unavailable("SUUMO unavailable (4 attempts, HTTP 503)"))   # its maintenance page
+    p = Pipeline(db, archive, client, targets, T0, "r0", log=QUIET)
+    assert not p.crawl_lists()
+    assert client.paths == [CITY, "/tochi/tokyo/city/"]          # two area pages, then it stops: no retry pass
+    assert p.report["offline"] and db.x("SELECT COUNT(*) FROM prefs").fetchone()[0] == 0   # all left for later
 
 
 def test_purge_leaves_a_tombstone_for_an_unsaved_ended_listing(env):

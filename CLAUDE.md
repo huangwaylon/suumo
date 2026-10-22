@@ -55,7 +55,9 @@ Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `ex
   joins the outage streak.
 - `prefs` (PK `pref`): `crawled_at`, written for each prefecture once all its targets are done, including the one
   retry `crawl_lists` gives a failed target (or its failed areas) at the end, success or not. Two targets in a row
-  failing with a `NetworkError` stop the crawl (`report.offline`); `run` then skips listing pages and exits 1. `run
+  failing because SUUMO or the network is down (`pipeline.DOWN`: a `NetworkError`, or `http.Unavailable` when every
+  attempt got a 5xx, e.g. SUUMO's maintenance page, 2026-10-22) stop the crawl (`report.offline`) without marking
+  prefectures crawled; `run` then skips listing pages and exits 1. `run
   --crawl-at 4,12,18` crawls while any prefecture in scope wasn't crawled since the latest of those hours (MIN, not
   MAX; `cli.crawl_slot`) and skips those that were, so a crawl that stopped resumes with the next prefecture
   (`cli.crawl_due`, `crawled_since`). Three crawls a day by the owner's decision (2026-10-21): SUUMO's big update
