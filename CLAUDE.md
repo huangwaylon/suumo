@@ -32,9 +32,9 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `site/app.js`, `index.html`, `style.css` | The page, map-first: the map plus a panel listing what's in its view (`m=lat,lng,zoom` in the URL, replaced on every move; the map moves only on the refit triggers), the panel's tabs (the list, opened listings, 比較 of the open tabs; `id=`, favorites' `cmp=1`), one filter panel (rail on desktop, sheet elsewhere), favorites (the shared saved list from the index's `saved` flag, plus this browser's pending requests), last search (localStorage `suumo.last`). Listings are filter.js handles everywhere (results, map points, favorites, tabs by key); objects only for what's drawn (`Filter.item`). Opening a listing, the favorites view and the overlays are history entries, so back closes them. An app shell (the page never scrolls): ≥1024 map, divider (`settings.panel`), panel; below, a bottom sheet over the map (peek/half/full, `settings.sheet`); ≥1280 the filter rail. Card columns follow the panel's width (container queries) |
 | `site/supercluster.min.js` | Vendored supercluster 8.0.1 (ISC): app.js clusters the results' towns once per result set, and only the clusters and towns in view are Leaflet markers |
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
-| `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 4,12,18 --budget 3h --until-minute 50 --push`) |
+| `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 5,15 --budget 3h --until-minute 50 --push`) |
 | `local.hourly.sh` | The same schedule without launchd (a loop in a terminal, for a repo launchd can't read) |
-| `~/suumo-refresh/all.sh` (not in git) | The driver in use (nohup + caffeinate, started outside any sandbox; it unsets proxy variables): search crawls after 04:00, 12:00 and 18:00 (`CRAWL_AT`), listing-page runs at :02 each hour, the delay in `delay.state` (0.3 s; 1.0 s for good on throttling). It was written for the nationwide sweep and backfill (2026-10); `local.suumo.plist` is the reboot-proof alternative |
+| `~/suumo-refresh/all.sh` (not in git) | The driver in use (nohup + caffeinate, started outside any sandbox; it unsets proxy variables): search crawls after 05:00 and 15:00 (`CRAWL_AT`), listing-page runs at :02 each hour, the delay in `delay.state` (0.3 s; 1.0 s for good on throttling). It was written for the nationwide sweep and backfill (2026-10); `local.suumo.plist` is the reboot-proof alternative |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
 Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `export`/`detail`; `cli` → `site` →
@@ -58,10 +58,12 @@ Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `ex
   failing because SUUMO or the network is down (`pipeline.DOWN`: a `NetworkError`, or `http.Unavailable` when every
   attempt got a 5xx, e.g. SUUMO's maintenance page, 2026-10-22) stop the crawl (`report.offline`) without marking
   prefectures crawled; `run` then skips listing pages and exits 1. `run
-  --crawl-at 4,12,18` crawls while any prefecture in scope wasn't crawled since the latest of those hours (MIN, not
+  --crawl-at 5,15` crawls while any prefecture in scope wasn't crawled since the latest of those hours (MIN, not
   MAX; `cli.crawl_slot`) and skips those that were, so a crawl that stopped resumes with the next prefecture
-  (`cli.crawl_due`, `crawled_since`). Three crawls a day by the owner's decision (2026-10-21): SUUMO's big update
-  lands ~04:00 (price changes, removals), new listings trickle in all day (by 17:00 ~40% as many as overnight).
+  (`cli.crawl_due`, `crawled_since`). Two crawls a day, at 05:00 and 15:00, by the owner's decision
+  (2026-10-29): SUUMO publishes in two batches, ~04:00 (most price changes, removals; sometimes still landing at
+  04:10) and ~14:30 (15 minutes, counts dip while it lands); nothing changes in between (a 12:00 crawl found nothing
+  on 5 of 6 days, 15-minute probes saw no change from 14:46 to 17:48).
 - `ended` (PK `type, id`): tombstones of deleted listings (`pref`, `first_seen`, `price`, `ended_at`), written by
   `reconcile` when it deletes one and by `purge` when it deletes an ended listing no longer saved (`ended_at` =
   its `removed_at`), dropped by `purge` after `TOMBSTONE_DAYS` (14).

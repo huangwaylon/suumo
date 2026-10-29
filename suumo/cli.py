@@ -64,9 +64,9 @@ def parse_hours(s):
     try:
         hours = sorted({int(h) for h in s.split(",")})
     except ValueError:
-        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 4 or 4,12,18") from None
+        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 5 or 5,15") from None
     if not hours or not all(0 <= h < 24 for h in hours):
-        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 4 or 4,12,18")
+        raise argparse.ArgumentTypeError("use hours 0-23, e.g. 5 or 5,15")
     return hours
 
 
@@ -303,7 +303,7 @@ def main():
     r = command("run", cmd_run, "write", "crawl, fetch listing pages, clean up, export, geocode new towns")
     r.add_argument("--budget", type=parse_budget, default=parse_budget("3h"), help="time for listing pages")
     r.add_argument("--crawl-at", type=parse_hours, metavar="H[,H...]",
-                   help="crawl search results only at the first run after each of these hours (e.g. 4,12,18)")
+                   help="crawl search results only at the first run after each of these hours (e.g. 5,15)")
     r.add_argument("--no-geocode", action="store_true",
                    help="leave geo/ alone (a second crawler next to the hourly one; that one geocodes all of data/)")
     r.add_argument("--until-minute", type=int, choices=range(60), metavar="0-59",
