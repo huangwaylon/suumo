@@ -76,7 +76,8 @@ unpkg (with integrity hashes) only when a map is shown, with the clustering (sup
 `.github/workflows/crawl.yml` does the crawl in parallel. `shards.toml` gives each of 20 workers a fixed set of
 prefectures; at most 8 run at once (`max-parallel`: the account's 20 runners are shared with other repos, see below).
 Schedule (JST): **05:07 and 15:07** crawl all search results (just after SUUMO's two daily updates) and then
-fetch new listings' pages; **01:37 and 10:37** only work the listing-page queue. A worker:
+fetch new listings' pages; **01:37 and 10:37** only work the listing-page queue; **05:37 and 15:37** are backstops
+(GitHub drops scheduled runs at busy times: every run crawls if its crawl hour's crawl hasn't happened yet). A worker:
 
 1. downloads its state, `state-<n>.db.zst`, from the release **`suumo-state`** (a pre-release; the files are public
    like `data/`), and checks it;
