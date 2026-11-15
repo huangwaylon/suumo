@@ -41,7 +41,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add saved.json
           git diff --cached --quiet || git commit -q -m "saved: $(cat /tmp/msg) (#$ISSUE)"
-          for i in 1 2 3; do git push -q && break; git pull -q --rebase; done
+          for i in 1 2 3; do
+            git push -q && break
+            [ "$i" = 3 ] && { echo "::error::the push lost 3 races"; exit 1; }
+            git pull -q --rebase; sleep $((i * 5))
+          done
           gh workflow run pages.yml --ref main
       - name: Reply and close
         run: gh issue close "$ISSUE" --comment "$(cat /tmp/msg)"

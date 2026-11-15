@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml` (all 47 prefectures): crawls search results
-hourly, fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
+twice a day (05:07 and 15:07 JST, plus two queue-only runs), fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
 `data/`, and publishes a static search site on GitHub Pages (https://huangwaylon.github.io/suumo/), rebuilt by
 GitHub Actions on every push. The crawl runs on GitHub Actions in parallel workers (`crawl.yml`, `shards.toml`; since
 2026-11-15, no machine of ours; README "How it runs"); running it on a Mac under launchd is the documented fallback. `README.md` is the operator guide

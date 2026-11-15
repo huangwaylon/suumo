@@ -251,7 +251,7 @@ def update_geo(data, targets, budget=None):
 def cmd_geocode(args):
     update_geo(ROOT / args.data, scope_mod.load(ROOT / args.scope), budget=GEO_BUDGET if args.after_run else None)
     if args.after_run:
-        update_fx(ROOT / args.data / "fx.json")
+        update_fx(ROOT / args.data / "fx.json", daily=False)  # (Actions: a fresh checkout every run)
 
 
 def cmd_shard_split(c: Ctx):

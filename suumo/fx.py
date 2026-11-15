@@ -13,11 +13,12 @@ from .archive import write_atomic
 API = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY"
 
 
-def update(path, log=print):
-    """Refresh path ({"jpy_per_usd", "date": the rate's}) unless it was checked today (its mtime: an unchanged rate
-    leaves the file, and git, alone). A failure is logged and the old rate kept."""
+def update(path, log=print, daily=True):
+    """Refresh path ({"jpy_per_usd", "date": the rate's}) unless it was checked today (daily: its mtime; an unchanged
+    rate leaves the file, and git, alone). daily=False always asks: a fresh checkout's mtime says nothing (Actions).
+    A failure is logged and the old rate kept."""
     path = Path(path)
-    if path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today():
+    if daily and path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today():
         return json.loads(path.read_text())
     try:
         r = requests.get(API, timeout=30)

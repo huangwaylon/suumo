@@ -512,6 +512,7 @@ def test_exchange_rate_is_checked_once_a_day_and_kept_on_errors(tmp_path, monkey
     path = tmp_path / "fx.json"
     assert fx.update(path, log=QUIET) == {"jpy_per_usd": 158.12, "date": "2026-10-13"}
     assert fx.update(path, log=QUIET)["jpy_per_usd"] == 158.12 and len(calls) == 1   # checked today: no request
+    assert fx.update(path, log=QUIET, daily=False) and len(calls) == 2   # Actions: a fresh checkout, always asks
     os.utime(path, (0, 0))                                                         # a day later
     monkeypatch.setattr(fx.requests, "get", lambda url, timeout: (_ for _ in ()).throw(fx.requests.ConnectionError()))
     assert fx.update(path, log=QUIET)["jpy_per_usd"] == 158.12                     # offline: the last rate

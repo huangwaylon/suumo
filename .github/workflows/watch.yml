@@ -60,8 +60,10 @@ jobs:
 
           # 2, 3. The last finished run of crawl.yml and pages.yml on main
           for wf in crawl pages; do
-            last=$(gh run list --workflow "$wf.yml" --branch main --status completed --limit 1 \
-              --json conclusion,url --jq '.[0] // {} | "\(.conclusion // "none") \(.url // "-")"')
+            # (a cancelled run is a superseded pending one: it says nothing about the crawl)
+            last=$(gh run list --workflow "$wf.yml" --branch main --status completed --limit 20 \
+              --json conclusion,url --jq '[.[] | select(.conclusion != "cancelled")][0] // {}
+                | "\(.conclusion // "none") \(.url // "-")"')
             read -r conclusion url <<< "$last"
             case $conclusion in
               failure|timed_out|startup_failure) problem "${wf}_failed" "The last $wf.yml run on main: $conclusion, $url" ;;

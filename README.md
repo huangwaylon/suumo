@@ -321,6 +321,11 @@ IDs are per agent listing; `dup_key` groups the same property listed by several 
 
 | Symptom | Check |
 |---|---|
+| Issue "Crawl watchdog: attention needed" | its body lists the problems with links; open the failed Crawl run. The issue closes itself once a run is healthy |
+| A Crawl run is red: a shard's `Healthy` step failed | that shard's run exited 1 (SUUMO or the network down) or >5% of its areas weren't complete; its state and data are saved (or kept as they were) and the next run continues. Repeating on one shard only: look at its `Run` log (503s on one runner were seen once and gone next run) |
+| A shard's `State` step failed (`has no state-<n>.db.zst`) | the release `suumo-state` lost the file: restore it from the last good copy (a dated backup if made, or `seed` from `data/` for its prefectures: `--shard N --db st/state-N.db seed`), then upload it |
+| Combine: `the push lost 5 races` / `rebase failed` | another push to main touched data/ (shouldn't happen: only Crawl writes it); the next run re-exports everything |
+| `parse failures` after a parser change | the listing pages of the last 30 days are the `pages-<n>` artifacts of the Crawl runs: download them into `archive/` (`gh run download <run> -p 'pages-*'`), run `reparse` against joined states (README "Commands that need the state"), split and upload. Older pages: re-fetch |
 | `another suumo process is running` | a run is in progress (`uv run python -m suumo status` shows it); the lock frees when it exits |
 | Scheduled run fails with `Operation not permitted` | the repo is under Documents/Desktop/Downloads; move it to `~/suumo` |
 | `parse failures: N` in `status` | fix the parser, then `reparse` (the pages are already archived) |
