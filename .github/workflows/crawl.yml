@@ -1,4 +1,4 @@
-# The crawl, in parallel: one job per shard (shards.toml: each worker owns a fixed set of prefectures and its own
+# The crawl, in parallel: one job per shard (20, at most 8 at once) (shards.toml: each worker owns a fixed set of prefectures and its own
 # state, state-<n>.db.zst on the release STATE_TAG), then one job that lays the workers' data/ over main's, geocodes,
 # commits, pushes and starts the site's build (a push with GITHUB_TOKEN doesn't trigger pages.yml).
 #
@@ -8,7 +8,8 @@
 # exported (exit 0, or 1: SUUMO down, the run still finished). A worker's data/events has every run of its own the
 # state holds, so a push that was lost is made good by the next one.
 #
-# Off main (a test): state from STATE_TAG's -test release, the result pushed to the branch crawl-test, no site build.
+# Off main (a test: Run workflow on another branch): state from the release suumo-state-test, the result pushed to
+# the branch crawl-test, no site build.
 name: Crawl
 
 on:
@@ -17,9 +18,7 @@ on:
     # drops scheduled runs under load); the runs between work the listing-page queue.
     - cron: '7 20 * * *'    # 05:07 JST
     - cron: '7 6 * * *'     # 15:07 JST
-    - cron: '37 1,10 * * *' # 10:37, 19:37 JST: the queue only
-  push:
-    branches: [actions-crawl]   # the test branch (a push there runs a test)
+    - cron: '37 1,16 * * *' # 10:37, 01:37 JST: the queue only (not the evening: fitness's deploys fill the runners)
   workflow_dispatch:
     inputs:
       delay:
@@ -30,7 +29,7 @@ on:
         default: '120m'
       shards:
         description: 'JSON list of the shards to run'
-        default: '[0,1,2,3,4,5,6,7,8,9]'
+        default: '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]'
 
 permissions:
   contents: read
@@ -51,8 +50,11 @@ jobs:
       contents: write   # the state release
     strategy:
       fail-fast: false
+      # The account's 20 runners are shared by every repo (Free plan): suumo 8, kalori 10, the ITS runner 1, the rest
+      # for deploys and checks (the owner's budget, 2026-11-15). The 20 shards run in waves of 8.
+      max-parallel: 8
       matrix:
-        shard: ${{ fromJSON(inputs.shards || '[0,1,2,3,4,5,6,7,8,9]') }}
+        shard: ${{ fromJSON(inputs.shards || '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]') }}
     env:
       N: ${{ matrix.shard }}
       DB: ${{ github.workspace }}/state.db

@@ -1,7 +1,9 @@
 """Crawl workers in parallel (GitHub Actions): shards.toml gives each worker a fixed set of prefectures; its state is
 its own SQLite file holding only those (state-<n>.db). Nothing a run does crosses prefectures (listings, areas, the
 queue, events, tombstones are all one prefecture's; duplicates are grouped by address), so a worker needs no other
-worker's state, and its data/ files (data/<pref>/..., data/events/<run_id>-sNN.json) are its own.
+worker's state, and its data/ files (data/<pref>/..., data/events/<run_id>-sNN.json) are its own. One exception
+seen: SUUMO showing one listing under two prefectures (2026-11: one land listing in 上尾市 also under 安中市); two
+shards then each hold it, and `join` can keep only one row (fix the other shard's copy by hand when re-splitting).
 
   split: one state.db -> state-<n>.db per shard (the move from one crawler to many)
   join:  state-<n>.db files -> one state.db (back to one crawler)
@@ -49,8 +51,9 @@ def _tables(conn, schema="main"):
 
 
 def split(db_path, shards, out_dir, log=print):
-    """state.db -> out_dir/state-<n>.db. Runs that never finished are marked finished in the copies: their events
-    were exported already, and a worker re-exporting one would write only its own prefectures' part of the file."""
+    """state.db -> out_dir/state-<n>.db. Runs that never finished are marked finished in the copies, and workers' runs
+    (from an earlier split) renamed: their events were exported already, and a worker re-exporting one would write
+    only its own prefectures' part of the file. Their events rows keep their run ids."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     src = sqlite3.connect(db_path)
@@ -73,6 +76,9 @@ def split(db_path, shards, out_dir, log=print):
             else:
                 src.execute(f"INSERT INTO out.{t} SELECT * FROM main.{t}")
         src.execute("UPDATE out.runs SET finished = COALESCE(finished, started) WHERE finished IS NULL")
+        # runs of an earlier layout's workers: their events files are in data/ already, and a worker re-exporting
+        # one (its run ids end like its own) would write only its own prefectures' part of the file
+        src.execute("UPDATE out.runs SET run_id = run_id || '-layout' WHERE run_id GLOB '*-s[0-9][0-9]'")
         src.commit()
         src.execute("DETACH out")
         dst = sqlite3.connect(path)

@@ -71,7 +71,63 @@ The site is public (GitHub Pages) but marked `noindex`. Photos load from SUUMO's
 unpkg (with integrity hashes) only when a map is shown, with the clustering (supercluster, ISC, in
 `site/supercluster.min.js`).
 
-## Setting up on a new Mac
+## How it runs: GitHub Actions (no machine of ours)
+
+`.github/workflows/crawl.yml` does the crawl in parallel. `shards.toml` gives each of 20 workers a fixed set of
+prefectures; at most 8 run at once (`max-parallel`: the account's 20 runners are shared with other repos, see below).
+Schedule (JST): **05:07 and 15:07** crawl all search results (just after SUUMO's two daily updates) and then
+fetch new listings' pages; **01:37 and 10:37** only work the listing-page queue. A worker:
+
+1. downloads its state, `state-<n>.db.zst`, from the release **`suumo-state`** (a pre-release; the files are public
+   like `data/`), and checks it;
+2. runs `python -m suumo --shard N run --crawl-at 5,15 --delay 1.0 --budget 120m --no-geocode` into an empty
+   `data/` (its prefectures only; its run ids end in `-sNN`, so its `data/events/` files are its own);
+3. saves its state back even when the run failed or timed out (`.github/scripts/state.sh`: the WAL folded in, an
+   integrity check, uploaded under a new name and swapped in only once whole);
+4. hands its `data/` to the combine job (only if the run exported), and keeps the listing pages it fetched as an
+   artifact for 30 days (`pages-<n>`, for a reparse after a parser fix).
+
+The **combine** job lays every worker's prefectures over main's `data/` (a failed worker's prefectures stay as
+they were), geocodes new towns and updates `fx.json`, commits `data: run ...`, pushes, and starts the site build
+(`pages.yml`; a push by Actions doesn't trigger it by itself). A worker re-exports every events file of its own runs,
+so if a push is ever lost the next run puts the files back.
+
+**Run it by hand:** Actions → Crawl → Run workflow (inputs: delay, budget, which shards). Off main it's a test: the
+state comes from the release `suumo-state-test` and the result goes to the branch `crawl-test`, never to main.
+
+**Runner budget** (the owner's decision, 2026-11-15): the GitHub account's 20 concurrent runners are shared by all
+its repos (Free plan): suumo 8, fitness's Kalori scraper 10, the fitness ITS runner 1 (always on), the rest for
+deploys and checks. Raise `max-parallel` in crawl.yml only together with that budget.
+
+**Changing shards** (moving a prefecture, a new one in scope.toml, more workers): with no crawl running, download the
+states from the release, join, edit `shards.toml`, split, upload:
+
+```sh
+gh release download suumo-state -p 'state-*.db.zst' -D st && for f in st/*.zst; do zstd -d --rm "$f"; done
+uv run python -m suumo shard-join --out st/state.db st/state-*.db
+# edit shards.toml (every prefecture in scope.toml exactly once; a test checks)
+uv run python -m suumo --db st/state.db shard-split --out st/new
+for f in st/new/state-*.db; do zstd -q -9 "$f"; done
+gh release upload suumo-state st/new/state-*.db.zst --clobber    # replaces the same-named files
+# fewer shards than before: gh release delete-asset suumo-state state-<n>.db.zst for each one beyond the new count
+```
+
+A new prefecture needs no state of its own: its first crawl baselines it silently.
+
+**Commands that need the state** (`status`, `prune`, `reparse`, `seed`): download and join the states as above and
+run the command on `st/state.db` locally (`--db st/state.db`); for one that changes the state, split and upload it
+again before the next scheduled crawl (or disable crawl.yml meanwhile).
+
+**Back to a Mac** (if ever needed): disable crawl.yml, download and join the states into `~/suumo/state.db`, and
+follow "Running locally on a Mac" below. Never run both: two copies of the state diverge (duplicate events).
+
+**Watchdog.** `.github/workflows/watch.yml` runs every 3 hours on main and checks that the crawl is alive: a
+`data: run` commit within 26 h, the last `crawl.yml` and `pages.yml` runs on main not failed, and `crawl.yml`
+enabled and started within 26 h (if not, it re-enables it and/or dispatches a run itself). Any problem opens one issue,
+"Crawl watchdog: attention needed" (label `watchdog`; GitHub emails the owner). It gets a comment only when the
+problems change, and is closed once all checks pass. Run it by hand from the Actions tab (Watchdog → Run workflow).
+
+## Running locally on a Mac (the fallback; not used since 2026-11-15)
 
 ### 1. Tools
 

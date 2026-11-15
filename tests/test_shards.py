@@ -48,7 +48,7 @@ def _state(path):
     db.x("INSERT INTO prefs VALUES ('tokyo', 'x'), ('chiba', 'x')")
     db.x("INSERT INTO ended VALUES ('land', '9', 'chiba', '2026-10-01', 5, 'x')")
     db.x("INSERT INTO runs (run_id, started, finished) VALUES ('20261101T050000', 's', 'f'), "
-         "('20261101T060000', 's', NULL)")
+         "('20261101T060000', 's', NULL), ('20261102T050000-s01', 's', 'f')")
     db.x("PRAGMA user_version = 3")
     db.commit()
     db.conn.close()
@@ -67,12 +67,14 @@ def test_split_gives_each_shard_its_prefectures_and_join_puts_them_back(tmp_path
     _state(tmp_path / "state.db")
     shards.split(tmp_path / "state.db", [["tokyo"], ["chiba"]], tmp_path / "out", log=QUIET)
     a, b = tmp_path / "out/state-0.db", tmp_path / "out/state-1.db"
-    assert _counts(a) == dict(listings=2, queue=2, events=2, areas=1, prefs=1, ended=0, runs=2, user_version=3)
-    assert _counts(b) == dict(listings=1, queue=1, events=1, areas=1, prefs=1, ended=1, runs=2, user_version=3)
+    assert _counts(a) == dict(listings=2, queue=2, events=2, areas=1, prefs=1, ended=0, runs=3, user_version=3)
+    assert _counts(b) == dict(listings=1, queue=1, events=1, areas=1, prefs=1, ended=1, runs=3, user_version=3)
     c = sqlite3.connect(a)
     assert {r[0] for r in c.execute("SELECT DISTINCT pref FROM listings")} == {"tokyo"}
     # a run that never finished: its events were exported whole; a shard must not re-export its part of them
     assert c.execute("SELECT COUNT(*) FROM runs WHERE finished IS NULL").fetchone()[0] == 0
+    # an earlier layout's worker run: not this layout's shard 1's, so never re-exported by it
+    assert c.execute("SELECT COUNT(*) FROM runs WHERE run_id LIKE '%-s01'").fetchone()[0] == 0
     c.close()
 
     shards.join([a, b], tmp_path / "joined.db", log=QUIET)

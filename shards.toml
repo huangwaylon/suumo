@@ -1,15 +1,26 @@
-# Which prefectures each crawl worker owns (GitHub Actions, .github/workflows/crawl.yml). A worker's state is its
-# own SQLite file, state-<n>.db, holding only these prefectures: moving one means `shard-join`, edit, `shard-split`.
-# Balanced by search-result pages per crawl (2026-11-09: ~1,010 each). Every prefecture in scope.toml exactly once.
+# Which prefectures each crawl worker owns (GitHub Actions, .github/workflows/crawl.yml; at most `max-parallel` run at
+# once). A worker's state is its own SQLite file, state-<n>.db, holding only these prefectures: changing this file
+# means `shard-join` the states, edit, `shard-split` (README "Crawl workers"). Balanced by search-result pages per
+# crawl (2026-11-09; 東京 alone is the largest). Every prefecture in scope.toml exactly once (a test checks).
 shards = [
-  ["tokyo", "yamanashi", "tottori"],
-  ["hokkaido_", "aomori", "nagasaki", "kagoshima"],
-  ["mie", "osaka", "kumamoto", "okinawa"],
-  ["kanagawa", "ishikawa", "nagano", "shimane", "kochi"],
-  ["iwate", "toyama", "aichi", "okayama", "miyazaki"],
-  ["akita", "saitama", "shizuoka", "wakayama", "ehime"],
-  ["gumma", "fukui", "nara", "yamaguchi", "fukuoka"],
-  ["fukushima", "kyoto", "hyogo", "saga", "oita"],
-  ["miyagi", "yamagata", "chiba", "gifu", "tokushima"],
-  ["ibaraki", "tochigi", "niigata", "shiga", "hiroshima", "kagawa"],
+  ["hokkaido_"],  # 640
+  ["aomori", "hiroshima", "nagasaki"],  # 440
+  ["iwate", "niigata", "ishikawa"],  # 435
+  ["miyagi", "yamagata", "tokushima"],  # 439
+  ["akita", "fukushima", "toyama", "kumamoto"],  # 501
+  ["ibaraki", "fukui", "oita"],  # 440
+  ["tochigi", "shiga", "shimane", "okayama"],  # 498
+  ["gumma", "nagano", "tottori", "yamaguchi"],  # 480
+  ["saitama"],  # 499
+  ["chiba", "kagawa"],  # 484
+  ["tokyo"],  # 881
+  ["kanagawa"],  # 556
+  ["yamanashi", "shizuoka", "ehime"],  # 441
+  ["gifu", "miyazaki", "kagoshima"],  # 434
+  ["aichi"],  # 534
+  ["mie", "kyoto", "saga"],  # 438
+  ["osaka"],  # 622
+  ["hyogo", "wakayama"],  # 504
+  ["nara", "kochi", "okinawa"],  # 439
+  ["fukuoka"],  # 452
 ]
