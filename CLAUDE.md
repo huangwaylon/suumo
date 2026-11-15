@@ -3,7 +3,8 @@
 Tracks SUUMO (suumo.jp) for-sale listings for the areas in `scope.toml` (all 47 prefectures): crawls search results
 hourly, fetches each listing's own page once, keeps lifecycle state in SQLite, exports git-tracked JSONL to
 `data/`, and publishes a static search site on GitHub Pages (https://huangwaylon.github.io/suumo/), rebuilt by
-GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `README.md` is the operator guide
+GitHub Actions on every push. The crawl runs on GitHub Actions in parallel workers (`crawl.yml`, `shards.toml`; being
+moved there from a Mac, 2026-11), or locally on a Mac under launchd. `README.md` is the operator guide
 (setup, commands, record fields, the site). The repo is public.
 
 ## Layout
@@ -34,6 +35,7 @@ GitHub Actions on every push. The crawl runs locally on a Mac under launchd. `RE
 | `.github/workflows/pages.yml` | On push: lint, tests (incl. Node), build, deploy to Pages (actions pinned by SHA) |
 | `local.suumo.plist` | launchd template (hourly at :05, `run --crawl-at 5,15 --budget 3h --until-minute 50 --push`) |
 | `local.hourly.sh` | The same schedule without launchd (a loop in a terminal, for a repo launchd can't read) |
+| `.github/workflows/crawl.yml`, `shards.toml`, `suumo/shards.py`, `.github/scripts/state.sh` | The crawl on GitHub Actions: one job per shard (`shards.toml`: each worker owns a fixed set of prefectures, balanced by search-result pages; a test checks it covers `scope.toml`), each with its own state (`state-<n>.db.zst` on the release `suumo-state`, `-test` off main; saved with `always()`, swapped in only once whole), running `run --shard N` (its prefectures only, run ids ending `-sNN`, every events file of its own re-exported so a lost push heals) into an empty data/; then one job lays the shards' data/ over main's, geocodes (`geocode --after-run`), commits, pushes and dispatches pages.yml. `shard-split` / `shard-join` turn one state.db into a file per shard and back (exact). Moving a prefecture between shards: join, edit shards.toml, split |
 | `~/suumo-refresh/all.sh` (not in git) | The driver in use (nohup + caffeinate, started outside any sandbox; it unsets proxy variables): search crawls after 05:00 and 15:00 (`CRAWL_AT`), listing-page runs at :02 each hour, the delay in `delay.state` (0.3 s; 1.0 s for good on throttling). It was written for the nationwide sweep and backfill (2026-10); `local.suumo.plist` is the reboot-proof alternative |
 | `suumo/saved.py`, `saved.json`, `.github/workflows/saved.yml` | The shared saved list: issue `save <type>:<id>` / `unsave ...` → workflow → `saved.json` → rebuild. Runs keep saved listings after they end |
 
@@ -103,7 +105,8 @@ Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `ex
   listing pages at 0.5 s; 2026-10-16: 0.3 s, after 0.5 s drew no pushback; 2026-10-17: everything at 0.3 s, after
   ~220k listing pages at 0.3 s drew none). Once a run on record (90 days) got a 429/403 (`Client.pushbacks` in the
   report), runs use 1.0 s (`cli.run_delay`). The backfill driver also goes back to 1.0 s for good on 3+ slow-downs
-  in a run (2 pause its step-down; a single stray 5xx is ignored). At most two crawlers at once, by the owner's decision: the
+  in a run (2 pause its step-down; a single stray 5xx is ignored). On GitHub Actions, one worker per shard in parallel (10, disjoint prefectures, each its own state and IP; the
+  owner's decision, 2026-11-15), `--delay 1.0` per worker. Locally, at most two crawlers at once, by the owner's decision: the
   hourly one and a one-off with its own `--db`/`--archive`/`--scope` and `--no-geocode` (scope-ext.toml).
   `http.Client` slows itself down on 429/5xx/network errors/slow responses (doubling, max 10 s, honours
   `Retry-After`) and eases back; keep that behaviour.
@@ -132,7 +135,9 @@ Imports flow one way (no cycles): `cli` → `maintenance` → `pipeline` → `ex
 - **Deterministic export.** `data/` files are sorted by id with `FIELD_ORDER` key order and contain nothing that
   changes on its own (`last_seen`, `missed` stay in the DB). An
   unchanged day must be an empty git diff; check this after any export change. Files are replaced atomically.
-- **One writer.** Writing commands hold `state.db.lock`; `status`, `geocode` and `site` don't.
+- **One writer.** Writing commands hold `state.db.lock`; `status`, `geocode` and `site` don't. On Actions, one writer per
+  shard state (the workflow's concurrency group), and the Mac crawler must not run on its own state.db at the same time
+  (two states diverge: duplicate events).
 - **One implementation of the search rules: `site/filter.js`.** Python only derives fields (`catalog.Item`,
   `site.build_index`) so the JS compares plain values; flag bits travel in the index (`site.FLAGS`). The rule tests
   in `tests/test_site.py` build a site from synthetic records and run queries through filter.js in Node.
