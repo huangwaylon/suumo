@@ -1,12 +1,20 @@
-# The crawl, in parallel: one job per shard (20, at most 8 at once) (shards.toml: each worker owns a fixed set of prefectures and its own
-# state, state-<n>.db.zst on the release STATE_TAG), then one job that lays the workers' data/ over main's, geocodes,
-# commits, pushes and starts the site's build (a push with GITHUB_TOKEN doesn't trigger pages.yml).
+# The crawl, in parallel: a plan (which shards have work) and a canary (a few requests: are SUUMO's pages still
+# understood?), then one job per shard with work (20 shards, at most 8 at once; shards.toml: each worker owns a fixed
+# set of prefectures and its own state, state-<n>.db.zst on the release STATE_TAG), then one job that lays the workers'
+# data/ over main's, geocodes, commits, pushes and starts the site's build (a push with GITHUB_TOKEN doesn't trigger
+# pages.yml).
 #
-# A worker: its state downloaded; `run --shard N --crawl-at 5,15` (search results when due, else the listing-page
-# queue) into an empty data/; its state saved back even when the run fails or times out (always(), checkpointed,
-# swapped in only once whole: .github/scripts/state.sh); its data/ handed to the combine job only when the run
-# exported (exit 0, or 1: SUUMO down, the run still finished). A worker's data/events has every run of its own the
-# state holds, so a push that was lost is made good by the next one.
+# The plan reads the state assets' labels (state.sh put: listing pages queued, each prefecture's last crawl): a shard
+# runs when its crawl is due or its queue isn't empty; none -> the run ends there. The canary
+# (`python -m suumo canary`): search pages bad -> no shard runs (red); listing pages bad -> the shards crawl search
+# results with no listing pages (removals and price changes keep flowing) and the run is red; SUUMO unreachable -> a
+# warning, the shards run (they handle outages).
+#
+# A worker: its state downloaded; `run --shard N --crawl-at $CRAWL_AT` (search results when due, then listing pages for
+# --budget: .github/scripts/ci.py params) into an empty data/; its state saved back even when the run fails or times
+# out (always(), checkpointed, swapped in only once whole: .github/scripts/state.sh); its report, debug sample and
+# data/ uploaded (the data only when the run exported: exit 0, or 3: SUUMO down, the run still finished). A worker's
+# data/events has every run of its own the state holds, so a push that was lost is made good by the next one.
 #
 # Off main (a test: Run workflow on another branch): state from the release suumo-state-test, the result pushed to
 # the branch crawl-test, no site build.
@@ -14,13 +22,16 @@ name: Crawl
 
 on:
   schedule:
-    # Search results just after SUUMO's two daily updates (~04:00 and ~14:30 JST; CLAUDE.md), odd minutes (GitHub
-    # drops scheduled runs under load); the runs between work the listing-page queue.
+    # GitHub delivers only a few percent of scheduled ticks (2-11% measured, 2026-11-15), so: many ticks. Every run
+    # passes --crawl-at $CRAWL_AT: the first run after 05:00 or 15:00 JST (just after SUUMO's two daily updates, ~04:00
+    # and ~14:30) crawls the search results, every other run only works the listing-page queue, briefly (ci.py: 10 min,
+    # 45 for runs started at 01 and 10 JST), and only on shards with a queue (the plan job). Odd minutes (GitHub drops more at :00). A run held by the concurrency group waits; a third
+    # one replaces the waiting one.
+    - cron: '7,37 * * * *'
+    # The important slots once more (a schedule of their own: one more chance to be delivered)
     - cron: '7 20 * * *'    # 05:07 JST
     - cron: '7 6 * * *'     # 15:07 JST
-    - cron: '37 1,16 * * *' # 10:37, 01:37 JST: the queue only (not the evening: fitness's deploys fill the runners)
-    # Backstops: GitHub dropped the 15:07 run on its first day (2026-11-15). Every run passes --crawl-at 5,15, so any
-    # run after a crawl hour crawls if that crawl hasn't happened, and only works the queue (minutes) if it has.
+    - cron: '37 1,16 * * *' # 10:37, 01:37 JST: the long queue runs (not the evening: fitness's deploys fill the runners)
     - cron: '37 20,6 * * *' # 05:37, 15:37 JST
   workflow_dispatch:
     inputs:
@@ -28,10 +39,10 @@ on:
         description: 'Base seconds between requests, per worker (+0-50% jitter)'
         default: '1.0'
       budget:
-        description: 'Time for listing pages after the crawl, per worker (e.g. 90m)'
-        default: '120m'
+        description: 'Time for listing pages after the crawl, per worker (e.g. 45m; at most 60m; empty: as scheduled)'
+        default: ''
       shards:
-        description: 'JSON list of the shards to run'
+        description: 'JSON list of the shards to run (empty: only those with work, as scheduled runs do)'
         default: '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]'
 
 permissions:
@@ -41,14 +52,94 @@ concurrency:
   group: crawl-${{ github.ref == 'refs/heads/main' && 'main' || 'test' }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash   # (named: bash -e -o pipefail, so `cmd | tee` fails when cmd does)
+
 env:
+  CRAWL_AT: '5,15'   # the crawl hours (JST): the runs' --crawl-at and ci.py's plan and budget
   STATE_TAG: ${{ github.ref == 'refs/heads/main' && 'suumo-state' || 'suumo-state-test' }}
   GH_REPO: ${{ github.repository }}
 
 jobs:
-  shard:
+  # The plan: which shards have work (a crawl due, or listing pages queued: the state assets' labels, written by
+  # state.sh put); none -> nothing else runs. Then the canary (~20 requests, ~30 s; suumo/canary.py) when a planned
+  # shard will crawl, on a dispatch, or else at most once an hour (ci.py canary_needed): per type the area page, a
+  # search page and listing pages (the newest fetched in data/tokyo), plus a /tochi/ listing. Parse failures gate the
+  # shards and turn the run red; SUUMO unreachable doesn't (the runs handle outages).
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 10
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+      started: ${{ steps.plan.outputs.started }}
+      search_ok: ${{ steps.flags.outputs.search_ok }}
+      list_ok: ${{ steps.flags.outputs.list_ok }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: |   # (+ the root files: shards.toml) the listings the canary fetches come from data/tokyo
+            suumo
+            data/tokyo
+            .github/scripts
+      - name: Plan
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHARDS: ${{ inputs.shards }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # the run's start: every wave of shards picks its budget from it (ci.py params)
+          started=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          echo "started=$started" >> "$GITHUB_OUTPUT"
+          gh api "repos/$GH_REPO/releases/tags/$STATE_TAG" > "$RUNNER_TEMP/release.json"
+          out=$(python3 .github/scripts/ci.py plan "$RUNNER_TEMP/release.json" --shards "$SHARDS" --started "$started" \
+            --event "$EVENT")
+          echo "$out" >> "$GITHUB_OUTPUT"
+          echo "### plan: $out" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        if: steps.plan.outputs.canary == 'true'
+        with:
+          python-version: "3.12"
+      - name: Canary
+        id: canary
+        if: steps.plan.outputs.canary == 'true'
+        run: |
+          uv sync -q
+          { echo '### canary'; echo '```'
+            uv run python -u -m suumo --data data canary --out "$GITHUB_OUTPUT"
+            echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      # The flags the shards read: the canary's; both true when it didn't need to run; a crashed canary: none (no
+      # shard runs)
+      - name: Flags
+        id: flags
+        if: always() && steps.plan.outcome == 'success' && steps.plan.outputs.shards != '[]'
+        env:
+          OUTCOME: ${{ steps.canary.outcome }}
+          SEARCH_OK: ${{ steps.canary.outputs.search_ok }}
+          LIST_OK: ${{ steps.canary.outputs.list_ok }}
+        run: |
+          if [ "$OUTCOME" = skipped ]; then SEARCH_OK=true LIST_OK=true; echo "canary: not this run"; fi
+          { echo "search_ok=${SEARCH_OK:-false}"; echo "list_ok=${LIST_OK:-false}"; } | tee -a "$GITHUB_OUTPUT"
+      - name: Verdict
+        if: steps.canary.outcome == 'success'
+        env:
+          SEARCH_OK: ${{ steps.canary.outputs.search_ok }}
+          LIST_OK: ${{ steps.canary.outputs.list_ok }}
+          REACHABLE: ${{ steps.canary.outputs.reachable }}
+        run: |
+          [ "$REACHABLE" = true ] || echo "::warning::SUUMO or the network is down: the canary stopped (the shards run)"
+          [ "$SEARCH_OK" = true ] || { echo "::error::search pages not understood: no shard runs"; exit 1; }
+          [ "$LIST_OK" = true ] || { echo "::error::listing pages not understood: the shards crawl search results only"; exit 1; }
+
+  shard:
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.shards != '[]' && needs.plan.outputs.search_ok == 'true' }}
+    runs-on: ubuntu-latest
+    # a crawl (~35 min for the largest shard) + 10 min of listing pages, or up to 60 min of listing pages (a dispatch)
+    # + purge and export, and the state's download and save; the run itself is stopped at 75 min (timeout(1) below)
+    timeout-minutes: 90
     permissions:
       contents: write   # the state release
     strategy:
@@ -57,7 +148,7 @@ jobs:
       # for deploys and checks (the owner's budget, 2026-11-15). The 20 shards run in waves of 8.
       max-parallel: 8
       matrix:
-        shard: ${{ fromJSON(inputs.shards || '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]') }}
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     env:
       N: ${{ matrix.shard }}
       DB: ${{ github.workspace }}/state.db
@@ -79,70 +170,101 @@ jobs:
           # (state.sh needs them; a new runner image might not have them)
           if ! command -v sqlite3 > /dev/null || ! command -v zstd > /dev/null; then sudo apt-get install -y -q sqlite3 zstd; fi
           .github/scripts/state.sh get "$STATE_TAG" "$N" "$DB"
+      # The listing-page budget and the delay (dispatch inputs clamped: at most 60m, at least 1.0 s): ci.py params
+      - name: Budget
+        id: params
+        env:
+          BUDGET: ${{ inputs.budget }}
+          DELAY: ${{ inputs.delay }}
+          LIST_OK: ${{ needs.plan.outputs.list_ok }}
+          STARTED: ${{ needs.plan.outputs.started }}
+        run: |
+          python3 .github/scripts/ci.py params --db "$DB" --shard "$N" --started "$STARTED" --budget "$BUDGET" \
+            --delay "$DELAY" --list-ok "$LIST_OK" | tee -a "$GITHUB_OUTPUT"
       # timeout(1) sends SIGTERM: the run rolls back its open transaction and exits 130; the next run goes on
       - name: Run
         id: run
         env:
-          DELAY: ${{ inputs.delay || '1.0' }}
-          BUDGET: ${{ inputs.budget || '120m' }}
+          DELAY: ${{ steps.params.outputs.delay }}
+          BUDGET: ${{ steps.params.outputs.budget }}
         run: |
           uv sync -q
+          date -u +%Y-%m-%dT%H:%M:%SZ > "$RUNNER_TEMP/started"
           code=0
-          timeout -s TERM 290m uv run python -u -m suumo --shard "$N" --db "$DB" --archive "$RUNNER_TEMP/archive" \
-            --data "$RUNNER_TEMP/data" --delay "$DELAY" run --crawl-at 5,15 --budget "$BUDGET" --no-geocode || code=$?
+          timeout -s TERM 75m uv run python -u -m suumo --shard "$N" --db "$DB" --debug-dir "$RUNNER_TEMP/debug" \
+            --data "$RUNNER_TEMP/data" --delay "$DELAY" run --crawl-at "$CRAWL_AT" --budget "$BUDGET" --no-geocode || code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "shard $N: exit $code"
-          case $code in 0|1) ;; *) exit "$code" ;; esac
+          # 0, or 3 (SUUMO down: the run stopped its crawl but finished and exported); anything else (1: a crash) failed
+          case $code in 0|3) ;; *) exit "$code" ;; esac
       - name: Save the state
         id: save
         if: always() && steps.state.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: .github/scripts/state.sh put "$STATE_TAG" "$N" "$DB"
+      # This run's report (runs.report: requests, coverage per template, unknown labels, errors) for the Healthy step
+      # and the combine job's summary; empty when the run left none
       - name: Report
         if: always() && steps.state.outcome == 'success'
         run: |
+          mkdir -p "$RUNNER_TEMP/report"
+          started=$(cat "$RUNNER_TEMP/started" 2> /dev/null || echo 9999)
+          sqlite3 "$DB" "SELECT report FROM runs WHERE datetime(started) >= datetime('$started') AND report IS NOT NULL
+            ORDER BY run_id DESC LIMIT 1" > "$RUNNER_TEMP/report/report.json"
           { echo "### shard $N: exit ${{ steps.run.outputs.code }}"; echo '```'
             sqlite3 "$DB" "SELECT run_id, json_extract(report, '$.requests'), json_extract(report, '$.seconds'),
               json_extract(report, '$.slowdowns'), json_extract(report, '$.pushbacks'), json_extract(report, '$.mb')
               FROM runs ORDER BY run_id DESC LIMIT 1" | sed 's/^/run|requests|s|slowdowns|pushbacks|MB: /'
-            sqlite3 "$DB" "SELECT last_status, COUNT(*) FROM areas GROUP BY 1" | tr '\n' ' '; echo
             sqlite3 "$DB" "SELECT 'events', kind, COUNT(*) FROM events WHERE run_id = (SELECT MAX(run_id) FROM runs)
               GROUP BY kind" | tr '\n' ' '; echo
             echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      # The data goes on only from a run that exported (exit 0 or 3, and its report records the export: ci.py exported)
+      - name: Exported
+        id: exported
+        if: always() && steps.state.outcome == 'success'
+        env:
+          CODE: ${{ steps.run.outputs.code }}
+        run: python3 .github/scripts/ci.py exported "$CODE" "$RUNNER_TEMP/report/report.json" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always() && steps.state.outcome == 'success'
+        with:
+          name: report-${{ matrix.shard }}
+          path: ${{ runner.temp }}/report/report.json
+          retention-days: 7
       # Only with the state saved: data whose events the saved state doesn't hold would be recorded again next run
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: always() && steps.save.outcome == 'success' && (steps.run.outputs.code == '0' || steps.run.outputs.code == '1')
+        if: always() && steps.save.outcome == 'success' && steps.exported.outputs.exported == 'true'
         with:
           name: data-${{ matrix.shard }}
           path: ${{ runner.temp }}/data/
           retention-days: 3
-      # This run's listing pages, for a reparse after a parser fix (30 days; the search results are refreshed by
-      # every crawl and aren't kept)
+      # The debug sample (the HTML of every extract failure + 0.5% of fetched pages, each with its record):
+      # `python -m suumo extract FILE` reproduces one locally. Nothing else of the pages is kept.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always() && steps.state.outcome == 'success'
         with:
-          name: pages-${{ matrix.shard }}
-          path: ${{ runner.temp }}/archive/*/detail/
+          name: debug-${{ matrix.shard }}
+          path: ${{ runner.temp }}/debug/
           if-no-files-found: ignore
-          compression-level: 0   # (gzip already)
-          retention-days: 30
-      # Red (after its state and data are saved) when the run wasn't whole: SUUMO down (exit 1), or more than 5% of
-      # the shard's areas not complete. The run goes red and the watchdog opens its issue, so a shard that keeps
-      # failing can't hide behind the others' commits.
+          retention-days: 7
+      # Red (after its state and data are saved) when the run wasn't whole: any exit but 0 (3: SUUMO down), an area
+      # page that failed, more than 5% of the areas this run crawled not complete, the queue stopped by a streak of
+      # extract errors, any derive error, or listing pages below the coverage thresholds (ci.py health). The run goes red and the watchdog opens its issue, so a
+      # shard that keeps failing can't hide behind the others' commits.
       - name: Healthy
         if: always() && steps.state.outcome == 'success'
         run: |
           code="${{ steps.run.outputs.code }}"
-          bad=$(sqlite3 "$DB" "SELECT COUNT(*) FROM areas WHERE last_status IN ('error', 'incomplete')")
-          all=$(sqlite3 "$DB" "SELECT COUNT(*) FROM areas")
-          echo "exit $code; areas not complete: $bad of $all"
+          echo "exit $code"
+          ok=0
+          python3 .github/scripts/ci.py health "$RUNNER_TEMP/report/report.json" | tee -a "$GITHUB_STEP_SUMMARY" || ok=1
           [ "$code" = 0 ] || { echo "::error::shard $N: the run exited $code"; exit 1; }
-          [ $((bad * 20)) -le "$all" ] || { echo "::error::shard $N: $bad of $all areas not complete"; exit 1; }
+          [ "$ok" = 0 ] || { echo "::error::shard $N: the run's report shows problems (above)"; exit 1; }
 
   combine:
-    needs: shard
-    if: ${{ !cancelled() }}
+    needs: [plan, shard]
+    if: ${{ !cancelled() && needs.shard.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -161,8 +283,16 @@ jobs:
         with:
           pattern: data-*
           path: ${{ runner.temp }}/shards
-      # Each shard's prefectures replaced whole (an area or prefecture gone is gone), its events files added;
-      # a shard without data (failed) leaves its prefectures as they were.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: report-*
+          path: ${{ runner.temp }}/reports
+      # Listing-page coverage per template, extract/derive errors, unknown labels and sections: over every shard
+      - name: Listing pages
+        run: python3 .github/scripts/ci.py summary "$RUNNER_TEMP/reports" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Each shard's prefectures replaced whole (an area or prefecture gone is gone; the page side files,
+      # data/<pref>/pages/, with them), its events files added; a shard without data (failed) leaves its prefectures as
+      # they were.
       - name: Lay the shards' data over data/
         run: |
           uv sync -q

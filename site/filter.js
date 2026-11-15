@@ -11,6 +11,7 @@
     sizeMin: null, landMin: null, ageMax: null, post1981: false, features: [], freehold: false,
     noCondition: false, newOnly: false, dropsOnly: false, since: null, sort: "new",
     south: false, top: false, upper: false, nofee: false, ready: false, tower: false, parking: false, feesMax: null,
+    near: [], nearWalk: null,
   });
   const isCondo = (type) => type === "used_condo" || type === "new_condo";
   const isHouse = (type) => type === "used_house" || type === "new_house";
@@ -46,6 +47,9 @@
 
   // A listing's tags in the index: a bit string, 6 bits per character, bit k = index.features[k] (see site._mask).
   const B64 = Object.fromEntries([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"].map((ch, v) => [ch, v]));
+  // ... by character code (-1: not one), for the loops over every listing
+  const B64C = new Int8Array(128).fill(-1);
+  for (const ch in B64) B64C[ch.charCodeAt(0)] = B64[ch];
 
   // A listing's photo as SUUMO's path (or the URL), from what the builder stored (site._image): a number is the
   // usual path, "dir/sub/n/file" a shortened one. Items keep what's stored (photo 0 is one); the page asks for the
@@ -55,6 +59,61 @@
     if (typeof v !== "string" || v.startsWith("http") || v.startsWith("gazo/")) return v;
     const [a, b, c, file] = v.split("/");
     return `gazo/bukken/${a}/${b}/img/${c}/${id}/${id}_${file}`;
+  }
+
+  // One photo of a listing's gallery (its page record's img: {b, l}; an entry of img.l) -> SUUMO's path
+  // 'gazo/bukken/…' (the same rule as suumo/extract.py img_src).
+  function photoPath(id, img, entry) {
+    const ref = Array.isArray(entry) ? entry[0] : entry;
+    if (typeof ref === "string") return ref;
+    const [b, n, ext] = typeof ref === "number" ? [img.b, ref, "jpg"] : [ref[0], ref[1], ref[2] || "jpg"];
+    const [ar, kind] = b.split("/"), [d, w] = kind === "N001000" ? [id.slice(-2), 6] : [id.slice(-3), 4];
+    return `gazo/bukken/${ar}/${kind}/img/${d}/${id}/${id}_${String(n).padStart(w, "0")}.${ext}`;
+  }
+  const IMG = "https://img01.suumo.com/jj/resizeImage?src=";
+  // A photo's URL at a size (SUUMO resizes any path; 120×90 strip, 360×270 cards, 640×480 the viewer).
+  const photoUrl = (path, w, h) => (path.startsWith("http") ? path.replace(/w=\d+&h=\d+/, `w=${w}&h=${h}`) : `${IMG}${encodeURIComponent(path)}&w=${w}&h=${h}`);
+  // A listing's gallery: [{path, caption, comment}] in the page's order.
+  const gallery = (id, img) => (img?.l || []).map((e) => ({ path: photoPath(id, img, e), caption: (Array.isArray(e) && e[1]) || "", comment: (Array.isArray(e) && e[2]) || "" }));
+
+  // Listing records: data/l/<id % buckets><ext> (site.Buckets): zstd of {keys: ["type:id", ...], field: [value per
+  // key]}. The manifest says the count and the extension.
+  const BUCKETS = 8192, BUCKET_EXT = ".json.zst";
+  const bucketOf = (key, n = BUCKETS, ext = BUCKET_EXT) => `data/l/${Number(key.slice(key.indexOf(":") + 1)) % n}${ext}`;
+  // the zstd decoder (site/fzstd.min.js: a global in the page, a module in Node)
+  const zstd = () => (typeof fzstd !== "undefined" ? fzstd : typeof require === "function" ? require("./fzstd.min.js") : null);
+  // A bucket's bytes (an ArrayBuffer or Uint8Array) -> {"type:id": record}, whatever it is by its first bytes: zstd
+  // (28 b5 2f fd), gzip (1f 8b: an older build's), or JSON already decompressed; laid out by field or by key.
+  async function decode(buf) {
+    const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let text;
+    if (u8[0] === 0x28 && u8[1] === 0xb5 && u8[2] === 0x2f && u8[3] === 0xfd) {
+      const z = zstd();
+      if (!z) throw new Error("unsupported");  // (fzstd.min.js didn't load: retrying won't help)
+      text = new TextDecoder().decode(z.decompress(u8));
+    }
+    else if (u8[0] === 0x1f && u8[1] === 0x8b) {
+      if (typeof DecompressionStream === "undefined") throw new Error("unsupported");
+      text = await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    } else text = new TextDecoder().decode(u8);
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.keys)) return data;  // (by key)
+    const out = {}, fields = Object.keys(data).filter((f) => f !== "keys");
+    data.keys.forEach((key, i) => {
+      const r = {};
+      for (const f of fields) { const v = data[f][i]; if (v != null) r[f] = v; }
+      out[key] = r;
+    });
+    return out;
+  }
+  // A listing's page on SUUMO from its record's url: 'pref/slug' (the usual), a path, or a URL.
+  const TYPE_PATHS = { used_condo: "ms/chuko", new_house: "ikkodate", used_house: "chukoikkodate", land: "tochi", new_condo: "ms/shinchiku" };
+  function suumoUrl(key, url) {
+    if (!url) return null;
+    if (/^https?:\/\//.test(url)) return url;
+    if (url.startsWith("/")) return `https://suumo.jp${url}`;
+    const at = key.indexOf(":");
+    return `https://suumo.jp/${TYPE_PATHS[key.slice(0, at)]}/${url}/nc_${key.slice(at + 1)}/`;
   }
 
   // ---------- the store: each prefecture's listings as columns, a listing as a number ----------
@@ -98,6 +157,17 @@
   function load(index, opts = {}) {
     const c = index.columns, n = c.id.length, no = parts.length;
     if (no >= MAX_PARTS || n > ROWS) throw new RangeError("Filter.load: too many listings");
+    // A sparse column (site.SPARSE: {at: row deltas, v: values}): fn(row, value) for each row that has one (a plain
+    // column works too). The few read this way are never made into a list of n; any other is (col).
+    const isSparse = (x) => x && !Array.isArray(x) && Array.isArray(x.at);
+    const each = (k, fn) => {
+      const x = c[k];
+      if (isSparse(x)) { for (let i = 0, r = 0; i < x.at.length; i++) fn((r += x.at[i]), x.v[i]); }
+      else if (x) for (let r = 0; r < n; r++) if (x[r] != null) fn(r, x[r]);
+    };
+    const READ_SPARSE = new Set(["dlat", "dlng", "near", "photos"]);
+    const dense = (x) => { const out = new Array(n).fill(null); for (let i = 0, r = 0; i < x.at.length; i++) out[r += x.at[i]] = x.v[i]; return out; };
+    for (const k in c) if (!READ_SPARSE.has(k) && isSparse(c[k])) c[k] = dense(c[k]);
     const col = (k) => c[k] || EMPTY, temp = () => new Float64Array(n).fill(NaN);
     const id = temp(), priceHi = temp(), dropAt = temp(), prevPrice = temp(), cId = c.id, cMax = col("priceMax"),
       cPrice = col("price"), cDrop = col("drop");
@@ -123,9 +193,11 @@
     const W = Math.ceil(index.features.length / 32), tags = new Uint32Array(n * W), cTags = col("features");
     for (let i = 0; i < n; i++) {
       const s = cTags[i];
-      if (s) for (let k = 0; k < s.length; k++) {
-        const v = B64[s[k]];
-        for (let b = 0; b < 6; b++) if (v & (1 << b) && k * 6 + b < W * 32) tags[i * W + ((k * 6 + b) >>> 5)] |= 1 << ((k * 6 + b) & 31);
+      if (s) for (let k = 0; k < s.length; k++) {  // character k: bits k*6 .. k*6+5, written at once (two words when it straddles)
+        const v = B64C[s.charCodeAt(k)], bit = k * 6, word = bit >>> 5, off = bit & 31;
+        if (v <= 0 || word >= W) continue;
+        tags[i * W + word] |= v << off;
+        if (off > 26 && word + 1 < W) tags[i * W + word + 1] |= v >>> (32 - off);
       }
     }
     // the bus stop (one per listing at most): its name in a table of its own (for text search) and the minutes;
@@ -149,7 +221,24 @@
       const t = town[i];
       if (t >= 0 && townName[t] === null) townName[t] = index.towns[t][0].slice(index.areas[area[i]][2].length);
     }
+    // its own point (1e-4° from its town's: site._offset), photos, minutes on foot to index.near's kinds (255: unknown)
+    const ownLat = new Float32Array(n).fill(NaN), ownLng = new Float32Array(n).fill(NaN), dLng = new Float32Array(n).fill(NaN);
+    each("dlng", (r, v) => { dLng[r] = v; });
+    each("dlat", (r, v) => {
+      const t = town[r];
+      if (t >= 0 && dLng[r] === dLng[r]) { ownLat[r] = townLat[t] + v / 1e4; ownLng[r] = townLng[t] + dLng[r] / 1e4; }
+    });
+    const nearKinds = index.near || [], K = nearKinds.length, near = new Uint8Array(n * K).fill(255);
+    const nearAt = (r, s) => {
+      for (let k = 0, m = Math.min(K, s.length); k < m; k++) { const v = B64C[s.charCodeAt(k)]; if (v >= 0 && v < 63) near[r * K + k] = v; }
+    };
+    const cNear = c.near;  // (most rows have it: walked here rather than through each)
+    if (isSparse(cNear)) { for (let i = 0, r = 0, at = cNear.at, v = cNear.v; i < at.length; i++) nearAt((r += at[i]), v[i]); }
+    else if (cNear) for (let r = 0; r < n; r++) if (cNear[r]) nearAt(r, cNear[r]);
+    const photoN = new Uint16Array(n);  // how many photos its page has
+    each("photos", (r, v) => { photoN[r] = Math.min(v, 0xffff); });
     const cols = {
+      ownLat, ownLng, photos: photoN, near,
       idn: ints(id, n, 0), type: ints(col("type"), n, 0), area, price: floats(col("price"), n), priceHi: floats(priceHi, n),
       plan: floats(col("plan"), n), size: floats(col("size"), n), land: floats(col("land"), n), age: floats(col("age"), n),
       flags: ints(col("flags"), n, 0), others: ints(col("others"), n, 0), newAt: ints(col("newAt"), n, 0),
@@ -164,7 +253,7 @@
     for (let i = 0; i < n; i++) if (!(cols.flags[i] & gone)) shown++;
     const items = new Int32Array(shown);
     for (let i = 0, k = 0; i < n; i++) if (!(cols.flags[i] & gone)) items[k++] = base + i;
-    const part = { no, base, n, W, c: cols, index, items, flags: index.flags, places: opts.places || null, noAccess,
+    const part = { no, base, n, W, K, nearAt: new Map(nearKinds.map((k, i) => [k, i])), c: cols, index, items, flags: index.flags, places: opts.places || null, noAccess,
       townLat, townLng, townName, imageText, stops: [...stops.keys()], parts: null,
       // station -> [kana, English] (null for bus stops: kanji only)
       stationNames: new Map(index.stations.map((s, i) => [s, index.stationNames?.[i] || null])) };
@@ -203,28 +292,34 @@
     return out;
   }
 
-  // A listing by its key ("used_condo:12345"): its handle, or -1. Each type's rows are one run of ascending ids (as
-  // site.build_index writes them): a binary search; an index written otherwise gets a map.
+  // A listing by its key ("used_condo:12345"): its handle, or -1 (a binary search: keyed).
   function find(db, key) {
     const at = key.indexOf(":"), type = key.slice(0, at), id = +key.slice(at + 1);
     for (const p of db.parts) {
       const t = p.index.types.indexOf(type), k = (p.keys ??= keyed(p));
       if (t < 0 || parts[p.no] !== p) continue;  // (released)
-      if (k.map) { const r = k.map.get(`${t}:${id}`); if (r != null) return p.base + r; continue; }
+      const row = k.rows ? (i) => k.rows[i] : (i) => i;
       let lo = k.start[t], hi = k.end[t];
-      while (lo < hi) { const m = (lo + hi) >> 1; if (p.c.idn[m] < id) lo = m + 1; else hi = m; }
-      if (lo < k.end[t] && p.c.idn[lo] === id) return p.base + lo;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (p.c.idn[row(m)] < id) lo = m + 1; else hi = m; }
+      if (lo < k.end[t] && p.c.idn[row(lo)] === id) return p.base + row(lo);
     }
     return -1;
   }
+  // Each type's rows in ascending id, for find's binary search: positions start[t]..end[t] of rows (null: the rows
+  // themselves, as an index in type and id order has them; site.build_index orders rows by place, so a permutation).
   function keyed(p) {
-    const { type, idn } = p.c, start = new Int32Array(p.index.types.length), end = new Int32Array(p.index.types.length);
-    for (let r = 0; r < p.n; r++) {
+    const { type, idn } = p.c, T = p.index.types.length, start = new Int32Array(T), end = new Int32Array(T);
+    let inOrder = true;
+    for (let r = 0; r < p.n && inOrder; r++) {
       const t = type[r];
       if (end[t] === 0) { start[t] = r; end[t] = r + 1; } else if (end[t] === r && idn[r] > idn[r - 1]) end[t] = r + 1;
-      else return { map: new Map(Array.from({ length: p.n }, (_, i) => [`${type[i]}:${idn[i]}`, i])) };
+      else inOrder = false;
     }
-    return { start, end };
+    if (inOrder) return { start, end, rows: null };
+    const rows = Int32Array.from({ length: p.n }, (_, r) => r).sort((a, b) => type[a] - type[b] || idn[a] - idn[b]);
+    start.fill(0); end.fill(0);
+    for (let i = 0; i < p.n; i++) { const t = type[rows[i]]; if (end[t] === 0) start[t] = i; end[t] = i + 1; }
+    return { start, end, rows };
   }
 
   // A station's [name, walk minutes, bus minutes, car km] (nulls when not) from its access value.
@@ -256,6 +351,8 @@
       name: ix.names[c.name[r]] ?? "", layout: ix.layouts[c.layout[r]] ?? "",
       image: img >= 0 ? img : img === -1 ? null : p.imageText[-2 - img],
       fees: fees === fees ? fees * 100 : null,  // condos' monthly fees, yen (the index stores ¥100)
+      photos: c.photos[r], ownLat: nul(c.ownLat[r]), ownLng: nul(c.ownLng[r]),
+      near: p.K ? Object.fromEntries(p.index.near.map((k, i) => [k, c.near[r * p.K + i]]).filter(([, v]) => v !== 255)) : {},
     };
     if (cache.size >= CACHE) cache.delete(cache.keys().next().value);
     cache.set(h, it);
@@ -277,6 +374,9 @@
     town: reader((p, r, c) => (c.town[r] >= 0 ? p.townName[c.town[r]] : null)),
     // its town as a number (towns of different prefectures differ)
     townKey: reader((p, r, c) => (c.town[r] >= 0 ? p.base + c.town[r] : null)),
+    // its own point (the listing page's), null when it has none
+    ownLat: reader((p, r, c) => nul(c.ownLat[r])),
+    ownLng: reader((p, r, c) => nul(c.ownLng[r])),
   };
   // The loaded index a listing is in (its .items: that prefecture's listings).
   const partOf = (h) => parts[h >>> SHIFT] || null;
@@ -396,6 +496,8 @@
     // monthly fees (yen) of condos; houses and land have none and pass
     feesMax: (p, v) => { const condo = condoTypes(p), { type, fees } = p.c; return (r) => !condo[type[r]] || fees[r] * 100 <= v; },
     text: (p, v) => textTest(p, v),
+    // 周辺環境: each chosen kind (index.near: school, super...) within q.nearWalk (NEAR_WALK) minutes on foot
+    near: (p, v, q) => nearTest(p, v, q.nearWalk ?? NEAR_WALK),
   };
   // Conditions on the building: they don't apply to land when 土地 is chosen; otherwise land fails them.
   const BUILDING = {
@@ -404,7 +506,15 @@
     ageMax: (p, v) => { const a = p.c.age; return (r) => Math.floor(a[r] / 12) <= v; },
     post1981: (p) => flagTest(p, "post1981", true),
   };
-  const GROUP = { walk: "stations" };  // walk depends on the chosen stations: count them together
+  const NEAR_WALK = 10;  // minutes, when 周辺環境 kinds are chosen without a time
+  // The farthest of the chosen kinds (minutes; NaN when one isn't known) of a row.
+  function nearOf(p, v) {
+    const kinds = typeof v === "string" ? [v] : v, at = kinds.map((k) => p.nearAt.get(k) ?? -1), K = p.K, near = p.c.near;
+    if (at.includes(-1)) return () => NaN;  // (an index older than the kind)
+    return (r) => { let m = 0; for (const k of at) { const x = near[r * K + k]; if (x === 255) return NaN; if (x > m) m = x; } return m; };
+  }
+  function nearTest(p, v, max) { const of = nearOf(p, v); return (r) => of(r) <= max; }
+  const GROUP = { walk: "stations", nearWalk: "near" };  // walk depends on the chosen stations: count them together
   // The yes/no conditions (FLAGS) as bits of the index: [flag name, passes when set (true) or when not set (false)]
   const FLAG_BITS = { freehold: ["leasehold", false], noCondition: ["conditional", false], newOnly: ["new", true],
     dropsOnly: ["dropped", true], post1981: ["post1981", true], south: ["south", true], top: ["top", true],
@@ -485,6 +595,8 @@
       case "unit_asc": { const last = typeIs((t) => isHouse(t) && !onlyHouses(q)); return [(r) => (last[type[r]] ? Infinity : orLast(unit[r])), byId]; }
       case "fees_asc": { const condo = condoTypes(p); return [(r) => (condo[type[r]] ? orLast(fees[r] * 100) : Infinity), byId]; }
       case "drop_desc": return [(r) => (prevPrice[r] && price[r] ? price[r] / prevPrice[r] : Infinity), byId];  // biggest cut first
+      // the listing page's photo count (an index without it: none, so the id decides)
+      case "photos_desc": { const photos = c.photos; return [(r) => -photos[r], byId]; }
       // newest first (missing last), then the newest listed, then the highest id
       default: return [(r) => (newAt[r] ? -Math.floor(newAt[r] / 100) : Infinity), (r) => (firstSeen[r] ? -firstSeen[r] : Infinity), (r) => -idn[r]];
     }
@@ -592,6 +704,8 @@
     ageMax: ["max", (p) => { const a = p.c.age; return (r) => Math.floor(a[r] / 12); }],
     walk: ["max", (p, q) => { const chosen = chosenStations(p, q); return (r) => walkTo(p, r, chosen); }],
     feesMax: ["max", (p) => { const condo = condoTypes(p), { type, fees } = p.c; return (r) => (condo[type[r]] ? fees[r] * 100 : true); }],
+    // (with kinds chosen: the time to the farthest of them)
+    nearWalk: ["max", (p, q) => (q.near?.length ? nearOf(p, q.near) : () => true)],
   };
   const sortedChoices = new WeakMap();  // choice list -> its distinct values ascending
   function ascending(values) {
@@ -790,7 +904,7 @@
     [["リフォーム", "リフォーム済"], { tag: "内装リフォーム" }],
     [["築浅"], { scalar: ["ageMax", 5] }],
     [["駅近", "駅チカ"], { scalar: ["walk", 5] }],
-    [["周辺", "付近", "近く", "近辺", "エリア", "辺り", "あたり", "around", "in", "at", "the", "area"], { stop: true }],
+    [["周辺", "付近", "近く", "近い", "近辺", "エリア", "辺り", "あたり", "around", "in", "at", "the", "area"], { stop: true }],
     [["near"], { stop: true, near: true }],
     [["駅", "station", "sta"], { stop: true, marker: true }],
   ].map(([words, meaning]) => ({ ...meaning, label: words[0], keys: words.map(nameKey) }));
@@ -907,7 +1021,7 @@
   const SIZE = new RegExp(`(?:(土地|敷地|land|lot)(\\s*))?(?:(over|above|at least|from|min|under|below|up to|max|less than)\\s*)?(?<![\\d.])${NUM}\\s*(m2|平米|平方メートル|sqm|sq\\s?m|坪)(?![a-z\\d])\\s*(${MAX_WORDS}|${MIN_WORDS})?`, "g");
   const LAYOUT = /(?<![a-z\d.])(\d+)\s*(sldk|ldk|sdk|slk|dk|lk|sk|k|r)(?:\s*\+\s*\d*s)?(?![a-z])(?:\s*以上)?|ワンルーム|studio/g;
   const LAYOUT_KIND = { r: 0, k: 0, sk: 0, dk: 1, sdk: 1, lk: 1, slk: 1, ldk: 2, sldk: 2 };
-  const WALK = /(駅)?\s*(徒歩|歩いて)\s*(\d+)\s*分\s*(?:以内|以下|まで)?|駅\s*(\d+)\s*分\s*(?:以内|以下|まで)?|(?:(?:within|in|under)\s*)?(?<![\d.])(\d+)\s*(?:min|mins|minutes?)\s*(?:walk|on foot)|walk(?:ing)?\s*(?:within\s*)?(\d+)\s*(?:min|mins|minutes?)/g;
+  const WALK = /(駅)?\s*(徒歩|歩いて)\s*(\d+)\s*分\s*(?:以内|以下|まで)?|駅\s*(\d+)\s*分\s*(?:以内|以下|まで)?|(?:(?:within|in|under)\s*)?(?<![\d.])(\d+)\s*(?:min|mins|minutes?)\s*(?:walk|on foot)|walk(?:ing)?\s*(?:within\s*)?(\d+)\s*(?:min|mins|minutes?)|(?<![\d.])(\d+)\s*分\s*(?:以内|以下|まで)/g;
   const AGE = /築\s*(\d+)\s*年\s*(?:以内|未満|以下|まで)?|(?<![\d.])(\d+)\s*years?\s*old|((?:19|20)\d\d)\s*年\s*(?:築\s*)?(?:以降|以後|から)/g;
   // (English: 100M, 1.2B, 100 million; a lone m or b only right after the number: "100 m" is no price)
   const AMOUNT = `¥?${NUM}\\s*(?:(億)\\s*(?:(\\d[\\d,]*)\\s*万)?|(万)|(million|billion|(?<=\\d)[mb])(?![a-z\\d]))?\\s*(円)?`;
@@ -915,7 +1029,19 @@
   const IGNORED = /築\s*\d+\s*年\s*(?:以上|超)|(?:バス|bus)\s*\d+\s*(?:分|min\w*)|\d+\s*分\s*(?:以上|超)|\d[\d,.]*\s*(?:億|万)\s*円?\s*台/g;
   const isMax = (w) => /^(under|below|up to|less than|within|max|以下|まで|未満|以内)$/.test(w || "");
   const isMin = (w) => /^(over|above|from|at least|more than|min|以上|から|超)$/.test(w || "");
-  const SCALARS = ["walk", "priceMin", "priceMax", "plan", "sizeMin", "landMin", "ageMax"];
+  // 周辺環境: a kind of facility (index.near) close by: 「小学校近い」「スーパー徒歩5分」「保育園まで10分以内」,
+  // "near a school", "supermarket within 5 min", "5 min walk to a park"
+  const NEAR_KINDS = [["school", "小学校", "elementary school", "primary school"], ["junior", "中学校", "junior high school", "junior high"],
+    ["nursery", "保育園", "幼稚園", "保育所", "こども園", "nursery", "kindergarten", "daycare"],
+    ["super", "スーパーマーケット", "スーパー", "supermarket", "grocery store"], ["conv", "コンビニ", "convenience store", "konbini"],
+    ["drug", "ドラッグストア", "薬局", "drugstore", "pharmacy"], ["hospital", "病院", "クリニック", "hospital", "clinic"],
+    ["park", "公園", "park"]];
+  const NEAR_OF = new Map(NEAR_KINDS.flatMap(([k, ...words]) => words.map((w) => [w, k])));
+  const NEAR_WORD = `(${[...NEAR_OF.keys()].sort((a, b) => b.length - a.length).join("|")})`;
+  const NEAR = new RegExp(`${NEAR_WORD}(?:s)?\\s*(?:まで|へ|から|に|が|の)?\\s*(?:(?:徒歩|歩いて)\\s*(\\d+)\\s*分(?:\\s*(?:以内|以下|まで))?|(\\d+)\\s*分\\s*(?:以内|以下|まで)|近い|近く|近|そば|すぐ|至近|徒歩圏内?|within\\s*(\\d+)\\s*(?:min|mins|minutes?)(?:\\s*walk)?|nearby)`
+    + `|(?:near(?:by)?|close to)\\s*(?:an?\\s+|the\\s+)?${NEAR_WORD}(?:s)?(?![a-z])`
+    + `|(?<![\\d.])(\\d+)\\s*(?:min|mins|minutes?)\\s*(?:walk\\s*)?(?:to|from)\\s*(?:an?\\s+|the\\s+)?${NEAR_WORD}(?:s)?(?![a-z])`, "g");
+  const SCALARS = ["walk", "nearWalk", "priceMin", "priceMax", "plan", "sizeMin", "landMin", "ageMax"];
   const QUAKE_YEAR = 1981;
 
   // A search box text -> query conditions. Pure (reads db's names only): returns
@@ -946,6 +1072,16 @@
         mark(a, b);
       }
     };
+    // Whether the text run ending at `end` (a facility word starting at `at`) is a place's name with something before
+    // the word: 「代々木公園」 is a station, 「公園」 alone or 「代々木 公園」 isn't.
+    const namedHere = (at, end) => {
+      let start = at;
+      while (start > 0 && !/[\s\u0000、,，/／]/.test(low[start - 1]) && !used[start - 1]) start--;
+      for (let s = start; s < at; s++) {
+        if ((meanings.get(nameKey(low.slice(s, end))) || []).some((x) => x.kind === "station" || x.kind === "area")) return true;
+      }
+      return false;
+    };
     pass(IGNORED, (m) => { ignored.push({ start: m.index, text: spanText(m.index, m.index + m[0].length) }); });
     // sizes before prices (80m2 isn't 80 million); 坪 -> ㎡; land when said so or when only land is asked for
     const onlyLand = /土地|敷地|\bland\b|\blot\b/.test(low) && !/マンション|戸建|一軒家|condo|apartment|house/.test(low);
@@ -961,9 +1097,16 @@
       const rank = m[1] ? +m[1] * 3 + LAYOUT_KIND[m[2]] : 3;
       emit(m.index, m.index + m[0].length, "plan", rank);
     });
+    pass(NEAR, (m) => {  // (before WALK: 「スーパー徒歩5分」 is no station's walk)
+      const [, w1, a, b, c, w2, d, w3] = m, kind = NEAR_OF.get(w1 || w2 || w3), end = m.index + m[0].length;
+      if (w1 && namedHere(m.index, m.index + w1.length)) return false;  // 「代々木公園」「葛西臨海公園」: a station's name
+      emit(m.index, end, "near", kind, { label: kind });
+      const min = a || b || c || d;
+      if (min) emit(m.index, end, "nearWalk", +min);
+    });
     pass(WALK, (m) => {
       if (m[1] || m[2]) markers.add(m.index);  // "渋谷駅徒歩5分", "渋谷 徒歩5分": the name before is a station
-      emit(m.index, m.index + m[0].length, "walk", +(m[3] || m[4] || m[5] || m[6]));
+      emit(m.index, m.index + m[0].length, "walk", +(m[3] || m[4] || m[5] || m[6] || m[7]));  // (m[7]: 「10分以内」 alone)
     });
     pass(AGE, (m) => {
       const end = m.index + m[0].length;
@@ -1073,7 +1216,7 @@
         continue;
       }
       if (t.field === "types") patch.types = t.value;
-      else if (["areas", "stations", "features"].includes(t.field)) {
+      else if (["areas", "stations", "features", "near"].includes(t.field)) {
         (patch[t.field] ||= []).includes(t.value) || patch[t.field].push(t.value);
       } else patch[t.field] = t.value;
       const { start, ...token } = t;
@@ -1126,6 +1269,6 @@
     return out;
   }
 
-  return { emptyQuery, upgrade, normalize, stationKey, photo, FLAGS, TSUBO, load, combine, release, canLoad, every, find, item, get,
+  return { emptyQuery, upgrade, normalize, stationKey, photo, photoPath, photoUrl, gallery, decode, bucketOf, suumoUrl, BUCKETS, TYPE_PATHS, NEAR_WALK, FLAGS, TSUBO, load, combine, release, canLoad, every, find, item, get,
     partOf, positions, places, matches, search, count, counts, facets, spatial, stationMatch, suggest, parse, applyParse, nameKey };
 });

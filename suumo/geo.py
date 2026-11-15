@@ -20,11 +20,11 @@ from pathlib import Path
 
 import requests
 
-from .archive import write_atomic
 from .db import flock
 from .export import prefectures, records
 from .http import USER_AGENT
 from .scope import PREFS
+from .util import write_atomic
 
 API = "https://msearch.gsi.go.jp/address-search/AddressSearch"
 GEO_DELAY = 1.0

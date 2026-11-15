@@ -18,6 +18,7 @@ from .parse import TYPES
 
 LEASEHOLD = {"地上権", "定期借地権", "普通借地権", "旧法借地権", "借地権"}
 NEW_TYPES = {"new_house", "new_condo"}
+PAGE_FIELDS = ("photos", "lat", "lng", "page_date")  # main-JSONL fields from the listing page record
 NEW_DAYS = 7           # 新着: a new/relisted event within this many days
 DROP_DAYS = 30         # 値下げ: a price drop within this many days
 RETURN_DAYS = 14       # a listing seen again this soon after its removal is a return, not 新着
@@ -123,6 +124,23 @@ def unify_station_names(items):
         i.car = {new.get(k, k): v for k, v in i.car.items()}
         i.rec = {**i.rec, "stations": [{**s, "name": new[s["name"]]} if s.get("name") in new and s["name"] not in stops
                                        else s for s in i.rec["stations"]]}
+
+
+# 周辺環境 (a listing page's nearby facilities) the site searches on: key -> SUUMO's category
+NEAR = {"school": "小学校", "junior": "中学校", "nursery": "幼稚園・保育園", "super": "スーパー", "conv": "コンビニ",
+        "drug": "ドラッグストア", "hospital": "病院", "park": "公園"}
+_near_walk = re.compile(r"徒歩\s*約?\s*(\d+)\s*分")
+
+
+def near_minutes(env):
+    """[[category, "name：徒歩N分（Mｍ）"], ...] -> {NEAR key: minutes on foot to the closest of that kind} (kinds the
+    page doesn't list, or lists without minutes, are left out)."""
+    keys, out = {v: k for k, v in NEAR.items()}, {}
+    for category, text in env or ():
+        k, m = keys.get(category), _near_walk.search(unicodedata.normalize("NFKC", text or ""))  # (full-width digits)
+        if k and m:
+            out[k] = min(out.get(k, 999), int(m.group(1)))
+    return out
 
 
 def _age_months(rec, today):
@@ -295,6 +313,12 @@ def load(data_dir, today: date, saved=(), rail_stations=(), prefs=None, events=N
         for r in records(data_dir, pref):  # each type's active listings, then its ended ones kept because saved
             recs[r["type"]].append(r)
         land_ids = {r["id"] for r in recs["land"]}
+        # the land listing kept for a twin under new_house takes what only the twin's fetched page gave (the crawl
+        # fetches the /tochi/ page under whichever type queued it first): photos, the point, the page's date
+        twin = {r["id"]: r for r in recs["new_house"] if r["id"] in land_ids and "/tochi/" in r.get("url", "")}
+        for r in recs["land"]:
+            if (t := twin.get(r["id"])) and not r.get("page_date") and t.get("page_date"):
+                r.update({k: t[k] for k in PAGE_FIELDS if k in t}, page_twin="new_house")
         railway = railway_near(listing_station_keys(r for rs in recs.values() for r in rs),
                                rail_stations) if rail_stations else None
         for type_key, rs in recs.items():

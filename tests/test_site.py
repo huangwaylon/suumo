@@ -6,9 +6,10 @@ import subprocess
 from datetime import date
 
 import pytest
+import zstandard
 
 from suumo.site import _name, build
-from tests.helpers import FILTER_JS, FIXTURES, NODE, QUIET, rec, site_queries
+from tests.helpers import FILTER_JS, FIXTURES, NODE, QUIET, listing, rec, site_queries
 
 needs_node = pytest.mark.skipif(not NODE, reason="node not installed")
 LAND = {"layout": None, "floor_m2": None, "built": None}
@@ -42,8 +43,9 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     ids_ = [sum(cols["id"][:n + 1]) for n in range(len(cols["id"]))]   # stored as deltas
     row = ids_.index(20205670)
     assert cols["image"][row] == 4 and cols["price"][row] == 12_000_000   # the usual photo path: its number
-    detail = json.loads((out / "data/l/used_condo/20205670.json").read_text())
-    assert detail["url"].startswith("https://suumo.jp/") and detail["land_rights"] == "定期借地権"
+    detail = listing(out, "used_condo:20205670")
+    assert detail["url"] == "tokyo/sc_komae" and detail["land_rights"] == "定期借地権"   # app.js rebuilds the URL
+    assert "id" not in detail and "type" not in detail and detail["image"] == 4
 
 
 @pytest.mark.parametrize("name,shown", [
@@ -211,7 +213,8 @@ def test_every_element_the_page_looks_up_exists():
 def test_every_record_field_the_page_reads_is_exported():
     from suumo.export import FIELD_ORDER
     app = (FILTER_JS.parent / "app.js").read_text()
-    extras = {"others", "history", "new_date", "bus_stop"}   # site.listing_record adds these
+    extras = {"others", "history", "new_date", "bus_stop",   # site.listing_record adds these
+              "img", "texts", "env", "office"}                # ... from the page side files
     not_records = {"json", "left", "bottom"}                 # r is also a fetch response and a box in app.js
     assert set(re.findall(r"\br\.([a-z_][a-z0-9_]*)", app)) - not_records - extras - set(FIELD_ORDER) == set()
 
@@ -278,7 +281,7 @@ def test_saved_listings_stay_themselves_and_ended_ones_only_in_the_saved_list(tm
                        saved={"used_condo:1", "used_condo:3"})
     assert out[0]["ids"] == ["4", "2", "1"]      # 1 is saved: not folded into 2 (7 is); 3 ended: not in search
     assert out[1] == ["1", "3"]                   # the saved list, the ended one included
-    assert (tmp_path / "site/data/l/used_condo/3.json").exists()
+    assert listing(tmp_path / "site", "used_condo:3")
 
 
 @needs_node
@@ -391,7 +394,7 @@ def test_no_commission_from_any_agent_of_the_property(tmp_path):
             rec(3, dup_key="a", deal_type="売主"), rec(4, deal_type="仲介")]
     [hits] = site_queries(tmp_path, recs, [{"query": {"nofee": True}}])
     assert hits["ids"] == ["1"]          # 3 sells it without commission: the property counts as no-commission
-    others = json.loads((tmp_path / "site/data/l/used_condo/1.json").read_text())["others"]
+    others = listing(tmp_path / "site", "used_condo:1")["others"]
     assert [o["deal_type"] for o in others] == ["売主", "仲介"]    # the agent without commission first
 
 
@@ -460,7 +463,11 @@ def nl_records():
             rec(8, "used_house", area_code="13112", area="世田谷区", stations=st("自由が丘"), layout="4LDK",
                 floor_m2=None, building_m2=100.0, land_m2=170.0),
             rec(9, area_code="14103", area="横浜市西区", stations=st("横浜")),
-            rec(10, area_code="13104", area="新宿区", stations=st("新宿"), name="自由が丘　レジデンス")]  # spaced
+            rec(10, area_code="13104", area="新宿区", stations=st("新宿"), name="自由が丘　レジデンス"),  # spaced
+            # stations named after a park (「代々木公園 徒歩5分」 is the station, not 公園 within 5 minutes)
+            rec(11, area_code="13104", area="新宿区", stations=st("代々木公園") + st("代々木", 9)),
+            rec(12, area_code="13104", area="新宿区", stations=st("井の頭公園")),
+            rec(13, area_code="13104", area="新宿区", stations=st("葛西臨海公園"))]
 
 
 def nl(tmp_path, requests):
@@ -533,6 +540,20 @@ NL_CASES = [  # text, patch (types as sets), and where it matters: alt of the fi
     ("up to 90 million", {"priceMax": 90_000_000}, {}),
     ("south facing top floor", {"south": True, "top": True}, {}),
     ("in 5 min walk", {"walk": 5}, {}),
+    # 周辺環境: a kind of facility close by (minutes: nearWalk; without them, the default)
+    ("小学校近い", {"near": ["school"]}, {}),
+    ("スーパー徒歩5分", {"near": ["super"], "nearWalk": 5}, {}),
+    ("渋谷駅 徒歩5分 保育園まで10分以内", {"stations": ["渋谷"], "walk": 5, "near": ["nursery"], "nearWalk": 10}, {}),
+    ("2LDK 公園のそば コンビニ近く", {"plan": 8, "near": ["park", "conv"]}, {}),
+    ("near a supermarket", {"near": ["super"]}, {}),
+    ("elementary school within 10 min", {"near": ["school"], "nearWalk": 10}, {}),
+    ("5 min walk to a park", {"near": ["park"], "nearWalk": 5}, {}),
+    ("parking", {"parking": True}, {}),   # (not a park)
+    # a station named after a facility stays a station
+    ("代々木公園 徒歩5分", {"stations": ["代々木公園"], "walk": 5}, {}),
+    ("井の頭公園 10分以内", {"stations": ["井の頭公園"], "walk": 10}, {}),
+    ("葛西臨海公園近い", {"stations": ["葛西臨海公園"]}, {}),
+    ("代々木 公園近い", {"stations": ["代々木"], "near": ["park"]}, {}),   # (apart: the station and a park)
 ]
 
 
@@ -574,7 +595,7 @@ def test_tags_a_condition_covers_are_hidden_and_old_links_still_work(tmp_path):
     assert got == [["1"], ["2"], ["4"], ["3"], ["3"]]     # an old link: its tags as the conditions they are now
     index = json.loads((tmp_path / "site/data/p/tokyo.json").read_text())
     assert index["features"] == ["ペット相談"]                    # only tags no condition covers are offered
-    assert "南向き" in json.loads((tmp_path / "site/data/l/used_condo/1.json").read_text())["features"]
+    assert "南向き" in listing(tmp_path / "site", "used_condo:1")["features"]
 
 
 @needs_node
@@ -697,7 +718,7 @@ def test_an_index_older_than_the_page_still_loads(tmp_path):
     site_queries(tmp_path, recs, [])
     path = tmp_path / "site/data/p/tokyo.json"
     index = json.loads(path.read_text())
-    for col in ("fees", "stop", "priceMax", "image", "drop"):   # columns added since
+    for col in ("fees", "stop", "priceMax", "image", "drop", "dlat", "dlng", "photos", "near"):   # columns added since
         del index["columns"][col]
     del index["stationNames"]
     cols = index["columns"]   # rows in another order (ids are deltas): a key is still found
@@ -713,3 +734,219 @@ def test_an_index_older_than_the_page_still_loads(tmp_path):
     assert (it["id"], it["price"], it["priceHi"], it["fees"], it["image"], it["stop"], it["dropAt"]) == (
         "2", 30_000_000, 30_000_000, None, None, None, None)
     assert out["facets"] == {"40000000": 1, "60000000": 3}
+
+
+# ---------- listing records in buckets, the page side files, own points, 周辺環境 ----------
+
+PAGE = {"img": {"b": "030/N010000", "l": [1, [2, "間取り図"], [["030/N001000", 7, "png"], "外観", "南東から"]]},
+        "texts": {"catch": "陽当たり良好", "pr": "駅まで平坦"}, "env": [["小学校", "狛江第一小学校：徒歩4分（300ｍ）"],
+                                                                 ["スーパー", "OK狛江店：徒歩12分（900ｍ）"]],
+        "agent": {"name": "(株)テスト不動産", "tel": "03-0000-0000"}}
+TOWN = {"東京都狛江市東和泉": [35.6300, 139.5800]}
+
+
+def build_with_pages(tmp_path, recs, pages, towns=TOWN, out="site"):
+    from tests.helpers import write, write_pages
+    data = tmp_path / "data"
+    write(data, recs)
+    write_pages(data, pages)
+    geo = tmp_path / "towns.json"
+    geo.write_text(json.dumps(towns, ensure_ascii=False), encoding="utf-8")
+    build(data, geo, tmp_path / out, today=date(2026, 10, 20), log=QUIET)
+    return tmp_path / out
+
+
+def test_records_are_trimmed_buckets_with_the_page_side_files(tmp_path):
+    img = "https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2F030%2FN010000%2Fimg%2F1%2F1%2F1_0004.jpg&w=1&h=1"
+    recs = [rec(1, address="東京都狛江市東和泉", url="https://suumo.jp/ms/chuko/tokyo/sc_komae/nc_1/", image=img,
+                lat=35.6310, lng=139.5810, photos=3, page_date="2026-10-18", dup_key="x", has_detail=True),
+            rec(8193, address="東京都狛江市東和泉", url="https://suumo.jp/tochi/tokyo/sc_komae/nc_8193/",
+                type_="new_house")]
+    site = build_with_pages(tmp_path, recs, {"used_condo:1": PAGE})
+    r = listing(site, "used_condo:1")
+    assert r["url"] == "tokyo/sc_komae" and r["image"] == 4 and r["photos"] == 3 and r["page_date"] == "2026-10-18"
+    assert {"id", "type", "dup_key", "has_detail", "area_code"} & set(r) == set()     # the key and the index have them
+    assert r["img"] == PAGE["img"] and r["texts"] == PAGE["texts"] and r["env"] == PAGE["env"]
+    assert r["office"] == PAGE["agent"] and (r["lat"], r["lng"]) == (35.6310, 139.5810)
+    assert listing(site, "new_house:8193")["url"] == "/tochi/tokyo/sc_komae/nc_8193/"   # land under new_house: its path
+    raw = (site / "data/l/1.json.zst").read_bytes()
+    grouped = json.loads(zstandard.ZstdDecompressor().decompress(raw))
+    assert raw[:4] == b"\x28\xb5\x2f\xfd" and grouped["keys"] == ["new_house:8193", "used_condo:1"]   # zstd, sorted
+    assert grouped["url"] == ["/tochi/tokyo/sc_komae/nc_8193/", "tokyo/sc_komae"]   # laid out by field
+    again = build_with_pages(tmp_path, recs, {"used_condo:1": PAGE}, out="site2")
+    assert all((site / "data/l" / f.name).read_bytes() == f.read_bytes()             # deterministic: two builds,
+               for f in (again / "data/l").iterdir())                                # the same bytes
+    manifest = json.loads((site / "data/index.json").read_text())
+    assert (manifest["buckets"], manifest["bucketExt"]) == (8192, ".json.zst")
+
+
+def test_own_points_far_from_their_town_are_not_used(tmp_path):
+    recs = [rec(1, address="東京都狛江市東和泉", lat=35.6312, lng=139.5795),      # 150 m away: its own point
+            rec(2, address="東京都狛江市東和泉", lat=35.6800, lng=139.5800),      # 5.6 km: the agent's office?
+            rec(3, address="東京都狛江市東和泉")]
+    site = build_with_pages(tmp_path, recs, {})
+    cols = json.loads((site / "data/p/tokyo.json").read_text())["columns"]
+    assert (cols["dlat"], cols["dlng"]) == ({"at": [0], "v": [12]}, {"at": [0], "v": [-5]})  # 1e-4° from the town's
+    # point, sparse: row deltas and values
+    assert "lat" not in listing(site, "used_condo:2") and listing(site, "used_condo:1")["lat"] == 35.6312
+
+
+@needs_node
+def test_near_facilities_search(tmp_path):
+    from tests.helpers import write_pages
+    def near(school, sup):
+        return {"env": [["小学校", f"A小：徒歩{school}分（1ｍ）"], ["スーパー", f"B：徒歩{sup}分（1ｍ）"],
+                        ["小学校", "C小：徒歩20分（1ｍ）"]]}
+    write_pages(tmp_path / "data", {"used_condo:1": near(4, 12), "used_condo:2": near(9, 3),
+                                    "used_condo:3": near(15, 1)})
+    recs = [rec(1), rec(2), rec(3), rec(4)]   # 4: its page lists no facilities
+    queries = [{"near": ["school"]}, {"near": ["school"], "nearWalk": 5}, {"near": ["school", "super"]},
+               {"near": ["super"], "nearWalk": 15}, {"nearWalk": 5}]
+    got = site_queries(tmp_path, recs, [{"query": q} for q in queries])
+    assert [g["ids"] for g in got] == [["2", "1"], ["1"], ["2"], ["3", "2", "1"], ["4", "3", "2", "1"]]
+    # (default 10 minutes; the farthest chosen kind counts; a time alone is no condition)
+
+
+@needs_node
+def test_bucket_decoding_and_photo_urls_in_node(tmp_path):
+    site = build_with_pages(tmp_path, [rec(1, address="東京都狛江市東和泉")], {"used_condo:1": PAGE})
+    js = """
+    const F = require(process.argv[1]), fs = require("fs"), zlib = require("zlib");
+    (async () => {
+      const raw = fs.readFileSync(process.argv[2]), byKey = JSON.parse(process.argv[3]);
+      const zst = await F.decode(raw);                                                  // zstd, laid out by field
+      const old = await F.decode(zlib.gzipSync(JSON.stringify(byKey)));                 // an older build's gzip
+      const plain = await F.decode(Buffer.from(JSON.stringify(byKey)));                 // already inflated
+      const r = zst["used_condo:1"];
+      process.stdout.write(JSON.stringify({ same: [old, plain].every((x) => JSON.stringify(x) === JSON.stringify(zst)),
+        missing: zst["used_condo:2"] ?? null,
+        bucket: F.bucketOf("used_condo:8193"), photos: F.gallery("20205670", r.img),
+        url: F.photoUrl(F.gallery("1", r.img)[0].path, 120, 90),
+        suumo: [F.suumoUrl("used_condo:1", r.url), F.suumoUrl("new_house:5", "/tochi/tokyo/sc_komae/nc_5/")] }));
+    })();
+    """
+    by_key = json.dumps({"used_condo:1": listing(site, "used_condo:1")}, ensure_ascii=False)
+    out = json.loads(subprocess.run([NODE, "-e", js, str(FILTER_JS), str(site / "data/l/1.json.zst"), by_key],
+                                    capture_output=True, text=True, check=True).stdout)
+    assert out["same"] and out["missing"] is None and out["bucket"] == "data/l/1.json.zst"
+    from suumo.extract import img_src
+    assert [p["path"] for p in out["photos"]] == [img_src("20205670", PAGE["img"], e if isinstance(e, list) else [e])
+                                                  for e in PAGE["img"]["l"]]
+    assert out["photos"][2] == {"path": "gazo/bukken/030/N001000/img/70/20205670/20205670_000007.png",
+                                "caption": "外観", "comment": "南東から"}
+    assert out["url"] == ("https://img01.suumo.com/jj/resizeImage?src=gazo%2Fbukken%2F030%2FN010000%2Fimg%2F1%2F1%2F"
+                          "1_0001.jpg&w=120&h=90")
+    assert out["suumo"] == ["https://suumo.jp/x/nc_1/", "https://suumo.jp/tochi/tokyo/sc_komae/nc_5/"]  # (rec's URL)
+
+
+@needs_node
+def test_suumo_urls_round_trip_through_the_record(tmp_path):
+    from suumo.parse import TYPES
+    from suumo.site import _url
+    urls = {t: f"https://suumo.jp/{p}/tokyo/sc_komae/nc_{100 + k}/" for k, (t, p) in enumerate(TYPES.items())}
+    urls["new_house_land"] = "https://suumo.jp/tochi/tokyo/sc_komae/nc_200/"   # land listed under new_house
+    cases = [[f"{t}:{100 + k}", _url(u, t, str(100 + k))] for k, (t, u) in enumerate(urls.items()) if t in TYPES]
+    cases.append(["new_house:200", _url(urls["new_house_land"], "new_house", "200")])
+    other = _url(urls["used_condo"], "used_condo", "100", short=False)   # another agent's listing: a path
+    assert cases[0][1] == "tokyo/sc_komae" and other == "/ms/chuko/tokyo/sc_komae/nc_100/"
+    js = """const F = require(process.argv[1]), c = JSON.parse(process.argv[2]);
+    process.stdout.write(JSON.stringify({ urls: c.map(([k, u]) => F.suumoUrl(k, u)),
+      other: F.suumoUrl("used_condo:999", process.argv[3]), types: F.TYPE_PATHS }));"""
+    out = json.loads(subprocess.run([NODE, "-e", js, str(FILTER_JS), json.dumps(cases), other],
+                                    capture_output=True, text=True, check=True).stdout)
+    assert out["urls"] == [*(urls[t] for t in TYPES), urls["new_house_land"]]   # back unchanged, every type
+    assert out["other"] == urls["used_condo"]          # (not rebuilt with the listing's own id)
+    assert out["types"] == TYPES                       # filter.js's type paths are parse.TYPES
+
+
+APP_RENDER = """
+const [filterJs, i18nJs, appJs, recJson] = process.argv.slice(1);
+globalThis.window = globalThis;
+globalThis.localStorage = { getItem: () => null, setItem() {} };
+globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
+globalThis.Filter = require(filterJs);
+require(i18nJs);
+globalThis.SUUMO_TEST = {};
+require(appJs);
+const r = JSON.parse(recJson);
+process.stdout.write(SUUMO_TEST.detailHtml(r, null));
+"""
+
+
+@needs_node
+def test_listing_texts_are_escaped(tmp_path):
+    bad = '<img src=x onerror="alert(1)">'
+    r = {"key": "used_condo:1", "type": "used_condo", "id": "1", "price": 1, "name": bad, "address": bad,
+         "img": {"b": "030/N010000", "l": [[1, bad, bad], [2, "間取り図", bad]]},
+         "texts": {k: bad for k in ("catch", "pr", "event", "present", "staff", "seller", "notes")},
+         "env": [[bad, f"{bad}：徒歩3分（200ｍ）"], ["スーパー", bad]],
+         "office": {"name": bad, "tel": f"03{bad}", "license": bad, "address": bad, "hours": bad, "about": bad},
+         "features": [bad], "deal_type": bad, "others": [{"agent": bad, "url": f"javascript:{bad}"}]}
+    html = subprocess.run([NODE, "-e", APP_RENDER, str(FILTER_JS), str(FILTER_JS.parent / "i18n.js"),
+                           str(FILTER_JS.parent / "app.js"), json.dumps(r, ensure_ascii=False)],
+                          capture_output=True, text=True, check=True).stdout
+    tags = re.findall(r"<[a-z][^>]*>", html)                     # the real tags: none from the record's text
+    assert tags and not [t for t in tags if "alert" in t or "src=x" in t] and "<img on" not in html
+    assert all(re.fullmatch(r"<img [^>]*>", t) and ("onerror" not in t or "onerror=\"this." in t)
+               for t in tags if t.startswith("<img"))           # (only the page's own handlers)
+    assert html.count("&#60;img") >= 20 and 'href="javascript' not in html   # escaped, every one of them
+
+
+def test_a_failed_build_leaves_no_bucket_temp_files(tmp_path, monkeypatch):
+    import tempfile
+
+    import suumo.site as site
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path / "tmp"))
+    (tmp_path / "tmp").mkdir()
+
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(site, "listing_record", boom)
+    with pytest.raises(RuntimeError):
+        build_with_pages(tmp_path, [rec(1)], {})
+    assert list((tmp_path / "tmp").iterdir()) == []   # (Buckets' temp dir removed)
+
+
+@needs_node
+def test_rows_by_place_and_every_key_found(tmp_path):
+    areas = {"13219": "狛江市", "13112": "世田谷区"}
+    recs = [rec(9, area_code="13219"), rec(3, area_code="13112", address="東京都世田谷区玉川"),
+            rec(5, "land", area_code="13219", **LAND), rec(1, area_code="13219", address="東京都狛江市岩戸北"),
+            rec(7, area_code="13112", address="東京都世田谷区奥沢")]
+    site_queries(tmp_path, recs, [], areas=areas)
+    index = json.loads((tmp_path / "site/data/p/tokyo.json").read_text())
+    ids_ = [sum(index["columns"]["id"][:k + 1]) for k in range(len(index["columns"]["id"]))]
+    assert ids_ == [7, 3, 9, 1, 5]   # condos by area code (13112, 13219), then town (奥沢 < 玉川; none first), id; land
+    js = """const F = require(process.argv[1]), fs = require("fs");
+    const db = F.load(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+    process.stdout.write(JSON.stringify(JSON.parse(process.argv[3]).map((k) => F.item(F.find(db, k))?.key ?? null)));"""
+    keys = [f"used_condo:{i}" for i in (1, 3, 7, 9)] + ["land:5", "used_condo:5", "land:9"]
+    out = json.loads(subprocess.run([NODE, "-e", js, str(FILTER_JS), str(tmp_path / "site/data/p/tokyo.json"),
+                                     json.dumps(keys)], capture_output=True, text=True, check=True).stdout)
+    assert out == keys[:5] + [None, None]   # every listing by its key; none for a key it doesn't have
+
+
+@needs_node
+def test_sort_by_photo_count(tmp_path):
+    recs = [rec(1, photos=3), rec(2, photos=30), rec(3), rec(4, photos=30)]
+    [hits] = site_queries(tmp_path, recs, [{"query": {"sort": "photos_desc"}}])
+    assert hits["ids"] == ["2", "4", "1", "3"]   # most photos first; ties and none by id
+
+
+def test_the_copy_shown_is_the_one_whose_page_was_read(tmp_path):
+    recs = [rec(1, dup_key="g", has_detail=True), rec(2, dup_key="g", has_detail=True, photos=51,
+                                                     page_date="2026-11-01")]
+    site = build_with_pages(tmp_path, recs, {"used_condo:2": PAGE})
+    assert listing(site, "used_condo:1") is None and listing(site, "used_condo:2")["img"] == PAGE["img"]
+
+
+def test_land_takes_the_page_read_under_its_new_house_twin(tmp_path):
+    url = "https://suumo.jp/tochi/tokyo/sc_komae/nc_5/"
+    recs = [rec(5, "land", url=url, has_detail=True, **LAND),
+            rec(5, "new_house", url=url, has_detail=True, photos=3, lat=35.6301, lng=139.5801,
+                page_date="2026-11-02", address="東京都狛江市東和泉", **LAND)]
+    recs[0]["address"] = "東京都狛江市東和泉"
+    site = build_with_pages(tmp_path, recs, {"new_house:5": PAGE})
+    r = listing(site, "land:5")
+    assert r["img"] == PAGE["img"] and r["photos"] == 3 and r["page_date"] == "2026-11-02" and r["lat"] == 35.6301
+    assert listing(site, "new_house:5") is None and "page_twin" not in r   # (the twin folded into the land)

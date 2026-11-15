@@ -1,18 +1,20 @@
-"""Maintenance that isn't part of a run: out-of-scope cleanup, re-parsing the raw archive, seeding from data/."""
+"""Maintenance that isn't part of a run: out-of-scope cleanup, seeding from data/."""
 import json
 import shutil
 from collections import Counter
 from pathlib import Path
 
-from .archive import Archive
-from .db import dumps
-from .detail import FIELDS
-from .export import records
-from .parse import TYPES, parse_list_page
-from .pipeline import apply_detail
+from .db import QUEUE_V, dumps
+from .detail import FIELDS, PARSE_VERSION
+from .export import dup_key, records
+from .parse import TYPES
+from .pipeline import P_BACKFILL
 from .scope import by_key, in_scope
 
-EXPORT_ONLY = {"id", "type", "area_code", "area", "url", "first_seen", "removed_at", "has_detail", "dup_key"}
+# exported fields that are neither search-result nor listing-page fields (page_date, lat, lng, photos come from the
+# page record, which data/ doesn't hold: seed leaves them to the refetch)
+EXPORT_ONLY = {"id", "type", "area_code", "area", "url", "first_seen", "removed_at", "has_detail", "dup_key",
+               "page_date", "lat", "lng", "photos"}
 
 
 def out_of_scope(db, targets):
@@ -22,9 +24,9 @@ def out_of_scope(db, targets):
     return [r for r in rows if not in_scope(scope, r["pref"], r["type"], r["area_code"])]
 
 
-def prune(db, archive: Archive, targets, data_dir: Path, apply=False, log=print):
-    """Delete out-of-scope listings (rows, queue, archived pages, areas); whole prefectures lose their
-    archive and data folders too. Dry run unless apply."""
+def prune(db, targets, data_dir: Path, apply=False, log=print):
+    """Delete out-of-scope listings (rows with their records, queue, areas); whole prefectures lose their data
+    folders too. Dry run unless apply."""
     oos = out_of_scope(db, targets)
     if not oos:
         log("nothing out of scope")
@@ -39,61 +41,29 @@ def prune(db, archive: Archive, targets, data_dir: Path, apply=False, log=print)
         return 0
     n = 0
     for r in oos:
-        for row in db.area_listings(r["pref"], r["type"], r["area_code"]):
-            db.dequeue(row["type"], row["id"])
-            archive.delete_detail(row["pref"], row["type"], row["id"])
-            n += 1
-        db.x("DELETE FROM listings WHERE pref=? AND type=? AND area_code=?", r["pref"], r["type"], r["area_code"])
+        area = (r["pref"], r["type"], r["area_code"])
+        db.x("DELETE FROM queue WHERE (type, id) IN (SELECT type, id FROM listings WHERE pref=? AND type=? "
+             "AND area_code=?)", *area)
+        n += db.x("DELETE FROM listings WHERE pref=? AND type=? AND area_code=?", *area).rowcount
         db.x("DELETE FROM areas WHERE pref=? AND type=? AND code=?", r["pref"], r["type"], r["area_code"])
     for pref in gone_prefs:
         db.x("DELETE FROM areas WHERE pref=?", pref)
-        archive.drop_pref(pref)
         shutil.rmtree(data_dir / pref, ignore_errors=True)
     db.commit()
     log(f"deleted {n} listings; removed prefectures: {gone_prefs or 'none'}")
     return n
 
 
-def reparse(db, archive: Archive, log=print):
-    """Rebuild list_json from archived search-result snapshots (newest wins) and detail_json from archived
-    listing pages. Lifecycle state is untouched. Makes no requests."""
-    n_list = n_detail = 0
-    for pref in sorted(r["pref"] for r in db.x("SELECT DISTINCT pref FROM listings")):
-        for type_key in TYPES:
-            areas = {r["slug"]: dict(r) for r in db.x(
-                "SELECT code, name, slug FROM areas WHERE pref=? AND type=? AND slug IS NOT NULL", pref, type_key)}
-            for day in archive.list_days(pref):  # oldest first, so the newest snapshot wins
-                for f in archive.list_pages(pref, day, type_key):
-                    area = areas.get(f.name.split(".")[0].rsplit("_p", 1)[0])
-                    if not area:
-                        continue
-                    _, recs = parse_list_page(Archive.read(f), type_key, area)
-                    for rec in recs:
-                        n_list += db.x("UPDATE listings SET list_json=? WHERE type=? AND id=?",
-                                       dumps(rec), type_key, rec["id"]).rowcount
-    for row in db.x("SELECT type, id, pref FROM listings").fetchall():
-        path = archive.detail_path(row["pref"], row["type"], row["id"])
-        if not path.exists():
-            continue
-        try:
-            apply_detail(db, row["type"], row["id"], Archive.read(path))
-        except Exception as e:
-            log(f"  ! parse failed for {row['type']}/{row['id']}: {e!r}")
-            continue
-        db.x("DELETE FROM queue WHERE type=? AND id=? AND last_error LIKE 'parse:%'", row["type"], row["id"])
-        n_detail += 1
-    db.commit()
-    log(f"reparsed {n_list} list records and {n_detail} listing pages from the archive (0 requests)")
-    return n_list, n_detail
-
-
 def seed(db, targets, data_dir: Path, ts, log=print):
     """Rebuild the DB for in-scope prefectures it holds nothing of from their data/ files (a lost or new
     state.db): listings with their first_seen and listing-page fields, and each area with listings as baselined,
-    so the next crawl records what changed since that export. Makes no requests."""
+    so the next crawl records what changed since that export. data/ holds no page records: every lead (one active
+    listing per dup_key group, a fetched one first) is queued at P_BACKFILL. On a state that held no listings (a
+    rebuild) meta backfilled/parse_v/queue_v are set so runs accept it (the refetch takes days: ~17k pages a shard);
+    a state that already holds data keeps its meta (its records are still to be filled). Makes no requests."""
     held = {r["pref"] for r in db.x("SELECT DISTINCT pref FROM listings")}
     scope = by_key(targets)
-    n = 0
+    n, leads = 0, {}
     for pref in sorted({t.pref for t in targets} - held):
         names_file = data_dir / pref / "areas.json"
         names = json.loads(names_file.read_text()) if names_file.exists() else {}
@@ -113,6 +83,11 @@ def seed(db, targets, data_dir: Path, ts, log=print):
                  r["first_seen"], ts, r.get("removed_at"))
             seeded.add((r["type"], r["area_code"]))
             n += 1
+            if not r.get("removed_at"):
+                group = (r["type"], r.get("dup_key") or dup_key(r) or r["id"])
+                rank = (not r.get("has_detail"), r["id"])
+                if group not in leads or rank < leads[group][0]:
+                    leads[group] = (rank, r["type"], r["id"])
         for type_key, code in seeded:
             hits = db.x("SELECT COUNT(*) FROM listings WHERE pref=? AND type=? AND area_code=? AND status='active'",
                         pref, type_key, code).fetchone()[0]
@@ -122,29 +97,14 @@ def seed(db, targets, data_dir: Path, ts, log=print):
             db.x("INSERT INTO areas (pref, type, code, name) VALUES (?,?,?,?)",
                  pref, next(iter(TYPES)), code, names[code])
         log(f"seeded {pref} from {data_dir / pref}")
+    for _, type_key, lid in leads.values():
+        db.enqueue(type_key, lid, P_BACKFILL, ts)
+    if not held:  # every in-scope prefecture came from data/: nothing else waits for a backfill
+        db.set_meta("backfilled", ts)
+        db.set_meta("parse_v", PARSE_VERSION)
+        db.set_meta("queue_v", QUEUE_V)
+    elif n:
+        log("the state held listings before: meta backfilled not set (fill its records, or seed an empty state)")
     db.commit()
-    log(f"seeded {n} listings (0 requests)")
+    log(f"seeded {n} listings, {len(leads)} listing pages queued (0 requests)")
     return n
-
-
-DETAIL_FIELDS_VERSION = 1  # PRAGMA user_version once strip_list_fields has run
-
-
-def strip_list_fields(db, log=print):
-    """One-time fix for databases seeded by older code, which stored the whole exported record as detail_json:
-    drop the keys parse_detail doesn't produce (NULL when nothing is left: the next crawl queues its page).
-    Runs once (PRAGMA user_version), for writing commands."""
-    if db.x("PRAGMA user_version").fetchone()[0] >= DETAIL_FIELDS_VERSION:
-        return 0
-    fixed = []
-    for r in db.x("SELECT type, id, detail_json FROM listings WHERE detail_json IS NOT NULL"):
-        d = json.loads(r["detail_json"])
-        if not d.keys() <= FIELDS:
-            kept = {k: v for k, v in d.items() if k in FIELDS}
-            fixed.append((dumps(kept) if kept else None, r["type"], r["id"]))
-    db.conn.executemany("UPDATE listings SET detail_json=? WHERE type=? AND id=?", fixed)
-    db.x(f"PRAGMA user_version={DETAIL_FIELDS_VERSION}")
-    db.commit()
-    if fixed:
-        log(f"detail fields: dropped search-result fields from {len(fixed)} seeded listings")
-    return len(fixed)

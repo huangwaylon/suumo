@@ -81,10 +81,48 @@ def test_split_gives_each_shard_its_prefectures_and_join_puts_them_back(tmp_path
     assert _counts(tmp_path / "joined.db") == _counts(tmp_path / "state.db")
 
 
+def test_split_and_join_carry_page_records_and_meta(tmp_path):
+    _state(tmp_path / "state.db")
+    db = DB(tmp_path / "state.db")
+    db.x("UPDATE listings SET page_json='{\"tpl\":\"kr\"}', extract_v=1, fetched_at='2026-11-01T05:00:00+09:00', "
+         "detail_json='{}' WHERE id IN ('1', '3')")
+    db.set_meta("backfilled", "2026-11-15")
+    db.set_meta("parse_v", 1)
+    db.commit()
+    db.conn.close()
+    shards.split(tmp_path / "state.db", [["tokyo"], ["chiba"]], tmp_path / "out", log=QUIET)
+    cols = "type, id, page_json, extract_v, fetched_at, detail_json"
+    for n in (0, 1):
+        c = sqlite3.connect(tmp_path / f"out/state-{n}.db")
+        assert dict(c.execute("SELECT key, value FROM meta")) == {"backfilled": "2026-11-15", "parse_v": "1",
+                                                                  "queue_v": "2"}
+        c.close()
+    # a shard whose columns came by ALTER TABLE (migrated) and one created new: columns are copied by name
+    old = tmp_path / "old.db"
+    c = sqlite3.connect(old)
+    c.executescript("""CREATE TABLE listings (type TEXT NOT NULL, id TEXT NOT NULL, pref TEXT NOT NULL,
+                       area_code TEXT NOT NULL, area_name TEXT, list_json TEXT NOT NULL, detail_json TEXT,
+                       status TEXT NOT NULL DEFAULT 'active', first_seen TEXT NOT NULL, last_seen TEXT NOT NULL,
+                       missed INTEGER NOT NULL DEFAULT 0, removed_at TEXT, PRIMARY KEY (type, id));""")
+    c.close()
+    migrated = DB(old)
+    migrated.x("INSERT INTO listings (type, id, pref, area_code, list_json, first_seen, last_seen, page_json, "
+               "extract_v, fetched_at) VALUES ('land', '8', 'saitama', '1', '{}', 'x', 'x', '{}', 1, 'f')")
+    migrated.commit()
+    migrated.conn.close()
+    shards.join([tmp_path / "out/state-0.db", tmp_path / "out/state-1.db", old], tmp_path / "joined.db", log=QUIET)
+    j, src = sqlite3.connect(tmp_path / "joined.db"), sqlite3.connect(tmp_path / "state.db")
+    q = f"SELECT {cols} FROM listings WHERE pref != 'saitama' ORDER BY type, id"
+    assert j.execute(q).fetchall() == src.execute(q).fetchall()
+    assert j.execute("SELECT page_json, extract_v, fetched_at FROM listings WHERE id='8'").fetchone() == ("{}", 1, "f")
+    assert dict(j.execute("SELECT key, value FROM meta")) == {"backfilled": "2026-11-15", "parse_v": "1",
+                                                              "queue_v": "2"}
+
+
 def _args(tmp_path, **kw):
     (tmp_path / "scope.toml").write_text('[[scope]]\npref = "tokyo"\ntypes = ["used_condo"]\n'
                                          '[[scope]]\npref = "chiba"\ntypes = ["used_condo"]\n')
-    args = dict(db=str(tmp_path / "s.db"), archive=str(tmp_path / "a"), data=str(tmp_path / "data"),
+    args = dict(db=str(tmp_path / "s.db"), data=str(tmp_path / "data"), debug_dir=None,
                 scope=str(tmp_path / "scope.toml"), delay=0.0, push=False, commit=False, crawl_at=None,
                 no_crawl=False, no_geocode=True, budget=0.0, until_minute=None, shard=1)
     return argparse.Namespace(**{**args, **kw})
@@ -104,6 +142,8 @@ def test_a_worker_runs_its_prefectures_with_its_own_run_ids_and_re_exports_its_e
     monkeypatch.setattr(Pipeline, "crawl_lists", crawl)
     c = Ctx(_args(tmp_path))
     c.db.migrate()
+    c.db.set_meta("backfilled", "x")
+    c.db.commit()
     cmd_run(c)
     assert seen == [{"chiba"}]
     run_id = c.db.x("SELECT run_id FROM runs").fetchone()[0]

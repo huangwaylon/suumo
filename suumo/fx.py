@@ -8,7 +8,7 @@ from pathlib import Path
 
 import requests
 
-from .archive import write_atomic
+from .util import write_atomic
 
 API = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY"
 

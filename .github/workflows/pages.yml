@@ -1,5 +1,5 @@
 # Test, build the static search site from data/ and geo/, and publish it on GitHub Pages.
-# The built site (~60k listing files) is never committed; every push to main rebuilds it.
+# The built site (~8k listing buckets, data/l/*.json.zst) is never committed; every push to main rebuilds it.
 name: Site
 
 on:
@@ -30,6 +30,22 @@ jobs:
           uv run pytest -q
       - name: Build site
         run: uv run python -m suumo site --out _site
+      - name: Site size (Pages refuses an artifact over 1 GB)
+        run: |
+          total=$(tar -cf - -C _site . | wc -c)
+          records=$(du -sk _site/data/l | cut -f1)
+          files=$(find _site -type f | wc -l)
+          mb=$((total / 1000000))
+          {
+            echo "### Site size"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| artifact (tar) | ${mb} MB of 1000 |"
+            echo "| listing records (data/l) | $((records / 1000)) MB |"
+            echo "| files | ${files} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$mb" -gt 950 ]; then echo "::error::site is ${mb} MB: over 950 MB, Pages' limit is 1 GB"; exit 1; fi
+          if [ "$mb" -gt 800 ]; then echo "::warning::site is ${mb} MB: over 800 MB (Pages' limit is 1 GB)"; fi
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
         with:
           path: _site

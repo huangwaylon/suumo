@@ -1,11 +1,14 @@
 """Shared test helpers: synthetic listing records, a data/ folder writer, and running site/filter.js in Node."""
+import gzip
 import json
 import shutil
 import subprocess
 from datetime import date
 from pathlib import Path
 
-from suumo.site import build
+import zstandard
+
+from suumo.site import BUCKET_EXT, BUCKETS, build
 
 TODAY = date(2026, 10, 20)
 QUIET = lambda *_, **__: None  # noqa: E731  (a log function that prints nothing)
@@ -41,6 +44,31 @@ def write(data, recs, areas=None, events=None, pref="tokyo"):
     for run_id, evs in (events or {}).items():
         (Path(data) / "events").mkdir(exist_ok=True)
         (Path(data) / "events" / f"{run_id}.json").write_text(json.dumps(evs, ensure_ascii=False), encoding="utf-8")
+
+
+def bucket(path):
+    """A bucket file (data/l/<n>.json.zst) -> {key: record}, as Filter.decode makes it."""
+    data = json.loads(zstandard.ZstdDecompressor().decompress(Path(path).read_bytes()))
+    keys = data.pop("keys")
+    return {k: {f: v[i] for f, v in data.items() if v[i] is not None} for i, k in enumerate(keys)}
+
+
+def listing(site, key):
+    """A listing's record as the site serves it (data/l/<id % BUCKETS>.json.zst), or None."""
+    path = Path(site) / "data" / "l" / f"{int(key.split(':')[1]) % BUCKETS}{BUCKET_EXT}"
+    return bucket(path).get(key) if path.exists() else None
+
+
+def write_pages(data, pages, pref="tokyo"):
+    """Page side files: {"type:id": {img, texts, env, agent}} -> data/<pref>/pages/<type>/13219.jsonl."""
+    files = {}
+    for key, page in sorted(pages.items()):
+        type_, lid = key.split(":")
+        files.setdefault(type_, []).append({"id": lid, **page})
+    for type_, rows in files.items():
+        path = Path(data) / pref / "pages" / type_ / "13219.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
 
 
 RUNNER = """
@@ -97,3 +125,8 @@ def site_queries(tmp_path, recs, requests, areas=None, events=None, today=TODAY,
                           json.dumps({"places": places} if places else {}, ensure_ascii=False)],
                          capture_output=True, text=True, check=True)
     return json.loads(res.stdout)
+
+
+def fixture_html(name):
+    """A saved SUUMO page from tests/fixtures (.html.gz) as text."""
+    return gzip.decompress((FIXTURES / name).read_bytes()).decode("utf-8")

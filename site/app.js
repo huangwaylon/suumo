@@ -66,6 +66,7 @@
   const LANDS = [50, 80, 100, 120, 150, 200];
   const AGES = [0, 5, 10, 20, 30];
   const WALKS = [5, 7, 10, 15, 20];
+  const NEAR_WALKS = [5, 10, 15];  // 周辺環境: minutes on foot
   const FEES = [15000, 20000, 25000, 30000, 35000, 40000, 50000];  // condos' monthly fees, yen
   const PICKS = ["freehold", "south", "upper", "top", "nofee", "ready", "noCondition", "tower", "parking"];  // こだわり
   const QUICK = ["newOnly", "dropsOnly"];  // also one tap away above the results
@@ -181,11 +182,11 @@
   const KEYS = { q: "text", t: "types", a: "areas", st: "stations", f: "features", w: "walk", pmin: "priceMin",
     pmax: "priceMax", plan: "plan", s: "sizeMin", lm: "landMin", g: "ageMax", quake: "post1981", fh: "freehold",
     nc: "noCondition", new: "newOnly", drop: "dropsOnly", since: "since", sort: "sort", so: "south", top: "top",
-    up: "upper", nf: "nofee", rd: "ready", tw: "tower", pk: "parking", fee: "feesMax" };
+    up: "upper", nf: "nofee", rd: "ready", tw: "tower", pk: "parking", fee: "feesMax", nr: "near", nw: "nearWalk" };
 
   // Thresholds can be any sensible number (a link, a typed search), not only the offered choices.
   const RANGE = { priceMin: [0, 1e11], priceMax: [0, 1e11], plan: [3, 30], sizeMin: [1, 2000], landMin: [1, 10000],
-    ageMax: [0, 100], walk: [1, 120], feesMax: [0, 200000] };
+    ageMax: [0, 100], walk: [1, 120], feesMax: [0, 200000], nearWalk: [1, 60] };
   const within = (f, v) => v !== "" && Number.isFinite(+v) && RANGE[f] && +v >= RANGE[f][0] && +v <= RANGE[f][1];
 
   // URL parameters -> a query (unknown values dropped)
@@ -194,6 +195,8 @@
     out.types = out.types.filter((type) => db.index.types.includes(type));
     out.areas = out.areas.filter((a) => areaNames.has(a));
     out.stations = out.stations.filter((s) => db.index.stations.includes(s));
+    const kinds = nearKinds();
+    out.near = out.near.filter((k) => kinds.includes(k));  // (an index without them, or a mistyped link)
     return out;
   }
   // ... of any prefecture (saved searches); an older link's conditions in today's terms (Filter.upgrade)
@@ -451,7 +454,8 @@
   function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
     return `<article class="card${tabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
-      <div class="ph">${it.image != null ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}</div>
+      <div class="ph">${it.image != null ? `<img src="${esc(image(it, 360, 270))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}${
+        it.photos > 1 ? `<span class="ph-n" aria-label="${esc(t("photosN", it.photos))}">${icon("camera")}${it.photos}</span>` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}${usd(it)}</div>
         <div class="spec">${spec}</div>
@@ -652,6 +656,7 @@
       if (of[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
     }
     if (of.feesMax != null) out.push([t("chipFees", of.feesMax), reset("feesMax"), "extra"]);
+    if (of.near.length) out.push([t("chipNear", of.near.map((k) => t("nearKinds")[k] || k).join("・"), of.nearWalk ?? Filter.NEAR_WALK), reset("near", "nearWalk"), "near"]);
     if (of.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
     for (const f of of.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
@@ -682,6 +687,18 @@
     for (const [slug, , c, share] of manifest.prefs) if (chosen.includes(slug) && typeof share === "number") { n += c; sum += share * c; }
     return n ? sum / n : null;
   }
+  // 周辺環境: the kinds the indexes know (school, super...) and the time, with the count each choice would give.
+  const nearKinds = () => [...new Set(db.parts.flatMap((p) => p.index.near || []))];
+  function nearHtml() {
+    const kinds = nearKinds(), walk = q.nearWalk ?? Filter.NEAR_WALK;
+    const toggle = (k) => (q.near.includes(k) ? q.near.filter((x) => x !== k) : [...q.near, k]);
+    const patches = Object.fromEntries([...kinds.map((k) => [`k${k}`, { near: toggle(k) }]),
+      ...(q.near.length ? NEAR_WALKS.map((w) => [`w${w}`, { nearWalk: w }]) : [])]);
+    const n = Filter.counts(db, q, patches);
+    return `<p class="hint">${esc(t("nearHint"))}</p>
+      <div class="opts">${kinds.map((k) => many("near", k, t("nearKinds")[k] || k, q.near.includes(k) ? null : n[`k${k}`])).join("")}</div>
+      ${q.near.length ? `<div class="opts">${NEAR_WALKS.map((w) => chipBtn(`data-one="nearWalk" data-value="${w}"`, t("walkWithin", w), walk === w ? null : n[`w${w}`], walk === w)).join("")}</div>` : ""}`;
+  }
   // A flag of the index: an old cached index may not have the newer ones.
   const flagKnown = (f) => f === "freehold" || f === "noCondition" || db.flags[f] != null;
   const count = (field, v) => (CHOICES[field].includes(v) ? facets[field][v] || 0 : null);  // none for an extra value
@@ -691,7 +708,7 @@
     if (key !== facetsFor) { facets = kept(facetCache, key, () => Filter.facets(db, q, CHOICES)); facetsFor = key; }
     const body = $("filters-body");
     if (!body.firstChild) {  // sections are built once; their contents are redrawn (the station search keeps focus)
-      body.innerHTML = ["text", "types", "price", "plan", "areas", "stations", "size", "age", "extra"].map((s) =>
+      body.innerHTML = ["text", "types", "price", "plan", "areas", "stations", "near", "size", "age", "extra"].map((s) =>
         `<section class="sec" data-sec="${s}"></section>`).join("");
       body.querySelector('[data-sec="stations"]').innerHTML = `<h3>${esc(t("sec.stations"))}</h3>
         <p class="hint" id="walk-from"></p><div class="opts" id="walk-list"></div>
@@ -732,6 +749,7 @@
       <div class="opts">${PICKS.filter((f) => q[f] || (flagKnown(f) && fits[f] !== false)).map((f) => flag(f, facets[f])).join("")}</div>
       ${condos || q.feesMax != null ? select("feesMax", t("feesLabel"), FEES, (v) => t("feesMax", v)) : ""}
       ${shownTags.length ? `<details class="group"${q.features.length ? " open" : ""}><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.map(tagChip).join("")}</div></details>` : ""}`));
+    sec("near", nearKinds().length ? fold("near", q.near.length ? t("chipNear", q.near.map((k) => t("nearKinds")[k] || k).join("・"), q.nearWalk ?? Filter.NEAR_WALK) : "", nearHtml) : "");
     $("apply").textContent = !WIDE.matches && view && mode === "search" ? t("showInView", num(Filter.count({ ...db, items: inView() }, q)))
       : t("show", num(facets.total));
     $("clear").disabled = !activeConditions().length;
@@ -945,7 +963,8 @@
   function markOpen() {
     const it = isListing() && listing(tab);
     openMarker?.remove();
-    openMarker = it?.lat != null && map ? L.marker([it.lat, it.lng], { icon: L.divIcon({ className: "", html: '<div class="open-pin"></div>', iconSize: [30, 30] }),
+    // (its own point when it has one: where its pin is from OWN_ZOOM; zoomed out the two are a few pixels apart)
+    openMarker = it?.lat != null && map ? L.marker([it.ownLat ?? it.lat, it.ownLng ?? it.lng], { icon: L.divIcon({ className: "", html: '<div class="open-pin"></div>', iconSize: [30, 30] }),
       interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map) : null;
   }
 
@@ -956,6 +975,7 @@
     fitNext = null;
     if (how.m) map.setView(centreFor([lat, lng], z), z);
     else if (how.b) map.fitBounds([[how.b[0], how.b[1]], [how.b[2], how.b[3]]], { paddingBottomRight: [0, hidden()] });
+    else if (it?.ownLat != null) map.setView(centreFor([it.ownLat, it.ownLng], OWN_ZOOM), OWN_ZOOM);  // its own point
     else if (it?.lat != null) map.setView(centreFor([it.lat, it.lng], 15), 15);
     else {  // the results (none: the prefectures)
       const placed = mapHits.filter((h) => get.lat(h) != null);
@@ -984,16 +1004,18 @@
   const cachedIcon = (key, make) => pins.get(key) || pins.set(key, make()).get(key);
   const countLabels = new Map();  // a marker's count as written (formatting tens of thousands of them adds up)
   const countLabel = (n) => countLabels.get(S.lang + n) ?? countLabels.set(S.lang + n, num(n)).get(S.lang + n);
-  function townIcon(list, priced) {
+  // (own: the homes' own point, not their town's: a pin of its own look)
+  function townIcon(list, priced, own = false) {
+    const cls = own ? "pin own" : "pin";
     if (!priced) {
       const label = countLabel(list.length);
-      return cachedIcon(`t${label}`, () => L.divIcon({ className: "", html: `<div class="pin">${label}</div>`, iconSize: [Math.max(28, 14 + label.length * 8), 24] }));
+      return cachedIcon(`t${label}${own}`, () => L.divIcon({ className: "", html: `<div class="${cls}">${label}</div>`, iconSize: [Math.max(28, 14 + label.length * 8), 24] }));
     }
     const lo = list.reduce((m, h) => { const p = get.price(h); return p != null && (m == null || p < m) ? p : m; }, null);
     const label = lo == null ? t("undecided") : t("pinPrice", lo), more = list.length > 1 ? list.length : 0;
-    return cachedIcon(`p${label}|${more}`, () => {
+    return cachedIcon(`p${label}|${more}${own}`, () => {
       const w = 18 + label.length * (S.lang === "en" ? 7 : 10) + (more ? 10 + String(more).length * 7 : 0);
-      return L.divIcon({ className: "", html: `<div class="pin price">${esc(label)}${more ? `<i>${countLabel(more)}</i>` : ""}</div>`,
+      return L.divIcon({ className: "", html: `<div class="${cls} price">${esc(label)}${more ? `<i>${countLabel(more)}</i>` : ""}</div>`,
         iconSize: [w, 26], iconAnchor: [w / 2, 32] });
     });
   }
@@ -1039,7 +1061,8 @@
   // only the clusters and towns in and around the view, made as it moves. The current set, the one before it and the
   // unfiltered one are kept, so going back to one (clearing the conditions) is quick. Towns at one point are one
   // marker. A cluster counts the homes in it.
-  const CLUSTER_MAX = 16;       // zoomed in further, every town has its marker
+  const CLUSTER_MAX = 15;       // zoomed in further, every town has its marker
+  const OWN_ZOOM = 16;          // from this zoom, a home with its own point (the listing page's map) is drawn there
   const clusterSets = new Map();  // drawn.set -> {index, lat, lng, start, homes, order}: see clusterSet
   const onMap = new Map();      // the markers on the map: "c" + cluster id or "p" + point -> marker
   let markerLayer = null, shownSet = null, shownLang = null;
@@ -1068,7 +1091,17 @@
       map: (props) => ({ n: props.n }), reduce: (sum, props) => { sum.n += props.n; } });
     index.load(Array.from({ length: m }, (_, i) => ({ type: "Feature", properties: { i, n: start[i + 1] - start[i] }, geometry: { type: "Point", coordinates: [lng[i], lat[i]] } })));
     compact(index, m);
-    return { index, lat: Float64Array.from(lat), lng: Float64Array.from(lng), start, homes, order: drawn.search };
+    // homes with their own point, one marker per point (a building's homes share it): own[k] = [lat, lng, handles]
+    const ownAt = new Map(), own = [];
+    for (let i = 0; i < n; i++) {
+      const h = mapHits[i], y = get.ownLat(h);
+      if (y == null || of[i] < 0) continue;
+      const x = get.ownLng(h), place = `${y},${x}`;
+      let k = ownAt.get(place);
+      if (k === undefined) { ownAt.set(place, (k = own.length)); own.push([y, x, []]); }
+      own[k][2].push(h);
+    }
+    return { index, lat: Float64Array.from(lat), lng: Float64Array.from(lng), start, homes, own, order: drawn.search };
   }
   // A loaded Supercluster, smaller: its points' features aren't kept (a point is read, by its number, only when it's
   // in view), and each zoom's numbers are a Float64Array rather than a growable array (the same values).
@@ -1076,11 +1109,18 @@
     index.points = new Proxy([], { get: (_, k) => (k === "length" ? m : typeof k === "string" ? { properties: { i: +k } } : undefined) });
     for (const tree of index.trees) if (tree) tree.data = Float64Array.from(tree.data);
   }
-  function pointMarker(set, i) {
-    const list = set.homes.subarray(set.start[i], set.start[i + 1]), towns = new Map();
+  // A town's marker (close: zoomed in to OWN_ZOOM, without the homes drawn at their own point; null when none is left).
+  function pointMarker(set, i, close) {
+    let list = set.homes.subarray(set.start[i], set.start[i + 1]);
+    if (close) list = list.filter((h) => get.ownLat(h) == null);
+    if (!list.length) return null;
+    return homesMarker([set.lat[i], set.lng[i]], list, false);
+  }
+  function homesMarker(at, list, own = true) {
+    const towns = new Map();
     for (const h of list) if (!towns.has(get.townKey(h))) towns.set(get.townKey(h), get.town(h));
     const names = [...towns.values()].join("・");
-    return L.marker([set.lat[i], set.lng[i]], { icon: townIcon(list, priced), pricedAs: priced, list, title: `${names} ${t("count", countLabel(list.length))}` })
+    return L.marker(at, { icon: townIcon(list, priced, own), pricedAs: priced, list, own, title: `${names} ${t("count", countLabel(list.length))}` })
       .bindPopup(() => popup(names, inOrder(list)), { autoPanPadding: [56, 56] });
   }
   function clusterMarker(f, index) {
@@ -1114,8 +1154,13 @@
     }
     const z = map.getZoom(), b = map.getBounds().pad(0.25), want = new Map();
     priced = z >= PRICE_ZOOM;
+    const close = z >= OWN_ZOOM;  // (town markers keyed apart: they hold fewer homes then)
     for (const f of set.index.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.floor(z))) {
-      want.set(f.properties.cluster ? `c${f.properties.cluster_id}` : `p${f.properties.i}`, f);
+      want.set(f.properties.cluster ? `c${f.properties.cluster_id}` : `${close ? "q" : "p"}${f.properties.i}`, f);
+    }
+    if (close) {
+      const s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+      set.own.forEach(([y, x], k) => { if (y >= s && y <= n && x >= w && x <= e) want.set(`o${k}`, k); });
     }
     for (const [k, m] of onMap) {
       if (want.has(k) || m.isPopupOpen()) continue;  // (an open popup stays, with its marker, until it's closed)
@@ -1125,12 +1170,14 @@
     for (const [k, f] of want) {
       const m = onMap.get(k);
       if (!m) {
-        const made = f.properties.cluster ? clusterMarker(f, set.index) : pointMarker(set, f.properties.i);
+        const made = k[0] === "o" ? homesMarker(set.own[f].slice(0, 2), set.own[f][2])
+          : f.properties.cluster ? clusterMarker(f, set.index) : pointMarker(set, f.properties.i, close);
+        if (!made) continue;  // (a town whose homes are all at their own points)
         onMap.set(k, made);
         markerLayer.addLayer(made);
       } else if (m.options.list && m.options.pricedAs !== priced) {  // zoomed past PRICE_ZOOM
         m.options.pricedAs = priced;
-        m.setIcon(townIcon(m.options.list, priced));
+        m.setIcon(townIcon(m.options.list, priced, m.options.own));
       }
     }
   }
@@ -1351,13 +1398,33 @@
 
   // ---------- listing ----------
 
-  // A listing's full record (data/l/<type>/<id>.json); rejects with the HTTP status (404: ended) or a network error.
-  const records = new Map();
+  // A listing's full record, from its bucket (data/l/<id % buckets>.json.zst, zstd laid out by field: Filter.decode; fetched
+  // once per page load, revalidated with the server so a deploy never pairs a fresh index with a stale bucket).
+  // Rejects with Error("gone") when the bucket has no such listing (it ended), else Error("offline") (try again).
+  // (the last few buckets and records are kept, least recently used out first)
+  const buckets = new Map(), records = new Map(), MAX_BUCKETS = 8, MAX_RECORDS = 100;
+  const recent = (map, key, max, make) => {
+    let v = map.get(key);
+    if (v) map.delete(key); else v = make();
+    map.set(key, v);
+    while (map.size > max) map.delete(map.keys().next().value);
+    return v;
+  };
+  function bucket(url) {
+    return recent(buckets, url, MAX_BUCKETS, () => fetch(url, { cache: "no-cache" })
+      .then((res) => (res.ok ? res.arrayBuffer().then(Filter.decode) : res.status === 404 ? {} : Promise.reject(new Error("offline"))))
+      .catch((e) => { buckets.delete(url); throw new Error(e.message === "unsupported" ? "unsupported" : "offline"); }));
+  }
   function record(key) {
-    if (!records.has(key)) {
-      records.set(key, fetch(`data/l/${key.replace(":", "/")}.json`)
-        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.status))))
-        .catch((e) => { records.delete(key); throw e; }));
+    recent(records, key, MAX_RECORDS, () => null);  // (its place in line; made below when new)
+    if (!records.get(key)) {
+      const at = key.indexOf(":");
+      records.set(key, bucket(Filter.bucketOf(key, manifest?.buckets, manifest?.bucketExt)).then((all) => {
+        const r = all[key];
+        if (!r) throw new Error("gone");
+        return { ...r, key, type: key.slice(0, at), id: key.slice(at + 1), url: Filter.suumoUrl(key, r.url),
+          others: (r.others || []).map((o) => ({ ...o, url: Filter.suumoUrl(key, o.url) })) };
+      }).catch((e) => { records.delete(key); throw e; }));
     }
     return records.get(key);
   }
@@ -1414,12 +1481,18 @@
     let r;
     try {
       r = await record(key);
-    } catch (e) {  // 404: the listing ended; anything else: the network
-      if (box.dataset.key === key) box.innerHTML = `<div class="empty"><h3>${esc(t(e.message === "404" ? "gone" : "offline"))}</h3></div>`;
+    } catch (e) {  // not in its bucket: the listing ended; anything else: the network (try again)
+      if (box.dataset.key === key) box.innerHTML = e.message === "gone" ? `<div class="empty"><h3>${esc(t("gone"))}</h3></div>`
+        : e.message === "unsupported" ? `<div class="empty"><h3>${esc(t("unsupported"))}</h3></div>`  // (no DecompressionStream)
+        : `<div class="empty"><h3>${esc(t("offline"))}</h3><button class="btn" data-retry="${esc(key)}">${esc(t("retry"))}</button></div>`;
       return null;
     }
     if (box.dataset.key !== key) return null;
     box.innerHTML = detailHtml(r, it);
+    box.photos = photosOf(r);
+    // it opens on the photo its card shows (the page's first is often the agent's map)
+    const cover = r.image != null && r.image !== "" ? Filter.photo(r.image, r.id) : null;
+    showPhoto(box, Math.max(0, box.photos.findIndex((p) => p.path === cover)));
     if (S.lang === "en" && r.stations?.length && !railLoaded) {  // line names in English once the rail data is in
       loadRail().then(() => { const dd = box.querySelector(".d-access"); if (dd && box.dataset.key === key) dd.innerHTML = accessHtml(r); });
     }
@@ -1446,18 +1519,21 @@
     const road = r.road && ([value(r.road.dir), r.road.width_m && t("width", r.road.width_m)].filter(Boolean).join(" ") || r.road.text);
     const access = accessHtml(r);
     return `
-      ${r.image ? `<img class="hero" src="${esc(image({ image: r.image }, 640, 480))}" alt="" onerror="this.remove()">` : ""}
+      ${galleryHtml(photosOf(r))}
       <div class="d-head">
         <h2 tabindex="-1">${esc(r.name || [r.layout, typeName(type)].filter(Boolean).join(" "))}</h2>
         <div class="meta">${esc([r.address, r.name && typeName(type)].filter(Boolean).join(" · "))}</div>
         ${it?.lat != null && map ? `<button class="btn ghost on-map" data-on-map="${esc(it.key)}">${icon("pin")}${esc(t("showOnMap"))}</button>` : ""}
         <div class="d-price num">${it ? price(it, true) + usd(it) : money(r.price, true) + usd({ price: r.price })}${r.price_excludes_building ? `<small class="note">${esc(t("excludesBuilding"))}</small>` : ""}</div>
         <div class="tags">${it ? tags(it) : ""}</div>
+        ${r.texts?.catch ? `<p class="catch">${esc(r.texts.catch)}</p>` : ""}
       </div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${esc(L_(k))}</span><b>${v}</b></div>`).join("")}</div>
       ${changes ? `<section class="d-sec"><h3>${esc(L_("history"))}</h3>${historyChart(r, it)}<dl>${rows([["price", changes]])}</dl></section>` : ""}
       ${it ? market(it) : ""}
       ${access ? `<section class="d-sec"><h3>${esc(L_("access"))}</h3><dl><dt>${esc(L_("nearest"))}</dt><dd class="d-access">${access}</dd></dl></section>` : ""}
+      ${textsHtml(r, ["pr", "event", "present"])}
+      ${envHtml(r.env)}
       ${sec("costs", [["mgmt", yen(r.mgmt_fee) && t("perMonth", yen(r.mgmt_fee)) + (r.mgmt_form ? esc(t("paren", value(r.mgmt_form))) : "")],
         ["repair", yen(r.repair_fee) && t("perMonth", yen(r.repair_fee))],
         ["otherMonthly", yen(r.other_monthly) && t("perMonth", yen(r.other_monthly)) + (r.other_fees ? `<small>${esc(r.other_fees)}</small>` : "")],
@@ -1474,7 +1550,137 @@
       ${r.features?.length ? `<section class="d-sec"><h3>${esc(L_("features"))}</h3><div class="opts">${r.features.map((f) => `<span class="tag">${esc(feature(f))}</span>`).join("")}</div></section>` : ""}
       ${sec("listing", [["agent", txt(r.agent)], ["deal", txt(r.deal_type)], ["otherListings", (r.others || []).map((o) =>
         `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.agent || "SUUMO")}</a>`).join("<br>") || null],
-        ["seen", day(r.new_date || r.first_seen)]])}`;
+        ["seen", day(r.new_date || r.first_seen)]])}
+      ${textsHtml(r, ["staff", "seller", "notes"])}
+      ${officeHtml(r.office)}
+      ${r.page_date ? `<p class="meta as-of">${esc(t("pageAsOf", day(r.page_date)))}</p>` : ""}`;
+  }
+
+  // ---------- the listing page's content: photos, texts, nearby facilities, the agent ----------
+
+  // A listing's photos: its page's gallery, else the search result's one photo. [{path, caption, comment}]
+  function photosOf(r) {
+    if (r.img?.l?.length) return Filter.gallery(r.id, r.img);
+    const p = r.image != null && r.image !== "" && Filter.photo(r.image, r.id);
+    return p ? [{ path: p, caption: "", comment: "" }] : [];
+  }
+  const photoCat = (c) => S.photoCats?.[c] ?? c;
+  const FLOOR_PLAN = /間取|区画図/;
+  // The photo in view (640×480), its caption and comment, chips per kind (間取り図 first), and a strip of thumbnails.
+  function galleryHtml(photos) {
+    if (!photos.length) return "";
+    const kinds = new Map();
+    photos.forEach((p, i) => { if (p.caption && !kinds.has(p.caption)) kinds.set(p.caption, [i, 0]); if (p.caption) kinds.get(p.caption)[1]++; });
+    const chips = [...kinds].sort(([a], [b]) => FLOOR_PLAN.test(b) - FLOOR_PLAN.test(a)).slice(0, 10);
+    return `<div class="gallery" data-gallery>
+      <button class="g-main" data-view aria-label="${esc(t("photoOpen"))}"><img alt="" decoding="async" onerror="this.style.visibility='hidden'">
+        ${photos.length > 1 ? `<span class="g-n num"></span>` : ""}</button>
+      <div class="g-cap"></div>
+      ${chips.length > 1 ? `<div class="g-chips">${chips.map(([c, [i, n]]) => `<button class="chip" data-photo="${i}">${esc(photoCat(c))}${n > 1 ? ` <small>${n}</small>` : ""}</button>`).join("")}</div>` : ""}
+      ${photos.length > 1 ? `<div class="g-strip">${photos.map((p, i) => `<button data-photo="${i}" aria-label="${esc(t("photoN", i + 1, photos.length))}"><img src="${esc(Filter.photoUrl(p.path, 120, 90))}" alt="" loading="lazy" decoding="async" width="120" height="90" onerror="this.style.visibility='hidden'"></button>`).join("")}</div>` : ""}
+    </div>`;
+  }
+  // Shows photo i of a listing's box in its gallery.
+  function showPhoto(box, i) {
+    const photos = box.photos, g = box.querySelector("[data-gallery]");
+    if (!photos?.length || !g) return;
+    i = (i + photos.length) % photos.length;
+    box.photoAt = i;
+    const p = photos[i], img = g.querySelector(".g-main img");
+    img.style.visibility = "";
+    img.src = Filter.photoUrl(p.path, 640, 480);
+    img.alt = p.caption || "";
+    const n = g.querySelector(".g-n");
+    if (n) n.textContent = `${i + 1} / ${photos.length}`;
+    g.querySelector(".g-cap").innerHTML = p.caption || p.comment ? `${p.caption ? `<b>${esc(photoCat(p.caption))}</b>` : ""}${p.comment ? ` ${esc(p.comment)}` : ""}` : "";
+    for (const b of g.querySelectorAll(".g-strip [data-photo]")) b.classList.toggle("on", +b.dataset.photo === i);
+    const on = g.querySelector(".g-strip .on");
+    if (on) { const s = on.parentElement; s.scrollLeft = on.offsetLeft - (s.clientWidth - on.offsetWidth) / 2; }
+  }
+
+  // The full-screen viewer: a history entry (back closes it); arrows, swipe, Escape.
+  let viewer = null;
+  function openViewer(box, popped) {
+    if (viewer || !box.photos?.length) return;
+    viewer = { box, at: box.photoAt || 0, el: document.createElement("div"), focus: document.activeElement, swiped: false };
+    const el = viewer.el;
+    el.className = "viewer";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-label", t("photos"));
+    el.innerHTML = `<button class="v-x" data-viewer-close aria-label="${esc(t("close"))}">${icon("x")}</button>
+      <button class="v-prev" data-viewer-step="-1" aria-label="${esc(t("photoPrev"))}">${icon("back")}</button>
+      <figure><img alt="" decoding="async"><figcaption></figcaption></figure>
+      <button class="v-next" data-viewer-step="1" aria-label="${esc(t("photoNext"))}">${icon("back")}</button>`;
+    document.body.append(el);
+    let x0 = null;
+    el.addEventListener("pointerdown", (e) => { if (e.isPrimary) x0 = e.clientX; });
+    el.addEventListener("pointercancel", () => { x0 = null; });  // (a pinch, a scroll: no swipe)
+    el.addEventListener("pointerup", (e) => {
+      const dx = x0 == null ? 0 : e.clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) > 40) { viewer.swiped = true; stepViewer(dx < 0 ? 1 : -1); }
+    });
+    el.addEventListener("click", (e) => {
+      if (viewer.swiped) { viewer.swiped = false; return; }  // the click that ends a swipe neither steps nor closes
+      const b = e.target.closest("button");
+      if (b?.dataset.viewerStep) stepViewer(+b.dataset.viewerStep);
+      else if (b?.dataset.viewerClose != null || e.target === el) closeViewer();
+    });
+    if (!popped) history.pushState({ ...history.state, viewer: 1 }, "", location.href);
+    stepViewer(0);
+    el.querySelector(".v-x").focus();
+  }
+  function stepViewer(d) {
+    const { box, el } = viewer, photos = box.photos, n = photos.length;
+    viewer.at = (viewer.at + d + n) % n;
+    const p = photos[viewer.at];
+    el.querySelector("img").src = Filter.photoUrl(p.path, 640, 480);
+    el.querySelector("img").alt = p.caption || "";
+    el.querySelector("figcaption").innerHTML = `<span class="num">${viewer.at + 1} / ${n}</span> ${p.caption ? `<b>${esc(photoCat(p.caption))}</b>` : ""} ${esc(p.comment || "")}`;
+    for (const k of [1, -1]) new Image().src = Filter.photoUrl(photos[(viewer.at + k + n) % n].path, 640, 480);  // the next ones, ahead
+    showPhoto(box, viewer.at);
+  }
+  // Closes it (going back in history, unless the browser already did).
+  function closeViewer(popped) {
+    if (!viewer) return;
+    if (!popped && history.state?.viewer) { history.back(); return; }  // popstate closes it
+    const { el, focus } = viewer;
+    el.remove();
+    viewer = null;
+    focus?.focus({ preventScroll: true });
+  }
+
+  // The page's free texts (agents' copy, as written): each folded under its heading; PR open when it's short.
+  function textsHtml(r, keys) {
+    return keys.filter((k) => r.texts?.[k]).map((k) => {
+      const text = r.texts[k], long = text.length > 280;
+      return `<details class="d-sec d-text"${!long && k === "pr" ? " open" : ""}><summary><h3>${esc(t(`texts.${k}`))}</h3></summary><p>${esc(text)}</p></details>`;
+    }).join("");
+  }
+  // 周辺環境: the nearby facilities, by kind, with the walk.
+  function envHtml(env) {
+    if (!env?.length) return "";
+    const kinds = new Map();
+    for (const [kind, text] of env) { if (!kinds.has(kind)) kinds.set(kind, []); kinds.get(kind).push(text); }
+    const line = (raw) => {
+      const s = raw.normalize("NFKC"), m = /^(.*?)[：:]\s*(.*)$/.exec(s);
+      if (!m) return esc(s);
+      const walk = /徒歩\s*約?\s*(\d+)\s*分/.exec(m[2]), dist = /[（(]\s*([\d,.]+)\s*[mｍ]\s*[)）]/.exec(m[2]);
+      return `${esc(m[1])} <span class="nw meta">${esc(walk ? t("walkMin", +walk[1]) : m[2])}${dist ? esc(t("paren", `${dist[1]}m`)) : ""}</span>`;
+    };
+    const mins = (x) => +(/徒歩\s*約?\s*(\d+)\s*分/.exec(x.normalize("NFKC"))?.[1] ?? 999);
+    for (const list of kinds.values()) list.sort((a, b) => mins(a) - mins(b));  // the closest first
+    return `<details class="d-sec d-env" open><summary><h3>${esc(t("envTitle"))}</h3></summary><dl>${[...kinds].map(([k, list]) =>
+      `<dt>${esc(photoCat(k))}</dt><dd>${list.map(line).join("<br>")}</dd>`).join("")}</dl></details>`;
+  }
+  // The agent's business details (company, licence, office phone, address, hours).
+  function officeHtml(o) {
+    if (!o || !(o.name || o.tel || o.address)) return "";
+    const rows = [["name", esc(o.name || "")], ["tel", o.tel ? `<a href="tel:${esc(o.tel.replace(/[^\d+]/g, ""))}">${esc(o.tel)}</a>` : ""],
+      ["license", esc(o.license || "")], ["address", esc(o.address || "")], ["hours", esc(o.hours || "")]].filter(([, v]) => v);
+    return `<details class="d-sec d-office"><summary><h3>${esc(t("office.title"))}</h3></summary><dl>${rows.map(([k, v]) =>
+      `<dt>${esc(t(`office.${k}`))}</dt><dd>${v}</dd>`).join("")}</dl>${o.about && o.about !== o.address ? `<p class="meta pre">${esc(o.about)}</p>` : ""}</details>`;
   }
 
   // The stations of a listing: line, station, how far.
@@ -1768,7 +1974,55 @@
     setFavButtons(key);
     toast(t(save ? "favAdded" : "favRemoved"));
     if (mode === "favorites") render();
+    pinPhotos(key, save).catch(() => {});
   }
+  // A favorite's photos kept by the service worker for good: its card's and its gallery's first two (the worker
+  // caps pins: each photo is an opaque response, counted as megabytes). What was pinned for each listing is
+  // remembered here (suumo.pins), so removing it lets go of exactly those; reconcilePins keeps them in step with
+  // the favorites (the shared list included) once per visit.
+  const PIN_PHOTOS = 2, PIN_LISTINGS = 10;
+  const pinnedPhotos = stored("suumo.pins", {});
+  const savePins = () => localStorage.setItem("suumo.pins", JSON.stringify(pinnedPhotos));
+  // pinnedPhotos[key] = {u: the URLs the worker confirmed it pinned, ok: all of them (or none were wanted, or its
+  // pins are full)}; a favorite that isn't ok is asked again at the next reconcile.
+  const pinsOf = (key) => { const v = pinnedPhotos[key]; return Array.isArray(v) ? { u: v, ok: true } : v || null; };
+  // The worker's answer to a pin request: {pinned: [urls], full}; null when it doesn't answer.
+  function askWorker(sw, msg) {
+    return new Promise((ok) => {
+      const ch = new MessageChannel(), timer = setTimeout(() => ok(null), 15000);
+      ch.port1.onmessage = (e) => { clearTimeout(timer); ok(e.data || null); };
+      sw.postMessage(msg, [ch.port2]);
+    });
+  }
+  async function pinPhotos(key, pin) {
+    const sw = navigator.serviceWorker?.controller;
+    if (!sw) return;
+    const had = pinsOf(key);
+    if (!pin) {
+      if (had?.u.length) sw.postMessage({ type: "unpin", urls: had.u });
+      delete pinnedPhotos[key];
+      savePins();
+      return;
+    }
+    if (had?.ok || (!had && Object.keys(pinnedPhotos).length >= PIN_LISTINGS)) return;
+    const it = listing(key);
+    let r;
+    try { r = await record(key); } catch (e) { if (e.message !== "gone") return; r = null; }  // (offline: next time)
+    const urls = it?.image != null ? [image(it, 360, 270)] : [];
+    if (r) for (const p of photosOf(r).slice(0, PIN_PHOTOS)) urls.push(Filter.photoUrl(p.path, 640, 480));
+    if (!urls.length) { pinnedPhotos[key] = { u: [], ok: true }; savePins(); return; }  // (no photos: nothing to ask)
+    const answer = await askWorker(sw, { type: "pin", urls });
+    if (!answer) return;  // (no answer: asked again next time)
+    const pinned = (answer.pinned || []).filter((u) => urls.includes(u));
+    pinnedPhotos[key] = { u: pinned, ok: pinned.length === urls.length || !!answer.full };
+    savePins();
+  }
+  async function reconcilePins() {
+    if (!navigator.serviceWorker?.controller) return;
+    for (const key of Object.keys(pinnedPhotos)) if (!favs.has(key)) await pinPhotos(key, false);
+    for (const key of favs) { if (pinsOf(key)?.ok) continue; if (byKey(key) >= 0) await pinPhotos(key, true); }
+  }
+
 
   // Every heart for the listing (its card's, its tab's) says whether it's saved.
   function setFavButtons(key) {
@@ -1939,6 +2193,13 @@
       if (e.target === document.body && document.body.classList.contains("show-filters")) return openFilters(false);  // backdrop
       const fav = e.target.closest("[data-fav]");
       if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav); return; }
+      const photoBox = e.target.closest("[data-gallery]") && $("panel-body");
+      if (photoBox) {  // the listing's gallery: a thumbnail or chip shows its photo, the photo opens the viewer
+        const ph = e.target.closest("[data-photo]");
+        if (ph) showPhoto(photoBox, +ph.dataset.photo);
+        else if (e.target.closest("[data-view]")) openViewer(photoBox);
+        return;
+      }
       const link = e.target.closest("a[data-key]");
       if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openTab(link.dataset.key); return; }
       const b = e.target.closest("button");
@@ -1986,6 +2247,7 @@
         else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
         update();
       }
+      else if (b.dataset.retry) rerenderTab();  // a listing that couldn't be loaded: try again
       else if (b.dataset.tabShow) openTab(b.dataset.tabShow);
       else if (b.dataset.tabClose) closeTab(b.dataset.tabClose);
       else if (b.dataset.stationPick) {  // from a station on the map
@@ -2005,6 +2267,7 @@
       }
     }));
     window.addEventListener("popstate", () => {
+      if (viewer) { closeViewer(true); return; }  // back from the photo viewer
       if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
         history.replaceState(null, "", hashFor());
         openFilters(false);
@@ -2023,6 +2286,12 @@
       if (mode !== before && tab === "list") restoreList();
     });
     document.addEventListener("keydown", (e) => {
+      if (viewer) {  // the photo viewer: arrows step, Escape closes, Tab stays inside
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepViewer(e.key === "ArrowLeft" ? -1 : 1); }
+        else if (e.key === "Escape") { e.preventDefault(); closeViewer(); }
+        else if (e.key === "Tab") trapFocus(e, viewer.el);
+        return;
+      }
       const dialog = !$("settings").hidden ? $("settings") : !$("prefs").hidden ? $("prefs")
         : document.body.classList.contains("show-filters") ? $("filters") : null;
       if (e.key === "Tab" && dialog) trapFocus(e, dialog);
@@ -2172,12 +2441,16 @@
       return;
     }
     const early = $("q").value.trim();  // typed while the listings were loading
+    if (history.state?.viewer) history.replaceState({ ...history.state, viewer: undefined }, "", location.href);  // (a reload)
     wire();
     route();
     history.replaceState(history.state, "", hashFor());  // (old links: in today's terms)
     saveLast();
     if (early && !q.text) applyText(early);
+    (window.requestIdleCallback || setTimeout)(() => reconcilePins().catch(() => {}));
   }
 
-  start();
+  // (tests/test_site.py renders a listing in Node: the page's functions without starting it)
+  if (globalThis.SUUMO_TEST) Object.assign(globalThis.SUUMO_TEST, { detailHtml, photosOf });
+  else start();
 })();

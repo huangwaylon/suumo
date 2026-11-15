@@ -12,7 +12,9 @@ import sqlite3
 import tomllib
 from pathlib import Path
 
-# tables with a pref column, split by it; queue rows follow their listing; runs go to every shard
+# tables with a pref column, split by it; queue rows follow their listing; runs and meta (parse_v, backfilled, queue_v)
+# go to every shard. Columns are copied by name: a state that gained columns by ALTER TABLE (db.COLUMNS) has them in
+# another order than a new one.
 BY_PREF = ("listings", "areas", "events", "prefs", "ended")
 
 
@@ -50,6 +52,10 @@ def _tables(conn, schema="main"):
                                        "AND name NOT LIKE 'sqlite_%'")]
 
 
+def _cols(conn, table, schema="main"):
+    return ", ".join(r[1] for r in conn.execute(f"PRAGMA {schema}.table_info({table})"))
+
+
 def split(db_path, shards, out_dir, log=print):
     """state.db -> out_dir/state-<n>.db. Runs that never finished are marked finished in the copies, and workers' runs
     (from an earlier split) renamed: their events were exported already, and a worker re-exporting one would write
@@ -68,13 +74,15 @@ def split(db_path, shards, out_dir, log=print):
         src.execute("ATTACH ? AS out", (str(path),))
         marks = ",".join("?" * len(prefs))
         for t in tables:
+            c = _cols(src, t)
             if t in BY_PREF:
-                src.execute(f"INSERT INTO out.{t} SELECT * FROM main.{t} WHERE pref IN ({marks})", prefs)
+                src.execute(f"INSERT INTO out.{t} ({c}) SELECT {c} FROM main.{t} WHERE pref IN ({marks})", prefs)
             elif t == "queue":
-                src.execute(f"""INSERT INTO out.queue SELECT q.* FROM main.queue q JOIN main.listings l
+                qc = ", ".join(f"q.{k}" for k in c.split(", "))
+                src.execute(f"""INSERT INTO out.queue ({c}) SELECT {qc} FROM main.queue q JOIN main.listings l
                                 ON l.type = q.type AND l.id = q.id WHERE l.pref IN ({marks})""", prefs)
             else:
-                src.execute(f"INSERT INTO out.{t} SELECT * FROM main.{t}")
+                src.execute(f"INSERT INTO out.{t} ({c}) SELECT {c} FROM main.{t}")
         src.execute("UPDATE out.runs SET finished = COALESCE(finished, started) WHERE finished IS NULL")
         # runs of an earlier layout's workers: their events files are in data/ already, and a worker re-exporting
         # one (its run ids end like its own) would write only its own prefectures' part of the file
@@ -106,8 +114,9 @@ def join(paths, out_path, log=print):
                 cols = [r[1] for r in dst.execute("PRAGMA s.table_info(events)") if r[1] != "seq"]
                 c = ", ".join(cols)
                 dst.execute(f"INSERT INTO main.events ({c}) SELECT {c} FROM s.events ORDER BY seq")
-            else:
-                dst.execute(f"INSERT OR IGNORE INTO main.{t} SELECT * FROM s.{t}")
+            else:  # meta: the first shard's (every shard has the same)
+                c = _cols(dst, t, "s")
+                dst.execute(f"INSERT OR IGNORE INTO main.{t} ({c}) SELECT {c} FROM s.{t}")
         dst.commit()
         dst.execute("DETACH s")
         log(f"joined {p}")

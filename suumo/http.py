@@ -38,9 +38,10 @@ def unreachable(e):
 
 
 class Client:
-    def __init__(self, delay=0.3, log=print):
+    def __init__(self, delay=0.3, log=print, retries=RETRIES):
         self.base = self.delay = delay
         self.log = log
+        self.retries = retries
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.8"})
         self._last = 0.0
@@ -69,7 +70,7 @@ class Client:
         attempt reached SUUMO, RuntimeError for other failures."""
         url = BASE + path
         offline = down = 0  # attempts that never reached SUUMO; that got a 5xx
-        for attempt in range(1, RETRIES + 1):
+        for attempt in range(1, self.retries + 1):
             wait = self.delay + random.uniform(0, self.delay * 0.5) - (time.monotonic() - self._last)
             if wait > 0:
                 time.sleep(wait)
@@ -106,13 +107,13 @@ class Client:
                     self._slow_down("network unreachable", count=False)
                 else:
                     self._slow_down("network error")
-            if attempt == RETRIES:  # no point waiting after the last attempt
-                self.log(f"  ! {err} on {url} (attempt {attempt}/{RETRIES})")
+            if attempt == self.retries:  # no point waiting after the last attempt
+                self.log(f"  ! {err} on {url} (attempt {attempt}/{self.retries})")
                 break
-            self.log(f"  ! {err} on {url} (attempt {attempt}/{RETRIES}), sleeping {backoff}s")
+            self.log(f"  ! {err} on {url} (attempt {attempt}/{self.retries}), sleeping {backoff}s")
             time.sleep(backoff)
-        if offline == RETRIES:
-            raise NetworkError(f"network unreachable ({RETRIES} attempts): {url}")
-        if down == RETRIES:
-            raise Unavailable(f"SUUMO unavailable ({RETRIES} attempts, {err}): {url}")
-        raise RuntimeError(f"failed after {RETRIES} attempts: {url}")
+        if offline == self.retries:
+            raise NetworkError(f"network unreachable ({self.retries} attempts): {url}")
+        if down == self.retries:
+            raise Unavailable(f"SUUMO unavailable ({self.retries} attempts, {err}): {url}")
+        raise RuntimeError(f"failed after {self.retries} attempts: {url}")

@@ -3,7 +3,9 @@
   <out>/index.html, app.js, filter.js, i18n.js, style.css   copied from site/
   <out>/data/index.json                            manifest: prefectures (slug, name, count, detail share), saved list
   <out>/data/p/<pref>.json                         one prefecture's properties, search fields only, stored by column
-  <out>/data/l/<type>/<id>.json                    one listing's full record, price history, other agents
+  <out>/data/l/<id % BUCKETS>.json.zst            listing records by id: zstd of {"keys": ["type:id", ...], <field>:
+                                                   [its value per key]} (the full record, price history, other agents,
+                                                   photos, the page's texts)
 
 The same property listed by several agents (same dup_key: same building/address, size and price) appears once,
 as its best-documented listing; the others are linked from its record. The tricky fields (plan rank, sizes, age,
@@ -12,16 +14,22 @@ GitHub Actions builds it on every push.
 """
 import hashlib
 import json
+import math
 import re
 import shutil
 import subprocess
+import tempfile
 from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo
 
-from .catalog import READY_TAGS, SOUTH_TAGS, TOP_TAG, load, load_events, run_date, station_key
+import zstandard
+
+from .catalog import NEAR, READY_TAGS, SOUTH_TAGS, TOP_TAG, load, load_events, near_minutes, run_date, station_key
+from .export import pages as page_records
 from .export import prefectures
 from .geo import load_cache, town_of
 from .parse import TYPES
@@ -33,6 +41,11 @@ JST = ZoneInfo("Asia/Tokyo")
 SPLIT_KM = 3  # same-named stations further apart than this are different stations
 STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
+BUCKETS = 8192  # listing records: data/l/<int(id) % BUCKETS>.json.zst (~50 listings each)
+BUCKET_EXT = ".json.zst"
+ZSTD_LEVEL = 19  # fixed: the same records (and zstandard version) give the same bytes
+SPARSE = ("dlat", "dlng", "photos", "near")  # index columns stored as {"at": row deltas, "v": values}
+OWN_KM = 3       # a listing's own map point is used only this close to its town's (丁目) point
 RAIL_COARSE = 0.001  # degrees (~100 m): the lines' shape for the map zoomed out (below zoom 11)
 FLAGS = {"leasehold": 1, "conditional": 2, "post1981": 4, "new": 8, "dropped": 16, "saved": 32, "gone": 64,
          "relisted": 128, "south": 256, "top": 512, "upper": 1024, "nofee": 2048, "ready": 4096, "tower": 8192,
@@ -62,6 +75,57 @@ def _image(url, lid):
     if m.group(1, 2, 3) == ("030", "N010000", lid[-3:]) and re.fullmatch(r"\d{4}\.jpg", m.group(5)):
         return int(m.group(5)[:4])
     return "/".join(m.group(1, 2, 3, 5))
+
+
+def _url(url, type_, lid, short=True):
+    """A listing's SUUMO URL as the record stores it: 'pref/slug' for the usual
+    https://suumo.jp/<TYPES path>/<pref>/<slug>/nc_<id>/ (app.js rebuilds it), else the path ('/tochi/…': new_house
+    land listings), or the URL as it is. short=False: never 'pref/slug' (other agents' listings: the client
+    rebuilds a URL from the key's type and id, which are the listing's own, not theirs)."""
+    if not url:
+        return url
+    path = re.escape(TYPES.get(type_, "-"))
+    m = short and re.fullmatch(rf"https://suumo\.jp/{path}/([a-z_]+)/([a-z0-9_]+)/nc_{lid}/", url)
+    if m:
+        return f"{m.group(1)}/{m.group(2)}"
+    return url[len("https://suumo.jp"):] if url.startswith("https://suumo.jp/") else url
+
+
+def _km(a, b):
+    """Distance in km between (lat, lng) points (equirectangular: fine at these distances)."""
+    dy, dx = a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians((a[0] + b[0]) / 2))
+    return math.hypot(dx, dy) * 111.2
+
+
+def pref_box(towns_cache, pref, margin=0.05):
+    """(south, west, north, east) around the geocoded towns of a prefecture (geo/towns.json keys start with its
+    name), or None."""
+    name = PREFS.get(pref, pref)
+    pts = [v for k, v in towns_cache.items() if k.startswith(name) and v and v[0] is not None]
+    if not pts:
+        return None
+    lats, lngs = [p[0] for p in pts], [p[1] for p in pts]
+    return min(lats) - margin, min(lngs) - margin, max(lats) + margin, max(lngs) + margin
+
+
+def own_point(rec, town_point, box):
+    """The listing page's own coordinates when they can be trusted: within OWN_KM of the town's (丁目) point, or,
+    without one, inside the prefecture's box; else None (a pin on the agent's office, a typo)."""
+    lat, lng = rec.get("lat"), rec.get("lng")
+    if lat is None or lng is None:
+        return None
+    if town_point and town_point[0] is not None:
+        return (lat, lng) if _km((lat, lng), town_point) <= OWN_KM else None
+    if box and box[0] <= lat <= box[2] and box[1] <= lng <= box[3]:
+        return lat, lng
+    return None
+
+
+def _near(minutes):
+    """near_minutes() as one character per NEAR kind (B64 of the minutes, at most 62; '_' unknown), trailing unknowns
+    dropped; None when none is known."""
+    s = "".join(B64[min(62, minutes[k])] if k in minutes else "_" for k in NEAR).rstrip("_")
+    return s or None
 
 
 def _name(rec):
@@ -129,14 +193,18 @@ class Table:
 
 
 def representatives(snap):
-    """One listing per property: in each duplicate group the one with the fullest record (page fetched, most
-    tags), then the lowest id. Returns {item: [the other listings]}, those without a commission first."""
+    """One listing per property: in each duplicate group the one with the fullest record (page fetched, its page
+    read, most photos, most tags), then the lowest id. Returns {item: [the other listings]}, those without a
+    commission first."""
     reps = {}
     for i in snap.items:
         group = snap.groups.get(i.dup)
         if not group or i.saved or i.gone:  # saved / ended listings aren't grouped: each stands for itself
             reps[i] = []
-        elif i is min(group, key=lambda g: (not g.rec.get("has_detail"), -len(g.features), g.idn)):
+        # (a member whose page was read and has the most photos: the crawl fetches one member's page, the others
+        # may hold a copy of it or an older one)
+        elif i is min(group, key=lambda g: (not g.rec.get("has_detail"), not g.rec.get("page_date"),
+                                            -(g.rec.get("photos") or 0), -len(g.features), g.idn)):
             reps[i] = sorted((g for g in group if g is not i), key=lambda g: (not g.nofee, g.price_lo or 0, g.idn))
     return reps
 
@@ -180,23 +248,31 @@ def station_prefectures(used, rail_stations=()):
     return {name: prefs for name, prefs in used.items() if name in far}
 
 
-def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
-    """The search index of these listings (one prefecture's, on the site). meta: item -> (_name, snap.new)."""
+def build_index(snap, reps, meta, towns_cache, readings, station_prefs, near=None, own=None):
+    """The search index of these listings (one prefecture's, on the site). meta: item -> (_name, snap.new);
+    near: item -> its _near() string; own: item -> its trusted own point (own_point) or None."""
+    near, own = near or {}, own or {}
 
     def station(name, pref):
         return f"{name}（{re.sub('[都道府県]$', '', PREFS.get(pref, pref))}）" if name in station_prefs else name
 
-    types, areas, towns = Table(TYPES), Table(), Table()
+    # towns and building names in text order (alike names side by side compress better than by count: Tokyo -1%)
+    town_names = sorted({t for i in reps if (t := town_of(i.rec.get("address"), i.pref))})
+    types, areas, towns = Table(TYPES), Table(), Table(town_names)
     stations = Table.by_count(station(name, i.pref) for i in reps for name, _ in i.stations)
     shown = {i: [f for f in i.features if f not in HIDDEN_TAGS] for i in reps}
     features = Table.by_count(f for fs in shown.values() for f in fs)  # so each tag set is a short bit string
-    names = Table.by_count(meta[i][0] for i in reps)
+    names = Table(sorted({meta[i][0] for i in reps if meta[i][0] is not None}))
     layouts = Table.by_count(i.rec.get("layout") for i in reps)
     cols = {k: [] for k in ("id", "type", "area", "price", "priceMax", "plan", "size", "land", "age", "stations",
                             "access", "stop", "features", "flags", "others", "newAt", "drop", "firstSeen", "unit",
-                            "town", "name", "layout", "image", "fees")}
+                            "town", "name", "layout", "image", "fees", "dlat", "dlng", "photos", "near")}
     last_id = 0
-    for i in sorted(reps, key=lambda i: (i.type, i.idn)):
+    # rows by type, area and town (then id): neighbours alike compress better (Tokyo: -4.8% gzipped); filter.js
+    # finds a listing by its key through a sorted permutation (keyed), so the order is free
+    order = list(TYPES)
+    place = {i: (order.index(i.type), i.area or "", town_of(i.rec.get("address"), i.pref) or "", i.idn) for i in reps}
+    for i in sorted(reps, key=place.get):
         (name, new), r, drop = meta[i], i.rec, snap.drop(i)
         town = town_of(r.get("address"), i.pref)
         flags = {"leasehold": i.leasehold, "conditional": i.conditional, "post1981": i.post_1981,
@@ -223,10 +299,17 @@ def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
             "town": towns(town or None), "name": names(name), "layout": layouts(r.get("layout")),
             "image": _image(r.get("image"), r["id"]),
             "fees": round(i.fees / 100) if i.fees is not None else None,   # condos' monthly fees, ¥100
+            # its own point (the listing page's map) as 1e-4° from its town's point (only with one: see own_point)
+            **_offset(own.get(i), towns_cache.get(town) if town else None),
+            "photos": r.get("photos") or None,   # how many photos its page has
+            "near": near.get(i),   # minutes on foot to NEAR's kinds
         }
         last_id = i.idn
         for k, v in row.items():
             cols[k].append(v)
+    for k in SPARSE:  # few rows have them (only listings whose page was fetched): the rows that do, and their values
+        at = [r for r, v in enumerate(cols[k]) if v is not None]
+        cols[k] = {"at": [r - p for r, p in zip(at, [0, *at], strict=False)], "v": [cols[k][r] for r in at]}
     return {
         "flags": FLAGS, "columns": cols, "types": types.values,
         "areas": [[code, snap.areas.get(code, code), PREFS.get(pref, pref), _area_group(code, snap.areas.get(code, ""))]
@@ -236,17 +319,108 @@ def build_index(snap, reps, meta, towns_cache, readings, station_prefs):
         "stationNames": [readings.get(station_key(s)) for s in stations.values],
         "features": features.values, "names": names.values, "layouts": layouts.values,
         "towns": [[t, *(towns_cache.get(t) or [None, None])] for t in towns.values],
+        "near": list(NEAR),   # the kinds in the near column, in its order
     }
 
 
-def listing_record(snap, item, others, name, new):
+def _offset(point, town_point):
+    if not point or not town_point or town_point[0] is None:
+        return {"dlat": None, "dlng": None}
+    return {"dlat": round((point[0] - town_point[0]) * 1e4), "dlng": round((point[1] - town_point[1]) * 1e4)}
+
+
+def listing_record(snap, item, others, name, new, page=None, own=None):
+    """A listing's record for its page on the site: what the client rebuilds is left out (id and type: its key; the
+    URL as 'pref/slug', the photo as site._image, others' URLs without https://suumo.jp), the page record's
+    photos (img), texts, nearby facilities (env), the agent's business details (office) and the trusted own point
+    are added. Empty values are left out."""
+    rec, lid = item.rec, item.rec["id"]
     stops = {stop for stop, _ in item.stops}
-    stations = [{**s, "bus_stop": True} if s.get("name") in stops else s for s in item.rec.get("stations") or []]
-    return {**item.rec, "stations": stations or None, "history": snap.history.get(item.key, []),
-            "new_date": run_date(str(new[0])) if new else None,
-            "name": name,
-            "others": [{"price": o.price_lo, "agent": o.rec.get("agent"), "url": o.rec.get("url"),
-                        "deal_type": o.rec.get("deal_type")} for o in others]}
+    stations = [{**s, "bus_stop": True} if s.get("name") in stops else s for s in rec.get("stations") or []]
+    page = page or {}
+    out = {**{k: v for k, v in rec.items() if k not in DROPPED},
+           "url": _url(rec.get("url"), item.type, lid), "image": _image(rec.get("image"), lid),
+           "stations": stations or None, "history": snap.history.get(item.key, []),
+           "new_date": run_date(str(new[0])) if new else None,
+           "name": name,
+           # (others' URLs never as 'pref/slug': the page would rebuild them with this listing's id)
+           "others": [{"price": o.price_lo, "agent": o.rec.get("agent"),
+                       "url": _url(o.rec.get("url"), o.type, o.rec["id"], short=False),
+                       "deal_type": o.rec.get("deal_type")} for o in others],
+           "lat": own[0] if own else None, "lng": own[1] if own else None,
+           "img": page.get("img"), "texts": page.get("texts"), "env": page.get("env"), "office": page.get("agent")}
+    return {k: v for k, v in out.items() if v not in (None, "", [], {})}
+
+
+# in a listing's key or its index row: not in its record
+DROPPED = {"id", "type", "lat", "lng", "dup_key", "has_detail", "area_code", "area", "town", "page_twin"}
+
+
+class Buckets:
+    """Listing records into data/l/<int(id) % BUCKETS>.json.zst, memory-bounded: records are appended to a temp file
+    per bucket as they come (buffered, one prefecture at a time); at the end each bucket is sorted by key, laid out
+    by field ({"keys": [...], field: [value per key, null where missing], ...}: like values side by side compress
+    better) and compressed with zstd at ZSTD_LEVEL, in a process per CPU (each bucket single-threaded, so the
+    output is deterministic)."""
+
+    FLUSH = 32 << 20  # bytes of records held before they're appended to the temp files
+
+    def __init__(self, out_dir, n=BUCKETS):
+        self.out, self.n = Path(out_dir), n
+        self.tmp = Path(tempfile.mkdtemp(prefix="suumo-buckets-"))
+        self.buf, self.size, self.used = defaultdict(list), 0, set()
+
+    def add(self, key, record):
+        line = f"{_dump(key)}\t{_dump(record)}\n"   # (one line: JSON escapes tabs and newlines)
+        b = int(key.partition(":")[2]) % self.n
+        self.buf[b].append(line)
+        self.size += len(line)
+        if self.size >= self.FLUSH:
+            self.flush()
+
+    def flush(self):
+        for b, lines in self.buf.items():
+            with open(self.tmp / str(b), "a", encoding="utf-8") as f:
+                f.writelines(lines)
+            self.used.add(b)
+        self.buf, self.size = defaultdict(list), 0
+
+    def discard(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def close(self, workers=None):
+        """Writes the buckets; returns (files, bytes)."""
+        self.flush()
+        self.out.mkdir(parents=True, exist_ok=True)
+        jobs = [(str(self.tmp / str(b)), str(self.out / f"{b}{BUCKET_EXT}")) for b in sorted(self.used)]
+        try:
+            if len(jobs) < 256:  # (a small site: not worth starting processes)
+                sizes = [_write_bucket(j) for j in jobs]
+            else:
+                with ProcessPoolExecutor(max_workers=workers) as pool:
+                    sizes = list(pool.map(_write_bucket, jobs, chunksize=64))
+        finally:
+            shutil.rmtree(self.tmp, ignore_errors=True)
+        return len(sizes), sum(sizes)
+
+
+def grouped(records):
+    """{key: record} -> {"keys": [key, ...], field: [value per key or None], ...}, keys and fields sorted."""
+    keys = sorted(records)
+    fields = sorted({f for r in records.values() for f in r})
+    return {"keys": keys, **{f: [records[k].get(f) for k in keys] for f in fields}}
+
+
+def _write_bucket(job):
+    src, dest = job
+    records = {}
+    with open(src, encoding="utf-8") as f:
+        for line in f:
+            key, _, rec = line.rstrip("\n").partition("\t")
+            records[json.loads(key)] = json.loads(rec)
+    body = zstandard.ZstdCompressor(level=ZSTD_LEVEL).compress(_dump(grouped(records)).encode())
+    Path(dest).write_bytes(body)
+    return len(body)
 
 
 def _updated(data_dir):
@@ -340,24 +514,39 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     readings = station_names(stations_cache) if stations_cache else {}
     towns, updated = load_cache(geo_cache), _updated(Path(data_dir))
     (out / "data" / "p").mkdir(parents=True)
-    listings = out / "data" / "l"
+    buckets = Buckets(out / "data" / "l")
     # one index per prefecture, loaded as chosen; the manifest says what there is (Tokyo first, then by size)
     built = sorted(counts, key=lambda p: (p != "tokyo", -counts[p][0]))
-    for pref in built:
-        snap, reps = properties(pref)
-        meta = {i: (_name(i.rec), snap.new(i)) for i in reps}  # each worked out once: the index and the record use them
-        (out / "data" / "p" / f"{pref}.json").write_text(
-            _dump(build_index(snap, reps, meta, towns, readings, station_prefs)), encoding="utf-8")
-        for type_ in {i.type for i in reps}:
-            (listings / type_).mkdir(parents=True, exist_ok=True)
-        for item, others in reps.items():
-            with open(f"{listings}/{item.type}/{item.rec['id']}.json", "w", encoding="utf-8") as f:
-                f.write(_dump(listing_record(snap, item, others, *meta[item])))
-        del snap, reps, meta  # before the next prefecture is loaded
+    dropped = 0  # listings whose own point was too far from their town's
+    try:
+        for pref in built:
+            snap, reps = properties(pref)
+            # each worked out once: the index and the record use them
+            meta = {i: (_name(i.rec), snap.new(i)) for i in reps}
+            pages, box = page_records(data_dir, pref), pref_box(towns, pref)
+            own = {i: own_point(i.rec, towns.get(town_of(i.rec.get("address"), i.pref) or ""), box) for i in reps}
+            dropped += sum(1 for i in reps if own[i] is None and i.rec.get("lat") is not None)
+            near = {}
+            # each page parsed once, into its record and its near column, then dropped
+            for item, others in reps.items():
+                raw = pages.pop(item.key, None)
+                if raw is None and item.rec.get("page_twin"):  # (land whose page was read under new_house)
+                    raw = pages.pop(f"{item.rec['page_twin']}:{item.rec['id']}", None)
+                page = json.loads(raw) if raw else None
+                near[item] = _near(near_minutes(page.get("env"))) if page else None
+                buckets.add(item.key, listing_record(snap, item, others, *meta[item], page, own[item]))
+            del pages
+            (out / "data" / "p" / f"{pref}.json").write_text(
+                _dump(build_index(snap, reps, meta, towns, readings, station_prefs, near, own)), encoding="utf-8")
+            del snap, reps, meta, own, near  # before the next prefecture is loaded
+    except BaseException:
+        buckets.discard()  # (its temp files: a failed or interrupted build leaves none)
+        raise
+    n_buckets, bucket_bytes = buckets.close()
     manifest = {"updated": updated,
                 # [slug, name, properties, share of them with their listing page fetched]
                 "prefs": [[p, PREFS.get(p, p), *counts[p]] for p in built],
-                "saved": saved_at}
+                "saved": saved_at, "buckets": BUCKETS, "bucketExt": BUCKET_EXT}
     fx = Path(data_dir) / "fx.json"  # the yen-dollar rate (fx.py): the page shows prices in USD too
     if fx.exists():
         manifest["fx"] = json.loads(fx.read_text())
@@ -365,5 +554,6 @@ def build(data_dir, geo_cache, out_dir, today=None, log=print, stations_cache=No
     if rail:
         (out / "data" / "rail.json").write_text(_dump({**rail, "lines": rail_lines(rail["lines"])}), encoding="utf-8")
     sizes = ", ".join(f"{p} {(out / 'data' / 'p' / f'{p}.json').stat().st_size / 1e6:.1f} MB" for p in built)
-    log(f"site: {sum(n for n, _ in counts.values()):,} properties ({n_listings:,} listings); indexes: {sizes} → {out}")
+    log(f"site: {sum(n for n, _ in counts.values()):,} properties ({n_listings:,} listings); indexes: {sizes}; "
+        f"records: {n_buckets:,} buckets, {bucket_bytes / 1e6:.1f} MB; own points not used: {dropped:,} → {out}")
     return manifest

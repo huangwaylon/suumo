@@ -1,8 +1,9 @@
 # The watchdog: every 3 hours, checks that the crawl is alive, and tells the owner when it isn't (an issue opened
 # by this workflow notifies by email). Problems: no `data: run` commit on main for 26 h (crawls at 05:07 and
-# 15:07 JST, so the normal gap is 10-14 h), the last finished crawl.yml or pages.yml run on main failed, crawl.yml
-# disabled, or no crawl.yml run at all for 26 h (GitHub drops scheduled runs under load): then it re-enables
-# and/or dispatches one itself.
+# 15:07 JST, so the normal gap is 10-14 h), any crawl.yml run on main that failed in the last 12 h (most runs are
+# green no-ops: their plan found no work), the last finished pages.yml run on main failed, crawl.yml disabled (it
+# re-enables it), or no crawl.yml run whose shards ran for 24 h. After 12 h without any run (crawl.yml ticks every
+# 30 min, but GitHub drops most scheduled runs under load) it dispatches one itself, quietly unless the dispatch fails.
 #
 # One tracking issue, "Crawl watchdog: attention needed" (label watchdog): opened on the first problem, commented
 # on only when the set of problems changes (a fingerprint line in the body and in each comment), closed with a
@@ -17,6 +18,10 @@ on:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash   # (named: bash -e -o pipefail)
 
 concurrency:
   group: watchdog
@@ -36,9 +41,15 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TITLE: 'Crawl watchdog: attention needed'
       LABEL: watchdog
-      MAX_AGE: '93600'   # 26 h, in seconds
+      DATA_MAX_AGE: '93600'   # 26 h, in seconds: the newest `data: run` commit
+      RUN_MAX_AGE: '43200'    # 12 h: the newest crawl.yml run (any outcome); older -> the watchdog dispatches one
+      NO_RUN_PROBLEM: '86400' # 24 h: no run's shards ran (only no-op plans) -> a problem (and a dispatch)
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts   # ci.py watch
       - name: Check
         run: |
           set -euo pipefail
@@ -53,14 +64,35 @@ jobs:
             | if . == null then "none 999999999" else
                 "\(.sha[0:7]) \(now - (.commit.committer.date | fromdateiso8601) | floor)" end')
           read -r sha age <<< "$newest"
-          if [ "$age" -gt "$MAX_AGE" ]; then
+          if [ "$age" -gt "$DATA_MAX_AGE" ]; then
             problem stale "No \`data: run\` commit on main for $(hours "$age") (newest: $sha)."
           fi
           echo "data: newest data commit $sha, $(hours "$age") ago" >> /tmp/status
 
-          # 2, 3. The last finished run of crawl.yml and pages.yml on main
-          for wf in crawl pages; do
-            # (a cancelled run is a superseded pending one: it says nothing about the crawl)
+          # 2. crawl.yml's runs on main: every failed one within 12 h (most runs are green no-ops whose plan found no
+          # work, so "the last run" would hide a red one within 30 min; cancelled = a superseded pending run: ignored),
+          # and when shards last ran (ci.py watch: runs whose shard jobs were all skipped don't count)
+          gh run list --workflow crawl.yml --branch main --limit 100 --json databaseId,createdAt,conclusion,url \
+            > /tmp/runs.json
+          echo '{}' > /tmp/jobs.json
+          for id in $(jq -r --argjson w "$NO_RUN_PROBLEM" \
+              '.[] | select(now - (.createdAt | fromdateiso8601) < $w) | .databaseId' /tmp/runs.json); do
+            gh api "repos/$GH_REPO/actions/runs/$id/jobs?per_page=100" --jq '[.jobs[] | {name, conclusion}]' > /tmp/j.json
+            jq --arg id "$id" --slurpfile j /tmp/j.json '. + {($id): $j[0]}' /tmp/jobs.json > /tmp/jobs.next
+            mv /tmp/jobs.next /tmp/jobs.json
+          done
+          python3 .github/scripts/ci.py watch /tmp/runs.json /tmp/jobs.json > /tmp/watch
+          run_age=$(sed -n 's/^run_age=//p' /tmp/watch)
+          crawl_age=$(sed -n 's/^crawl_age=//p' /tmp/watch)
+          failed=$(sed -n 's/^failed=//p' /tmp/watch)
+          if [ -n "$failed" ]; then
+            problem crawl_failed "crawl.yml runs on main that failed in the last $(hours "$RUN_MAX_AGE"): $failed"
+          fi
+          echo "crawl.yml: failed runs in $(hours "$RUN_MAX_AGE"): ${failed:-none}" >> /tmp/status
+
+          # 3. The last finished run of pages.yml on main
+          for wf in pages; do
+            # (a cancelled run is a superseded pending one: it says nothing about the site)
             last=$(gh run list --workflow "$wf.yml" --branch main --status completed --limit 20 \
               --json conclusion,url --jq '[.[] | select(.conclusion != "cancelled")][0] // {}
                 | "\(.conclusion // "none") \(.url // "-")"')
@@ -71,7 +103,8 @@ jobs:
             echo "$wf.yml: last finished run on main: $conclusion $url" >> /tmp/status
           done
 
-          # 4. Schedule health: crawl.yml enabled, and some run of it created within 26 h
+          # 4. Schedule health: crawl.yml enabled; some run of it created within 12 h, else the watchdog dispatches one
+          # (a dispatch runs every shard); a problem when no run's shards ran for 24 h
           state=$(gh api "repos/$GH_REPO/actions/workflows/crawl.yml" --jq .state)
           if [ "$state" != active ]; then
             if gh workflow enable crawl.yml; then
@@ -80,16 +113,18 @@ jobs:
               problem disabled "crawl.yml is \`$state\` and the watchdog couldn't re-enable it."
             fi
           fi
-          recent=$(gh run list --workflow crawl.yml --branch main --limit 1 --json createdAt \
-            --jq "[.[] | select(now - (.createdAt | fromdateiso8601) < $MAX_AGE)] | length")
-          if [ "$recent" = 0 ]; then
+          dispatched=no
+          if [ "$run_age" -gt "$RUN_MAX_AGE" ] || [ "$crawl_age" -gt "$NO_RUN_PROBLEM" ]; then
             if gh workflow run crawl.yml --ref main; then
-              problem no_runs "No crawl.yml run on main was started in 26 h; the watchdog dispatched one."
+              dispatched=yes
             else
-              problem no_runs "No crawl.yml run on main was started in 26 h, and the watchdog's dispatch failed."
+              problem dispatch_failed "No crawl.yml run on main for $(hours "$run_age"), and the watchdog's dispatch failed."
             fi
           fi
-          echo "crawl.yml: $state, runs in the last 26 h: $recent" >> /tmp/status
+          if [ "$crawl_age" -gt "$NO_RUN_PROBLEM" ]; then
+            problem no_runs "No crawl.yml run on main ran its shards in $(hours "$crawl_age") (the watchdog dispatched: $dispatched)."
+          fi
+          echo "crawl.yml: $state, newest run $(hours "$run_age") ago, shards last ran $(hours "$crawl_age") ago, dispatched: $dispatched" >> /tmp/status
 
           { echo "### Watchdog: ${keys[*]:-all well}"; echo; sed 's/^/- /' /tmp/status
             [ -s /tmp/lines ] && { echo; echo '**Problems**'; cat /tmp/lines; }; true; } >> "$GITHUB_STEP_SUMMARY"

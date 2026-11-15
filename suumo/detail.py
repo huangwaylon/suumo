@@ -1,23 +1,30 @@
-"""Parse a listing's own (detail) page into normalized fields.
+"""A listing's page record (suumo.extract) -> normalized fields (derive): what detail_json, the export and the site use.
 
-The page has a spec table of <th>label</th><td>value</td> rows (labels carry a trailing 'ヒント' link),
-a 特徴ピックアップ feature-tag list, and the agent block with 取引態様 (deal type).
+Pure: reads only the record. Spec values are read in their one-line form (`flat`: whitespace collapsed,
+'[ … ]' removed), station lines and features as written apart from surrounding whitespace, which is what the
+listing-page parser before page records produced. PARSE_VERSION is bumped when derive's output changes for the same
+record; runs re-derive every stored record then (no requests).
 """
 import re
 
-from bs4 import BeautifulSoup
+from .parse import clean, parse_built, parse_m2, parse_prices, parse_station, yen
 
-from .parse import clean, parse_built, parse_m2, parse_prices, parse_station, text, yen
+PARSE_VERSION = 1
+
 
 _num = re.compile(r"\d+(?:\.\d+)?")
-_TEXT_FIELDS = (  # field, spec labels: values kept as written
+_ws = re.compile(r"\s+")
+_brk = re.compile(r"\[[^\[\]\n]{0,200}\]")  # bounded: linear time on any input
+_TEXT_FIELDS = (  # field, spec labels: values kept as written (one-line form)
     ("direction", ("向き",)), ("zoning", ("用途地域",)), ("land_status", ("土地状況",)), ("land_category", ("地目",)),
     ("builder", ("施工",)), ("handover", ("引渡可能時期", "引き渡し時期")), ("energy", ("エネルギー消費性能",)),
     ("insulation", ("断熱性能",)), ("restrictions", ("その他制限事項",)), ("top_price_band", ("最多価格帯",)),
 )
 
-# Every key parse_detail can return (a test checks the fixtures against it): what detail_json may hold.
+
+# Every key derive can return (a test checks the fixtures against it): what detail_json may hold.
 FIELDS = frozenset({
+    "lat", "lng", "photos",
     "stations", "price_excludes_building", "mgmt_fee", "mgmt_form", "repair_fee", "repair_fund_once",
     "other_monthly", "other_fees", "floor", "structure", "floors_above", "floors_below", "total_units",
     "units_for_sale", "land_rights", "land_rights_note", "coverage_pct", "far_pct", "parking", "site_m2", "road",
@@ -26,15 +33,10 @@ FIELDS = frozenset({
 })
 
 
-def spec_table(soup):
-    """{label: (value, td)} from every th/td pair; first occurrence wins (the summary and full tables repeat)."""
-    spec = {}
-    for th in soup.find_all("th"):
-        td = th.find_next_sibling("td")
-        k = re.sub(r"ヒント|\s", "", th.get_text())
-        if td and k and len(k) < 20 and k not in spec:
-            spec[k] = (re.sub(r"\[[^\]]*\]", "", text(td)).strip(), td)  # drop "[ 乗り換え案内 ]" style links
-    return spec
+def flat(s):
+    """Record text -> the single-line form the fields use: every whitespace run (U+3000 and no-break spaces too) one
+    space, '[ … ]' groups removed. Changing it changes derive's output: bump PARSE_VERSION."""
+    return _brk.sub("", _ws.sub(" ", s[:20_000]).strip()).strip()
 
 
 def _int(s):
@@ -97,8 +99,7 @@ def _ratios(s):
 def _parking(s, notes):
     if s:
         lo, hi = parse_prices(s)
-        p = {"status": re.split(r"[（(]", s)[0].strip(), "fee_min": lo, "fee_max": hi if hi != lo else None}
-        return clean(p)
+        return clean({"status": re.split(r"[（(]", s)[0].strip(), "fee_min": lo, "fee_max": hi if hi != lo else None})
     m = re.search(r"駐車場：([^、]+)", notes or "")
     return {"status": m.group(1).strip()} if m else None
 
@@ -118,35 +119,28 @@ def _road(s):
     head = s.split("、")[0]
     if m := re.search(r"私道部分\s*(\d+(?:\.\d+)?)\s*m", s):
         r["private_m2"] = float(m.group(1))
-    elif "：" not in head and not head.startswith("無"):  # leading private-road area, e.g. '23.73m2'
-        r["private_m2"] = parse_m2(head)[0]
+    elif "：" not in head and not head.startswith("無"):
+        r["private_m2"] = parse_m2(head)[0]  # leading private-road area, e.g. '23.73m2'
     if m := re.search(r"セットバック：\s*(\d+(?:\.\d+)?)\s*m", s):
         r["setback_m2"] = float(m.group(1))
     r["text"] = s
     return clean(r)
 
 
-def _features(soup):
-    h = soup.find(lambda t: t.name in ("h3", "h2") and "特徴ピックアップ" in t.get_text())
-    box = h.find_parent(class_="secTitleOuterK") if h else None
-    body = box.find_next_sibling("div") if box else None
-    return sorted({f.strip() for f in text(body).split(" / ") if f.strip()}) if body else []
-
-
-def parse_detail(html):
-    soup = BeautifulSoup(html, "lxml")
-    spec = spec_table(soup)
+def derive(page):
+    """A page record -> normalized fields (keys in FIELDS; empty values omitted). lat/lng are the page's map point
+    rounded to 4 decimals (about 10 m); photos is the gallery's length."""
+    spec = page.get("spec", {})
 
     def g(*keys):
-        """First non-empty value among the labels (SUUMO uses '-' for 'not stated')."""
-        return next((spec[k][0] for k in keys if k in spec and spec[k][0] not in ("", "-")), None)
+        """The first label's value in its one-line form (the record holds real values only)."""
+        return next((flat(spec[k]) for k in keys if k in spec), None)
 
-    notes = g("その他概要・特記事項")
+    notes = flat(page["texts"]["notes"]) if "notes" in page.get("texts", {}) else None
+    notes = notes if notes not in ("", "-") else None
     r = {}
-
-    if (v := g("交通")):  # one station per <div> in the cell
-        divs = spec["交通"][1].find_all("div")
-        r["stations"] = [st for st in map(parse_station, [d.get_text(" ").strip() for d in divs] or [v]) if st]
+    if (lines := spec.get("交通")):
+        r["stations"] = [st for st in (parse_station(s.strip()) for s in lines) if st]
     if (v := g("価格", "販売価格")) and ("土地のみの価格" in v or "建物価格は含みません" in v):
         r["price_excludes_building"] = True
     if (v := g("管理費")):
@@ -194,7 +188,11 @@ def parse_detail(html):
         r["sale_schedule"] = v
     for key, labels in _TEXT_FIELDS:
         r[key] = g(*labels)
-    r["features"] = _features(soup)
-    m = re.search(r"取引態様：\s*＜([^＞]+)＞", text(soup))
-    r["deal_type"] = m.group(1) if m else None
+    r["features"] = sorted({f for f in (_ws.sub(" ", f).strip() for f in page.get("features", [])) if f})
+    if (v := page.get("deal_type")):
+        r["deal_type"] = _ws.sub(" ", v)
+    if (ll := page.get("ll")):
+        r["lat"], r["lng"] = round(ll["lat"], 4), round(ll["lng"], 4)
+    if (img := page.get("img")):
+        r["photos"] = len(img["l"])
     return clean(r)

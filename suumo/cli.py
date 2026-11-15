@@ -1,6 +1,7 @@
 """Command line: `uv run python -m suumo <command>` (see README)."""
 import argparse
 import contextlib
+import gzip
 import json
 import os
 import re
@@ -12,19 +13,20 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from . import canary as canary_mod
 from . import rail as rail_mod
 from . import saved as saved_mod
 from . import scope as scope_mod
 from . import shards as shards_mod
-from .archive import Archive
 from .db import DB, exclusive, locked
 from .export import export, export_events, export_interrupted
 from .fx import update as update_fx
 from .geo import geocode
 from .gitdata import commit_data, pull
 from .http import Client
-from .maintenance import out_of_scope, prune, reparse, seed, strip_list_fields
-from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline
+from .maintenance import out_of_scope, prune, seed
+from .migrate import migrate_state
+from .pipeline import MAX_DETAIL_ATTEMPTS, Pipeline, check_backfilled, rederive
 from .site import build as build_site
 from .stations import update as update_stations
 
@@ -38,6 +40,7 @@ MIN_DELAY = 0.3        # never faster than this between requests (the owner's de
 THROTTLED_DELAY = 1.0  # ...and never faster than this once SUUMO has pushed back (a 429/403 in any run kept)
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCOPE = "scope.toml"
+OFFLINE_EXIT = 3  # `run` stopped by an outage, after its export (crawl.yml uploads the data of 0 and 3 only)
 SHARDS = "shards.toml"  # the crawl workers' prefectures (GitHub Actions)
 
 
@@ -106,7 +109,6 @@ class Ctx:
     def __init__(self, args):
         self.args = args
         self.db = DB(ROOT / args.db, migrate=False)
-        self.archive = Archive(ROOT / args.archive)
         self.targets = scope_mod.load(ROOT / args.scope)
         self.suffix = ""
         if getattr(args, "shard", None) is not None:  # one crawl worker: its prefectures only, its own run ids
@@ -134,6 +136,7 @@ def cmd_run(c: Ctx):
     the open transaction (never half an area's reconcile), marks the run interrupted and exits 130; the next run
     exports its events. A crawl stopped by a network outage finishes the run without listing pages and exits 1."""
     a = c.args
+    check_backfilled(c.db)
     now = datetime.now(JST)
     run_id = now.strftime("%Y%m%dT%H%M%S") + c.suffix
     if a.push:
@@ -144,7 +147,13 @@ def cmd_run(c: Ctx):
     c.db.commit()
     client = Client(delay=run_delay(c.db, a.delay))
     t0 = time.monotonic()
-    p = Pipeline(c.db, c.archive, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED))
+    p = Pipeline(c.db, client, c.targets, now, run_id, saved=saved_mod.load(ROOT / SAVED),
+                 debug_dir=ROOT / a.debug_dir if a.debug_dir else None)
+    redone = rederive(c.db)  # a newer detail.derive: every stored record again (no requests)
+    if redone:
+        p.report["rederived"] = {"rows": redone[0], "errors": redone[1]}
+        if redone[1]:
+            p.flag("derive_errors")
 
     def stats():
         return dict(requests=client.requests_made, slowdowns=client.slowdowns, pushbacks=client.pushbacks,
@@ -193,16 +202,17 @@ def cmd_run(c: Ctx):
     if a.commit or a.push:
         commit_data(ROOT, run_id, push=a.push)
     c.out_of_scope_hint()
-    if not online:  # non-zero, so a driver waits before the next try
-        raise SystemExit(f"run {run_id}: SUUMO or the network is down; the search results left are crawled later")
+    if not online:  # exit 3 (not 1, a crash's): the run finished and exported; a driver waits before the next try
+        print(f"run {run_id}: SUUMO or the network is down; the search results left are crawled later")
+        raise SystemExit(OFFLINE_EXIT)
 
 
 def cmd_status(c: Ctx):
     db = c.db
-    print(f"{'pref/type':<22}{'active':>7}{'detail':>8}{'queued':>7}{'ended':>8}  areas")  # ended: kept, saved
+    print(f"{'pref/type':<22}{'active':>7}{'records':>8}{'queued':>7}{'ended':>8}  areas")  # ended: kept, saved
     total_q = 0
     for t in c.targets:
-        rows = [r for r in db.x("SELECT area_code, status, detail_json IS NOT NULL d FROM listings "
+        rows = [r for r in db.x("SELECT area_code, status, page_json IS NOT NULL d FROM listings "
                                 "WHERE pref=? AND type=?", t.pref, t.type) if t.includes(r["area_code"])]
         active = [r for r in rows if r["status"] == "active"]
         queued = sum(1 for r in db.x("""SELECT l.area_code FROM queue q JOIN listings l ON l.type=q.type AND l.id=q.id
@@ -214,11 +224,22 @@ def cmd_status(c: Ctx):
         pct = f"{100 * sum(r['d'] for r in active) / len(active):.0f}%" if active else "-"
         print(f"{t.pref + '/' + t.type:<22}{len(active):>7}{pct:>8}{queued:>7}{len(rows) - len(active):>8}  "
               f"{dict(areas)}")
-    print(f"\nqueue: {total_q:,} listing pages")
-    parse_failures = db.x("SELECT COUNT(*) FROM queue WHERE last_error LIKE 'parse:%'").fetchone()[0]
-    if parse_failures:
-        print(f"parse failures: {parse_failures} (fix the parser, then `reparse`)")
+    # records: of active listings, the share with a page record (copies of a lead never get one: by design)
+    by_priority = dict(db.x("SELECT priority, COUNT(*) FROM queue WHERE attempts < ? GROUP BY priority",
+                            MAX_DETAIL_ATTEMPTS).fetchall())
+    names = {2: "new", 1: "changed", 0: "backfill/refresh"}
+    parts = ", ".join(f"{names.get(k, k)} {by_priority[k]:,}" for k in sorted(by_priority, reverse=True))
+    print(f"\nqueue: {total_q:,} listing pages" + (f" ({parts})" if parts else ""))
+    extract_errors = db.x("SELECT COUNT(*) FROM queue WHERE last_error LIKE 'extract:%'").fetchone()[0]
+    if extract_errors:
+        print(f"extract errors: {extract_errors} (fix extract, then `refetch --errors`)")
     last = db.x("SELECT * FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
+    done = db.x("SELECT report FROM runs WHERE finished IS NOT NULL AND report IS NOT NULL "
+                "ORDER BY run_id DESC LIMIT 1").fetchone()
+    report = json.loads(done["report"]) if done else {}
+    if report.get("pages", {}).get("derive_errors") or report.get("flags"):
+        print(f"last finished run: derive errors {report.get('pages', {}).get('derive_errors', 0)}, "
+              f"flags {report.get('flags') or 'none'}")
     if last and last["finished"]:
         print(f"last run: {last['run_id']} (finished {last['finished']})")
     elif last:
@@ -238,7 +259,7 @@ def print_progress(run, running):
 
 
 def cmd_prune(c: Ctx):
-    if prune(c.db, c.archive, c.targets, c.data, apply=c.args.yes):
+    if prune(c.db, c.targets, c.data, apply=c.args.yes):
         export(c.db, c.targets, c.data)
 
 
@@ -267,6 +288,15 @@ def cmd_site(args):
                saved=saved_mod.load(ROOT / SAVED), rail_path=ROOT / RAIL)
 
 
+def cmd_canary(args):
+    result = canary_mod.run(Client(delay=canary_mod.DELAY, retries=canary_mod.RETRIES), ROOT / args.data)
+    verdict = {k: "ok" if result[k] else "BAD" for k in ("search_ok", "list_ok")}
+    print(f"search pages {verdict['search_ok']}, listing pages {verdict['list_ok']}"
+          + ("" if result["reachable"] else "; SUUMO or the network is down (checks skipped)"))
+    if args.out:
+        canary_mod.write_output(result, args.out)
+
+
 def env(name):
     """A setting from the environment, else from .env (KEY=value lines; never committed)."""
     if os.environ.get(name):
@@ -290,9 +320,34 @@ def cmd_saved(args):
     print(message)
 
 
-def cmd_reparse(c: Ctx):
-    reparse(c.db, c.archive)
-    export(c.db, c.targets, c.data)
+def cmd_refetch(c: Ctx):
+    """Queue the pages extract failed on again (after a fix to extract): attempts 0, each at its own priority."""
+    limit = c.args.limit if c.args.limit is not None else -1
+    n = c.db.x("""UPDATE queue SET attempts=0, last_error=NULL WHERE rowid IN (
+                    SELECT rowid FROM queue WHERE last_error LIKE 'extract:%'
+                    ORDER BY enqueued_at, type, id LIMIT ?)""", limit).rowcount
+    c.db.commit()
+    print(f"queued {n} listing pages extract failed on again (fetched by the next run)")
+
+
+def cmd_extract(args):
+    """A saved page (the debug sample's <type>_<id>.html.gz, or any .html) -> its record and derived fields."""
+    from .detail import derive
+    from .extract import extract
+    path = Path(args.file)
+    raw = path.read_bytes()
+    html = (gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw).decode("utf-8")
+    type_key, lid = args.type, args.id
+    m = re.fullmatch(r"(\w+?)_(\d+)", path.name.split(".")[0].removeprefix("detail_"))
+    if m:
+        type_key, lid = type_key or m.group(1), lid or m.group(2)
+    record = extract(html, type_key or "", lid or "")
+    print(json.dumps({"type": type_key, "id": lid, "record": record, "derived": derive(record)},
+                     ensure_ascii=False, indent=1, sort_keys=True))
+
+
+def cmd_migrate_state(c: Ctx):
+    migrate_state(c.db)
 
 
 def cmd_seed(c: Ctx):
@@ -310,7 +365,8 @@ def main():
     ap = argparse.ArgumentParser(prog="suumo")
     ap.add_argument("--scope", default=DEFAULT_SCOPE)
     ap.add_argument("--db", default="state.db")
-    ap.add_argument("--archive", default="archive")
+    ap.add_argument("--debug-dir", metavar="DIR",
+                    help="write the debug sample here: every page extract fails on + 0.5%% of fetched pages (run)")
     ap.add_argument("--data", default="data")
     ap.add_argument("--shard", type=int, metavar="N",
                     help=f"one crawl worker: only shard N's prefectures ({SHARDS}), run ids ending -sNN")
@@ -338,7 +394,15 @@ def main():
     command("status", cmd_status, "read", "coverage, queue, the current run's progress")
     command("prune", cmd_prune, "write", "delete data no longer in scope.toml (dry run without --yes)").add_argument(
         "--yes", action="store_true")
-    command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
+    f = command("refetch", cmd_refetch, "write", "queue listing pages again (--errors: those extract failed on)")
+    f.add_argument("--errors", action="store_true", required=True, help="the pages extract failed on")
+    f.add_argument("--limit", type=int, metavar="N", help="at most N (oldest first)")
+    e = command("extract", cmd_extract, "files", "a saved listing page -> its record and derived fields (debugging)")
+    e.add_argument("file", help="<type>_<id>.html.gz from the debug sample, or any .html(.gz)")
+    e.add_argument("--type", help="property type (default: from the file name)")
+    e.add_argument("--id", help="listing id (default: from the file name)")
+    command("migrate-state", cmd_migrate_state, "write",
+            "bring an older state up to the page-record schema (columns, meta, queue priorities); idempotent")
     command("seed", cmd_seed, "write", "rebuild state.db for prefectures it doesn't hold from data/ (no requests)")
     command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)").add_argument(
         "--after-run", action="store_true", help="what a run does after its crawl: a time budget, and fx.json")
@@ -351,6 +415,9 @@ def main():
     command("rail", cmd_rail, "files", "rebuild geo/rail.json: railway lines and stations for the map (N02 + ODPT)")
     command("saved", cmd_saved, "files", "apply 'save <type>:<id>' / 'unsave <type>:<id>' to saved.json").add_argument(
         "title")
+    k = command("canary", cmd_canary, "files", "a few requests: are search and listing pages still understood?")
+    k.add_argument("--data", default=argparse.SUPPRESS, help="where the listings to fetch come from")
+    k.add_argument("--out", help="append search_ok=/list_ok= lines here (GITHUB_OUTPUT)")
     args = ap.parse_args()
     if args.access == "files":
         return args.func(args)
@@ -358,7 +425,6 @@ def main():
     with exclusive(c.lock) if args.access == "write" else contextlib.nullcontext():
         if args.access == "write":
             c.db.migrate()
-            strip_list_fields(c.db)
         args.func(c)
 
 

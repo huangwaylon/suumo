@@ -1,16 +1,15 @@
-"""Parsers against real SUUMO pages saved in tests/fixtures (Komae, 2026-10-05)."""
+"""Search-result and area-page parsers against real SUUMO pages saved in tests/fixtures (Komae, 2026-10-05).
+Listing pages: tests/test_extract.py."""
 import pytest
 
-from suumo.archive import Archive
-from suumo.detail import FIELDS, parse_detail
 from suumo.parse import parse_areas, parse_list_page
-from tests.helpers import FIXTURES
+from tests.helpers import fixture_html
 
 KOMAE = {"code": "13219", "name": "狛江市"}
 
 
 def page(name):
-    return Archive.read(FIXTURES / name)
+    return fixture_html(name)
 
 
 def test_area_page_counts_include_comma_formatted_numbers():
@@ -32,30 +31,3 @@ def test_a_page_without_a_hit_count_has_none():
     html = page("list_used_condo_komae.html.gz").replace("pagination_set-hit", "x").replace("hitbox", "x")
     assert parse_list_page(html, "used_condo", KOMAE)[0] is None
 
-
-def test_condo_listing_page():
-    d = parse_detail(page("detail_used_condo_20205670.html.gz"))
-    assert d["mgmt_fee"] == 146000 and d["repair_fee"] == 26000
-    assert (d["floor"], d["structure"], d["floors_above"]) == (3, "RC", 5)
-    assert d["land_rights"] == "定期借地権" and "借地期間残存36年" in d["land_rights_note"]
-    assert [s["name"] for s in d["stations"]] == ["喜多見", "狛江"]
-    assert "南向き" in d["features"] and d["deal_type"] == "仲介"
-
-
-def test_house_listing_page():
-    d = parse_detail(page("detail_used_house_20779514.html.gz"))
-    assert (d["structure"], d["floors_above"], d["coverage_pct"], d["far_pct"]) == ("木造", 2, 40, 80)
-    assert d["road"]["dir"] == "東" and d["road"]["width_m"] == 5.0
-    assert d["stations"][2] == {"line": "小田急バス", "name": "狛江第5小学校", "bus_stop": True, "walk": 3}
-    assert d["reform"]["date"] == "2019-06"
-
-
-def test_land_listing_page():
-    d = parse_detail(page("detail_land_20862637.html.gz"))
-    assert d["build_condition"] is True and (d["coverage_pct"], d["far_pct"]) == (60, 200)
-    assert d["road"] == {"width_m": 10.0, "setback_m2": 48.24, "text": d["road"]["text"]}
-
-
-@pytest.mark.parametrize("name", ["detail_used_condo_20205670", "detail_used_house_20779514", "detail_land_20862637"])
-def test_listing_page_fields_are_declared(name):
-    assert parse_detail(page(f"{name}.html.gz")).keys() <= FIELDS   # add new fields to detail.FIELDS

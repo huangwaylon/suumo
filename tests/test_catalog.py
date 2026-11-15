@@ -120,3 +120,12 @@ def test_one_spelling_per_station(tmp_path):
     assert [st["name"] for st in by_id["2"].rec["stations"]] == ["荻窪", "市ケ谷"]   # the listing page's names too
     assert by_id["3"].stations == [("荻窪", 5), ("藤沢（長野県）", 5)]                # SUUMO's own split name stays
     assert by_id["5"].bus == {"荻窪": 8}
+
+
+def test_near_minutes_takes_the_closest_of_each_kind():
+    from suumo.catalog import near_minutes
+    env = [["小学校", "A小：徒歩9分（700ｍ）"], ["小学校", "B小：徒歩4分（300ｍ）"], ["スーパー", "C店"],
+           ["銀行", "D銀行：徒歩2分（100ｍ）"], ["コンビニ", "E：徒歩1分（50ｍ）"]]
+    assert near_minutes(env) == {"school": 4, "conv": 1}   # no minutes: unknown; kinds not searched: left out
+    assert near_minutes(None) == {}
+    assert near_minutes([["公園", "D公園：徒歩約１２分（９００ｍ）"]]) == {"park": 12}   # 約, full-width digits

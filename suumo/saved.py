@@ -8,8 +8,8 @@ import json
 import re
 from pathlib import Path
 
-from .archive import write_atomic
 from .parse import TYPES
+from .util import write_atomic
 
 ACTION = re.compile(rf"^\s*(save|unsave)\s+({'|'.join(TYPES)}):(\d{{1,12}})\s*$")
 

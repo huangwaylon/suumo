@@ -19,7 +19,7 @@ from pathlib import Path
 
 import requests
 
-from .archive import write_atomic
+from .util import write_atomic
 
 N02_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N02/N02-25/N02-25_GML.zip"
 ODPT_APIS = (  # (base, key setting): open, basic licence, challenge licence
