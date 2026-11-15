@@ -43,7 +43,7 @@ STATIC = Path(__file__).resolve().parent.parent / "site"
 IMAGE_PREFIX = "https://img01.suumo.com/jj/resizeImage?src="
 BUCKETS = 8192  # listing records: data/l/<int(id) % BUCKETS>.json.zst (~50 listings each)
 BUCKET_EXT = ".json.zst"
-ZSTD_LEVEL = 19  # fixed: the same records (and zstandard version) give the same bytes
+ZSTD_LEVEL = 15  # fixed: the same records (and zstandard version) give the same bytes; 19 took 8 min on a runner (+7% at 15)
 SPARSE = ("dlat", "dlng", "photos", "near")  # index columns stored as {"at": row deltas, "v": values}
 OWN_KM = 3       # a listing's own map point is used only this close to its town's (丁目) point
 RAIL_COARSE = 0.001  # degrees (~100 m): the lines' shape for the map zoomed out (below zoom 11)
