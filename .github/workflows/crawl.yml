@@ -60,7 +60,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
           persist-credentials: false
-          sparse-checkout: suumo   # (+ the root files: scope.toml, shards.toml, saved.json; not data/)
+          sparse-checkout: |   # (+ the root files: scope.toml, shards.toml, saved.json; not data/)
+            suumo
+            .github/scripts
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
         with:
           python-version: "3.12"
