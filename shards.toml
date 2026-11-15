@@ -1,0 +1,15 @@
+# Which prefectures each crawl worker owns (GitHub Actions, .github/workflows/crawl.yml). A worker's state is its
+# own SQLite file, state-<n>.db, holding only these prefectures: moving one means `shard-join`, edit, `shard-split`.
+# Balanced by search-result pages per crawl (2026-11-09: ~1,010 each). Every prefecture in scope.toml exactly once.
+shards = [
+  ["tokyo", "yamanashi", "tottori"],
+  ["hokkaido_", "aomori", "nagasaki", "kagoshima"],
+  ["mie", "osaka", "kumamoto", "okinawa"],
+  ["kanagawa", "ishikawa", "nagano", "shimane", "kochi"],
+  ["iwate", "toyama", "aichi", "okayama", "miyazaki"],
+  ["akita", "saitama", "shizuoka", "wakayama", "ehime"],
+  ["gumma", "fukui", "nara", "yamaguchi", "fukuoka"],
+  ["fukushima", "kyoto", "hyogo", "saga", "oita"],
+  ["miyagi", "yamagata", "chiba", "gifu", "tokushima"],
+  ["ibaraki", "tochigi", "niigata", "shiga", "hiroshima", "kagawa"],
+]

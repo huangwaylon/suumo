@@ -15,9 +15,10 @@ from zoneinfo import ZoneInfo
 from . import rail as rail_mod
 from . import saved as saved_mod
 from . import scope as scope_mod
+from . import shards as shards_mod
 from .archive import Archive
 from .db import DB, exclusive, locked
-from .export import export, export_interrupted
+from .export import export, export_events, export_interrupted
 from .fx import update as update_fx
 from .geo import geocode
 from .gitdata import commit_data, pull
@@ -37,6 +38,7 @@ MIN_DELAY = 0.3        # never faster than this between requests (the owner's de
 THROTTLED_DELAY = 1.0  # ...and never faster than this once SUUMO has pushed back (a 429/403 in any run kept)
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCOPE = "scope.toml"
+SHARDS = "shards.toml"  # the crawl workers' prefectures (GitHub Actions)
 
 
 def crawl_slot(now, hours):
@@ -106,13 +108,20 @@ class Ctx:
         self.db = DB(ROOT / args.db, migrate=False)
         self.archive = Archive(ROOT / args.archive)
         self.targets = scope_mod.load(ROOT / args.scope)
+        self.suffix = ""
+        if getattr(args, "shard", None) is not None:  # one crawl worker: its prefectures only, its own run ids
+            shards = shards_mod.load(ROOT / SHARDS, {t.pref for t in self.targets})
+            if not 0 <= args.shard < len(shards):
+                raise SystemExit(f"--shard {args.shard}: {SHARDS} has shards 0-{len(shards) - 1}")
+            self.targets = [t for t in self.targets if t.pref in shards[args.shard]]
+            self.suffix = shards_mod.suffix(args.shard)
         self.data = ROOT / args.data
         self.lock = ROOT / (args.db + ".lock")
 
     def out_of_scope_hint(self):
         """Only for the main scope: a narrower --scope (a one-off crawl of one prefecture) would suggest pruning
         everything else."""
-        if self.args.scope != DEFAULT_SCOPE:
+        if self.args.scope != DEFAULT_SCOPE or self.suffix:
             return
         oos = out_of_scope(self.db, self.targets)
         if oos:
@@ -126,7 +135,7 @@ def cmd_run(c: Ctx):
     exports its events. A crawl stopped by a network outage finishes the run without listing pages and exits 1."""
     a = c.args
     now = datetime.now(JST)
-    run_id = now.strftime("%Y%m%dT%H%M%S")
+    run_id = now.strftime("%Y%m%dT%H%M%S") + c.suffix
     if a.push:
         pull(ROOT)  # the saved list changes on GitHub
     for rid in export_interrupted(c.db, c.data):
@@ -156,6 +165,9 @@ def cmd_run(c: Ctx):
             p.process_queue(budget, checkpoint=lambda: export(c.db, c.targets, c.data))
         p.purge()
         p.report.update(export=export(c.db, c.targets, c.data, run_id), **stats())
+        if c.suffix:  # a worker's data/ starts empty: every run of its own the DB holds, so a lost push heals
+            for (rid,) in c.db.x("SELECT run_id FROM runs WHERE run_id LIKE ?", f"%{c.suffix}"):
+                export_events(c.db, c.data, rid)
         c.db.x("UPDATE runs SET finished=?, report=? WHERE run_id=?",
                datetime.now(JST).isoformat(timespec="seconds"), json.dumps(p.report, ensure_ascii=False), run_id)
         c.db.commit()
@@ -237,7 +249,17 @@ def update_geo(data, targets, budget=None):
 
 
 def cmd_geocode(args):
-    update_geo(ROOT / args.data, scope_mod.load(ROOT / args.scope))
+    update_geo(ROOT / args.data, scope_mod.load(ROOT / args.scope), budget=GEO_BUDGET if args.after_run else None)
+    if args.after_run:
+        update_fx(ROOT / args.data / "fx.json")
+
+
+def cmd_shard_split(c: Ctx):
+    shards_mod.split(ROOT / c.args.db, shards_mod.load(ROOT / SHARDS, {t.pref for t in c.targets}), c.args.out)
+
+
+def cmd_shard_join(args):
+    shards_mod.join(args.files, ROOT / args.out)
 
 
 def cmd_site(args):
@@ -290,6 +312,8 @@ def main():
     ap.add_argument("--db", default="state.db")
     ap.add_argument("--archive", default="archive")
     ap.add_argument("--data", default="data")
+    ap.add_argument("--shard", type=int, metavar="N",
+                    help=f"one crawl worker: only shard N's prefectures ({SHARDS}), run ids ending -sNN")
     ap.add_argument("--delay", type=delay_arg, default=MIN_DELAY,
                     help=f"base seconds between requests (+0-50%% jitter; at least {MIN_DELAY})")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -316,7 +340,13 @@ def main():
         "--yes", action="store_true")
     command("reparse", cmd_reparse, "write", "re-run parsers over the raw archive (no requests)")
     command("seed", cmd_seed, "write", "rebuild state.db for prefectures it doesn't hold from data/ (no requests)")
-    command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)")
+    command("geocode", cmd_geocode, "files", "look up coordinates of new towns and station names (geo/)").add_argument(
+        "--after-run", action="store_true", help="what a run does after its crawl: a time budget, and fx.json")
+    command("shard-split", cmd_shard_split, "write",
+            f"state.db -> one state-<n>.db per crawl worker ({SHARDS})").add_argument("--out", default="state-shards")
+    j = command("shard-join", cmd_shard_join, "files", "state-<n>.db files -> one state.db (--out)")
+    j.add_argument("--out", default="state.db")
+    j.add_argument("files", nargs="+")
     command("site", cmd_site, "files", "build the static search site").add_argument("--out", default="_site")
     command("rail", cmd_rail, "files", "rebuild geo/rail.json: railway lines and stations for the map (N02 + ODPT)")
     command("saved", cmd_saved, "files", "apply 'save <type>:<id>' / 'unsave <type>:<id>' to saved.json").add_argument(

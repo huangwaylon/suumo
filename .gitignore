@@ -1,6 +1,7 @@
 # local state and output (see README "Files")
 state.db*
 state-*.db*
+/state-shards/
 archive/
 archive-*/
 scope-*.toml
