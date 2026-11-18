@@ -1,0 +1,316 @@
+[
+ {
+  "area_code": "01101",
+  "id": "20301384",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35000000,
+   "price": 31000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161333,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "22157821",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161334,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "22212299",
+  "kind": "new",
+  "payload": {
+   "price": 24400000
+  },
+  "pref": "hokkaido_",
+  "seq": 161335,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "21172709",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161336,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "22149315",
+  "kind": "new",
+  "payload": {
+   "price": 42900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161337,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "22212963",
+  "kind": "new",
+  "payload": {
+   "price": 46900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161338,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01101",
+  "id": "20226086",
+  "kind": "new",
+  "payload": {
+   "price": 59990000
+  },
+  "pref": "hokkaido_",
+  "seq": 161339,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01102",
+  "id": "22212954",
+  "kind": "new",
+  "payload": {
+   "price": 19980000
+  },
+  "pref": "hokkaido_",
+  "seq": 161340,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01102",
+  "id": "22183121",
+  "kind": "new",
+  "payload": {
+   "price": 13500000
+  },
+  "pref": "hokkaido_",
+  "seq": 161341,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01106",
+  "id": "22207664",
+  "kind": "new",
+  "payload": {
+   "price": 9000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161342,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01107",
+  "id": "22212700",
+  "kind": "new",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161343,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01217",
+  "id": "22012424",
+  "kind": "relisted",
+  "payload": {
+   "price": 17300000
+  },
+  "pref": "hokkaido_",
+  "seq": 161344,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "01106",
+  "id": "21719528",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15900000,
+   "price": 16900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161345,
+  "type": "new_house"
+ },
+ {
+  "area_code": "01104",
+  "id": "21808603",
+  "kind": "relisted",
+  "payload": {
+   "price": 51000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161346,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01107",
+  "id": "21400043",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14500000,
+   "price": 13000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161347,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01108",
+  "id": "22212971",
+  "kind": "new",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161348,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01210",
+  "id": "21052481",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 8990000,
+   "price": 8200000
+  },
+  "pref": "hokkaido_",
+  "seq": 161349,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01213",
+  "id": "22208657",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161350,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01217",
+  "id": "20902371",
+  "kind": "relisted",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161351,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01420",
+  "id": "21912090",
+  "kind": "relisted",
+  "payload": {
+   "price": 11900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161352,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01435",
+  "id": "22212997",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161353,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01204",
+  "id": "22200677",
+  "kind": "new",
+  "payload": {
+   "price": 8800000
+  },
+  "pref": "hokkaido_",
+  "seq": 161354,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01425",
+  "id": "22212876",
+  "kind": "new",
+  "payload": {
+   "price": 12300000
+  },
+  "pref": "hokkaido_",
+  "seq": 161355,
+  "type": "used_house"
+ },
+ {
+  "area_code": "01102",
+  "id": "20768573",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13300000,
+   "price": 12400000
+  },
+  "pref": "hokkaido_",
+  "seq": 161356,
+  "type": "land"
+ },
+ {
+  "area_code": "01106",
+  "id": "21719528",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15900000,
+   "price": 16900000
+  },
+  "pref": "hokkaido_",
+  "seq": 161357,
+  "type": "land"
+ },
+ {
+  "area_code": "01106",
+  "id": "22151117",
+  "kind": "new",
+  "payload": {
+   "price": 4300000
+  },
+  "pref": "hokkaido_",
+  "seq": 161358,
+  "type": "land"
+ },
+ {
+  "area_code": "01207",
+  "id": "22212996",
+  "kind": "new",
+  "payload": {
+   "price": 14500000
+  },
+  "pref": "hokkaido_",
+  "seq": 161359,
+  "type": "land"
+ },
+ {
+  "area_code": "01435",
+  "id": "22212640",
+  "kind": "new",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "hokkaido_",
+  "seq": 161360,
+  "type": "land"
+ }
+]
