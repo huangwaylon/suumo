@@ -27,7 +27,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     out = tmp_path / "site"
     (data / "fx.json").write_text('{"date": "2026-10-13", "jpy_per_usd": 158.12}')
     manifest = build(data, geo, out, today=date(2026, 10, 6), log=QUIET)
-    assets = {"index.html", "app.js", "filter.js", "i18n.js", "style.css", "sw.js", ".nojekyll"}
+    assets = {"index.html", "filter.js", "i18n.js", "style.css", "sw.js", ".nojekyll", *(p.name for p in PAGE_JS)}
     assert assets <= {p.name for p in out.iterdir()}
     assert re.search(r'const VERSION = "[0-9a-f]{12}";', (out / "sw.js").read_text())  # stamped: a new page, new cache
     assert json.loads((out / "data/index.json").read_text()) == manifest
@@ -44,7 +44,7 @@ def test_build_writes_index_listings_and_assets(tmp_path):
     row = ids_.index(20205670)
     assert cols["image"][row] == 4 and cols["price"][row] == 12_000_000   # the usual photo path: its number
     detail = listing(out, "used_condo:20205670")
-    assert detail["url"] == "tokyo/sc_komae" and detail["land_rights"] == "定期借地権"   # app.js rebuilds the URL
+    assert detail["url"] == "tokyo/sc_komae" and detail["land_rights"] == "定期借地権"   # the page rebuilds the URL
     assert "id" not in detail and "type" not in detail and detail["image"] == 4
 
 
@@ -209,8 +209,25 @@ def test_every_string_has_an_english_translation():
     assert json.loads(out.stdout) == []
 
 
+# The page's ES modules (main.js imports the rest; filter.js and i18n.js are classic scripts it reads as globals)
+PAGE_JS = sorted(p for p in FILTER_JS.parent.glob("*.js")
+                 if p.name not in {"filter.js", "i18n.js", "sw.js"} and not p.name.endswith(".min.js"))
+
+
+def page_js():
+    return "\n".join(p.read_text() for p in PAGE_JS)
+
+
+def test_the_page_modules_are_all_preloaded():
+    html = (FILTER_JS.parent / "index.html").read_text()
+    assert '<script type="module" src="main.js"></script>' in html
+    preloaded = set(re.findall(r'<link rel="modulepreload" href="([\w-]+\.js)">', html))
+    imported = {m for p in PAGE_JS for m in re.findall(r'from "\./([\w-]+\.js)"', p.read_text())}
+    assert imported <= {p.name for p in PAGE_JS} and preloaded == {p.name for p in PAGE_JS} - {"main.js"}
+
+
 def test_every_string_the_page_uses_exists():
-    app = (FILTER_JS.parent / "app.js").read_text()
+    app = page_js()
     i18n = (FILTER_JS.parent / "i18n.js").read_text()
     ja = i18n[i18n.index("ja: {"):i18n.index("en: {")]
     used = set(re.findall(r'\bt\("(\w+)', app)) | set(re.findall(r'data-t(?:-label|-placeholder)?="(\w+)"',
@@ -219,17 +236,17 @@ def test_every_string_the_page_uses_exists():
 
 
 def test_every_element_the_page_looks_up_exists():
-    app = (FILTER_JS.parent / "app.js").read_text()
-    html = (FILTER_JS.parent / "index.html").read_text() + app   # (some are in the templates app.js writes)
+    app = page_js()
+    html = (FILTER_JS.parent / "index.html").read_text() + app   # (some are in the templates the page writes)
     assert {i for i in re.findall(r'\$\("([\w-]+)"\)', app) if f'id="{i}"' not in html} == set()
 
 
 def test_every_record_field_the_page_reads_is_exported():
     from suumo.export import FIELD_ORDER
-    app = (FILTER_JS.parent / "app.js").read_text()
+    app = page_js()
     extras = {"others", "history", "new_date", "bus_stop",   # site.listing_record adds these
               "img", "texts", "env", "office"}                # ... from the page side files
-    not_records = {"json", "left", "bottom"}                 # r is also a fetch response and a box in app.js
+    not_records = {"json", "left", "bottom"}                 # r is also a fetch response and a box in the page
     assert set(re.findall(r"\br\.([a-z_][a-z0-9_]*)", app)) - not_records - extras - set(FIELD_ORDER) == set()
 
 
@@ -874,16 +891,16 @@ def test_suumo_urls_round_trip_through_the_record(tmp_path):
 
 
 APP_RENDER = """
-const [filterJs, i18nJs, appJs, recJson] = process.argv.slice(1);
+const [filterJs, i18nJs, listingJs, recJson] = process.argv.slice(1);
 globalThis.window = globalThis;
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
 globalThis.Filter = require(filterJs);
 require(i18nJs);
-globalThis.SUUMO_TEST = {};
-require(appJs);
-const r = JSON.parse(recJson);
-process.stdout.write(SUUMO_TEST.detailHtml(r, null));
+import(require("node:url").pathToFileURL(listingJs)).then(({ detailHtml }) => {  // (the module, without main.js)
+  const r = JSON.parse(recJson);
+  process.stdout.write(detailHtml(r, null));
+});
 """
 
 
@@ -897,7 +914,7 @@ def test_listing_texts_are_escaped(tmp_path):
          "office": {"name": bad, "tel": f"03{bad}", "license": bad, "address": bad, "hours": bad, "about": bad},
          "features": [bad], "deal_type": bad, "others": [{"agent": bad, "url": f"javascript:{bad}"}]}
     html = subprocess.run([NODE, "-e", APP_RENDER, str(FILTER_JS), str(FILTER_JS.parent / "i18n.js"),
-                           str(FILTER_JS.parent / "app.js"), json.dumps(r, ensure_ascii=False)],
+                           str(FILTER_JS.parent / "listing.js"), json.dumps(r, ensure_ascii=False)],
                           capture_output=True, text=True, check=True).stdout
     tags = re.findall(r"<[a-z][^>]*>", html)                     # the real tags: none from the record's text
     assert tags and not [t for t in tags if "alert" in t or "src=x" in t] and "<img on" not in html

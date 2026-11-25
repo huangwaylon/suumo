@@ -36,7 +36,7 @@ header (module docstring or top comment) has its details. Keep those three in st
 | `suumo/saved.py`, `saved.json` | The shared saved list (issue `save`/`unsave <type>:<id>` → saved.yml) |
 | `suumo/util.py` | `write_atomic` (every file writer) |
 | `site/filter.js` | The search rules (the only implementation) and the typed-array store; runs in the page and in Node tests |
-| `site/app.js`, `index.html`, `style.css` | The page: map + panel, tabs, filters, favorites, gallery, history entries |
+| `site/main.js` and its modules, `index.html`, `style.css` | The page (native ES modules, flat in `site/`, listed in main.js's header; shared state in `state.js` `st`): map + panel, tabs, filters, favorites, gallery, overlays (history entries) |
 | `site/i18n.js` | Every user-facing string, Japanese and English |
 | `site/sw.js` | Service worker: indexes stale-while-revalidate, code network-first, photos cache-first with a cap |
 | `site/supercluster.min.js`, `fzstd.min.js` | Vendored: map clustering (ISC), zstd decoding (MIT) |
@@ -157,7 +157,7 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
     conditions in old links.
 - **Public repo:** nothing secret in git (no `.env`, no tokens); commits use the GitHub noreply address
   (`git config user.email` is set in this repo). `uv.lock` isn't committed (it would pin the local package mirror).
-- **User-facing text lives in `site/i18n.js`**, Japanese (default) and English; never hard-coded in app.js or
+- **User-facing text lives in `site/i18n.js`**, Japanese (default) and English; never hard-coded in the page's modules or
   index.html (static text uses `data-t`, `data-t-label`, `data-t-placeholder`). Theme is `data-theme` on <html>, set
   before the first paint by the inline script in index.html. Code, logs and docs are English.
 
@@ -188,7 +188,7 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
 - **New field from listing pages:** if the page record holds it, derive it in `detail.derive` and bump
   `PARSE_VERSION` (every state re-derives, no requests); if not, extend `extract` and bump `EXTRACT_VERSION` (new
   pages get it; the slow refresh upgrades the rest). Add it to `detail.FIELDS` and `export.FIELD_ORDER`, a fixture
-  test (`tests/test_extract.py`), the README field table, and `site/app.js` if useful. Search-result fields:
+  test (`tests/test_extract.py`), the README field table, and the page (`site/listing.js`) if useful. Search-result fields:
   `parse._standard_unit`.
 - **New prefecture/area/type:** edit `scope.toml` (and `shards.toml` for a new prefecture: a test checks it covers
   the scope); combine drops prefectures no shard owns. English area names are `places` in `site/i18n.js`.
@@ -196,11 +196,11 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
 - **New search condition:** a derived field on `catalog.Item` and a column in `site.build_index` (a sparse one in
   `site.SPARSE`), read in `Filter.load` (and `item` if shown); the rule in `site/filter.js` (`emptyQuery`,
   `CHECKS`/`BUILDING`; a flag also in `FLAGS`/`FLAG_BITS`, a threshold in `THRESHOLDS`; words in `WORDS` or `parse`);
-  a control in `site/app.js` (`renderFilters`, `KEYS`, `CHOICES`); labels in `site/i18n.js`; a test in
+  a control in `site/filters-panel.js` (`renderFilters`, `CHOICES`; URL key in `url.js` `KEYS`); labels in `site/i18n.js`; a test in
   `tests/test_site.py` (and `NL_CASES` for its words).
 - **Tunables** are module constants: `pipeline.py` (misses, retention, suspect thresholds, priorities, refresh),
   `http.py` (slow-down), `catalog.NEW_DAYS`/`DROP_DAYS`, `snapshot.DROP`/`MIN_RECORDS`, `data.sh` `KEEP`,
-  `cli.GEO_BUDGET`, and the choice lists at the top of `site/app.js`.
+  `cli.GEO_BUDGET`, and the choice lists at the top of `site/filters-panel.js`.
 
 ## Development
 
@@ -210,7 +210,7 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
 - Front end: `npx --yes @biomejs/biome@2.6.9 lint` (site/*.js minus vendored *.min.js; ~1 s) and
   `uv run --with playwright==1.65.2 pytest tests/test_smoke.py -q` (~10 s; once:
   `uv run --with playwright==1.65.2 playwright install --only-shell chromium`). The smoke test drives the DOM (ids,
-  roles, text) at desktop and phone sizes, offline (Leaflet from `tests/fixtures/leaflet/`, which must match app.js's
+  roles, text) at desktop and phone sizes, offline (Leaflet from `tests/fixtures/leaflet/`, which must match map.js's
   SRI); `uv run pytest` skips it without Playwright. Workflows: `actionlint`, `shellcheck .github/scripts/*.sh`.
 - The real data/: `GH_REPO=huangwaylon/suumo .github/scripts/data.sh get data` (the snapshot the pointer names).
 - Look at the site locally: `uv run python -m suumo site && cd _site && python3 -m http.server`.

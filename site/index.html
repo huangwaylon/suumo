@@ -20,7 +20,7 @@
       // Tokyo) start downloading now rather than after the scripts and data/index.json.
       let p = "";
       try { p = new URLSearchParams((location.hash || localStorage.getItem("suumo.last") || "").slice(1)).get("p") || ""; } catch {}
-      if (p === "all") p = "";  // all of Japan: app.js loads them all, Tokyo first among them
+      if (p === "all") p = "";  // all of Japan: prefs.js loads them all, Tokyo first among them
       for (const slug of (p || "tokyo").split(",").filter((x) => /^[a-z_]+$/.test(x))) {
         document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "fetch", crossOrigin: "anonymous", href: `data/p/${slug}.json` }));
       }
@@ -32,7 +32,24 @@
   <script src="i18n.js" defer></script>
   <script src="fzstd.min.js" defer></script>
   <script src="filter.js" defer></script>
-  <script src="app.js" defer></script>
+  <!-- the page's modules (main.js imports the rest): all fetched at once, not import by import -->
+  <link rel="modulepreload" href="util.js">
+  <link rel="modulepreload" href="format.js">
+  <link rel="modulepreload" href="state.js">
+  <link rel="modulepreload" href="url.js">
+  <link rel="modulepreload" href="results.js">
+  <link rel="modulepreload" href="searchbox.js">
+  <link rel="modulepreload" href="filters-panel.js">
+  <link rel="modulepreload" href="prefs.js">
+  <link rel="modulepreload" href="map.js">
+  <link rel="modulepreload" href="rail.js">
+  <link rel="modulepreload" href="records.js">
+  <link rel="modulepreload" href="listing.js">
+  <link rel="modulepreload" href="panel.js">
+  <link rel="modulepreload" href="favorites.js">
+  <link rel="modulepreload" href="overlays.js">
+  <link rel="modulepreload" href="settings.js">
+  <script type="module" src="main.js"></script>
 </head>
 <body>
   <a class="skip" href="#results" data-t="skip"></a>

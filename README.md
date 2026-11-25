@@ -90,7 +90,7 @@ What the build (`python -m suumo site`, suumo/site.py) writes to `_site/`:
 
 | Path | Contents |
 |---|---|
-| `index.html`, `app.js`, `filter.js`, `i18n.js`, `style.css`, `sw.js` | the page, from `site/` (sw.js stamped with a version of them) |
+| `index.html`, `main.js` and its modules, `filter.js`, `i18n.js`, `style.css`, `sw.js` | the page, from `site/` (sw.js stamped with a version of them) |
 | `data/index.json` | the manifest: prefectures `[slug, name, properties, share with the listing page fetched]`, the saved list, `buckets` (8192) and `bucketExt` (`.json.zst`), the dollar rate |
 | `data/p/<pref>.json` | one prefecture's search index, by column (loaded as chosen; sparse columns as `{at: row deltas, v: values}`) |
 | `data/l/<id % 8192>.json.zst` | listing records, about 50 per file (~65 KB): zstd (level 19, `zstandard` pinned) of `{"keys": ["type:id", ...], field: [its value per key], ...}`, keys sorted, so an unchanged build gives the same bytes. The page fetches the file (revalidated, never cached by the service worker), decodes it (`Filter.decode`: zstd, or an older build's gzip or JSON, by its first bytes) and reads its key; no key = 掲載終了 |
@@ -283,7 +283,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `geo/towns.json` | yes | town (丁目) → [lat, lng], or null when not found; `_bulk` lists the towns MLIT's 位置参照情報 files (`url`) don't place, waiting for the address search, so those files aren't downloaded again each run |
 | `geo/rail.json` | yes | railway lines (colour, simplified geometry) and stations for the map, from MLIT 鉄道データ and ODPT; rebuilt with `python -m suumo rail` |
 | `geo/stations.json` | yes | station → [kana, English, n] from Wikidata (CC0): a name found in several prefectures keeps the reading from the one whose listings mention it most (n times), gaps filled from the others; `_prefs` lists the prefectures fetched. Delete to refresh |
-| `site/` | yes | the site's source (index.html, app.js, filter.js, i18n.js, style.css, sw.js) |
+| `site/` | yes | the site's source (index.html, main.js and its modules, filter.js, i18n.js, style.css, sw.js) |
 | `.github/workflows/pages.yml` | yes | tests (plus the front end's lint and smoke test), builds and deploys the site on every push |
 | release `suumo-state` | no (release assets) | one SQLite state per shard: listings and lifecycle, page records, areas, queue, events, runs, crawl times, tombstones (14 days), `meta` |
 | `uv.lock` | no | local lock (CI resolves from public PyPI) |
@@ -355,7 +355,7 @@ The front end (pages.yml's `frontend` job runs all of these; a failure blocks th
 - Smoke test in a headless browser, `tests/test_smoke.py`: builds a site from `tests/fixtures/data` (plus page side
   files from the fixture listing pages), serves it on localhost and drives it at 1280×800 and 390×844 (loads without
   console errors, cards, a suggestion, a type chip, a listing and its photo viewer, back, a `#id=` link, English,
-  favorites). Offline: Leaflet comes from `tests/fixtures/leaflet/` (1.9.4, as app.js's SRI expects), tiles and photos
+  favorites). Offline: Leaflet comes from `tests/fixtures/leaflet/` (1.9.4, as map.js's SRI expects), tiles and photos
   are stubbed. Skipped by `uv run pytest` unless Playwright is installed. About 10 s:
 
   ```

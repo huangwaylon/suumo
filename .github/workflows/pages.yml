@@ -79,7 +79,12 @@ jobs:
       - name: JS lint (biome.json)
         run: |
           npx --yes @biomejs/biome@2.6.9 lint --reporter=github
-          for f in site/*.js; do node --check "$f"; done
+          # the page's ES modules from stdin as modules: Node 22's --check passes a file with import/export
+          # syntax without checking it; the classic scripts (filter.js, i18n.js, sw.js, vendored) as they are
+          for f in site/*.js; do
+            if grep -qE '^(import|export) ' "$f"; then node --input-type=module --check < "$f" || { echo "::error file=$f::syntax"; exit 1; }
+            else node --check "$f"; fi
+          done
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ms-playwright

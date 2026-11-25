@@ -1,6 +1,6 @@
 """Build the static search site (GitHub Pages) from data/ and geo/towns.json.
 
-  <out>/index.html, app.js, filter.js, i18n.js, style.css   copied from site/
+  <out>/index.html, *.js, style.css                copied from site/ (flat: the page's modules too)
   <out>/data/index.json                            manifest: prefectures (slug, name, count, detail share), saved list
   <out>/data/p/<pref>.json                         one prefecture's properties, search fields only, stored by column
   <out>/data/l/<id % BUCKETS>.json.zst            listing records by id: zstd of {"keys": ["type:id", ...], <field>:
@@ -74,7 +74,7 @@ _ad_copy = re.compile(r"万円|[【】●◆◇★☆■□♪！!※]")  # agen
 
 
 def _image(url, lid):
-    """'…?src=gazo/bukken/030/N010000/img/670/<id>/<id>_0004.jpg&w=…' -> '030/N010000/670/0004.jpg' (app.js
+    """'…?src=gazo/bukken/030/N010000/img/670/<id>/<id>_0004.jpg&w=…' -> '030/N010000/670/0004.jpg' (the page
     rebuilds it with the id), or just 4 for the usual 030/N010000/<last 3 digits of the id> (filter.js expands it);
     other forms keep their path, or the whole URL."""
     if not url or not url.startswith(IMAGE_PREFIX):
@@ -92,7 +92,7 @@ def _image(url, lid):
 
 def _url(url, type_, lid, short=True):
     """A listing's SUUMO URL as the record stores it: 'pref/slug' for the usual
-    https://suumo.jp/<TYPES path>/<pref>/<slug>/nc_<id>/ (app.js rebuilds it), else the path ('/tochi/…': new_house
+    https://suumo.jp/<TYPES path>/<pref>/<slug>/nc_<id>/ (the page rebuilds it), else the path ('/tochi/…': new_house
     land listings), or the URL as it is. short=False: never 'pref/slug' (other agents' listings: the client
     rebuilds a URL from the key's type and id, which are the listing's own, not theirs)."""
     if not url:

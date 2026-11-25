@@ -1,4 +1,4 @@
-// Every user-facing string of the site, in Japanese (default) and English. t(key, ...args) in app.js reads them;
+// Every user-facing string of the site, in Japanese (default) and English. t(key, ...args) in format.js reads them;
 // a string can be a function of its arguments. Listing data (town, station, building names, SUUMO's tags) is shown
 // as SUUMO writes it.
 const JA_NUM = new Intl.NumberFormat("ja-JP");  // (made once: the map's price pins use it per pin)

@@ -3,7 +3,7 @@ fixture listing pages), served on localhost, driven through the page like a user
 
 Offline and deterministic: every request off localhost is answered here (Leaflet from the vendored copy in
 tests/fixtures/leaflet, map tiles and SUUMO photos as a 1x1 PNG, anything else empty), the service worker is blocked.
-It drives the DOM (ids, roles, visible text), not app.js internals, so it outlives a restructuring of the scripts.
+It drives the DOM (ids, roles, visible text), not the page's internals, so it outlives a restructuring of the scripts.
 
 Skipped unless Playwright is installed; run it with
   uv run --with playwright==1.65.2 playwright install --only-shell chromium   (once)
@@ -32,7 +32,7 @@ expect = sync_api.expect
 expect.set_options(timeout=10_000)
 
 ROOT = Path(__file__).parent.parent
-LEAFLET = FIXTURES / "leaflet"  # leaflet@1.9.4 dist (BSD-2-Clause), byte for byte: app.js loads it with SRI
+LEAFLET = FIXTURES / "leaflet"  # leaflet@1.9.4 dist (BSD-2-Clause), byte for byte: map.js loads it with SRI
 PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
 DEEP = "used_condo:20205670"  # a fixture listing with its page (photos) and a known price
 DEEP_PRICE = "1,200万円"

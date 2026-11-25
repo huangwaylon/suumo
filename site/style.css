@@ -340,7 +340,7 @@ details.group .opts { padding-bottom: 12px; }
 /* the gallery: the photo in view, its caption, chips per kind, a strip of thumbnails; the viewer full screen */
 .gallery { background: var(--bg); }
 .g-main { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 42vh; cursor: zoom-in;
-  touch-action: pan-y pinch-zoom; }  /* (a sideways swipe steps the photo: app.js) */
+  touch-action: pan-y pinch-zoom; }  /* (a sideways swipe steps the photo: listing.js) */
 .g-main img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
 .g-n { position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px; background: rgb(0 0 0 / .6); color: #fff; font-size: 12px; }
 .g-cap { padding: 6px 16px 0; font-size: 13px; color: var(--muted); min-height: 1.5em; overflow-wrap: anywhere; }
@@ -516,7 +516,7 @@ details.d-sec[open] > summary::after { content: "−"; }
 .split { display: none; }
 body.resizing { user-select: none; cursor: col-resize; }
 
-/* Phones and tablets: the map on top, the list under it (not a phone on its side: too short for a sheet; app.js
+/* Phones and tablets: the map on top, the list under it (not a phone on its side: too short for a sheet; util.js
    SPLIT says the same) ------------------------------------------------------------------------------- */
 @media (max-width: 1023px) and (orientation: portrait), (max-width: 639px), (max-width: 1023px) and (min-height: 501px) {
   .map { position: absolute; inset: 0; }
@@ -535,7 +535,7 @@ body.resizing { user-select: none; cursor: col-resize; }
   .sheet-handle::after { content: ""; position: absolute; inset: -12px 0 0; }  /* a 36 px target, the bar 24 px high */
   .sheet-handle::before { content: ""; display: block; width: 36px; height: 4px; margin: 10px auto; border-radius: 2px; background: var(--faint); opacity: .6; }
   [data-tab-show="list"] .i { width: 16px; height: 16px; margin: 0 2px -3px -4px; }  /* ‹ この範囲: back to the list */
-  /* the map's credits (app.js: bottom left here) just above the sheet, small (a full sheet hides the map) */
+  /* the map's credits (map.js: bottom left here) just above the sheet, small (a full sheet hides the map) */
   .map .leaflet-bottom.leaflet-left { bottom: calc(var(--peek, 112px) + var(--safe-b)); transition: bottom .25s ease; }
   .layout:has(.panel[data-sheet="half"]) .map .leaflet-bottom.leaflet-left { bottom: 50dvh; }
   #map .leaflet-control-attribution { font-size: 9px; border-radius: 0 4px 0 0; }
