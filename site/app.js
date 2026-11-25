@@ -73,6 +73,7 @@
     $("filters-body").innerHTML = "";  // rebuilt in the new language
     $("sort").value = q.sort;
     sheetSemantics();  // its labels depend on the rail's state
+    credits();
   }
 
   function renderSettings() {
@@ -361,7 +362,7 @@
       `<button class="chip-alt" data-alt="${j}" aria-label="${esc(t("swapTo", altLabel(altSwaps[j].alt)))}">⇄ ${esc(altLabel(altSwaps[j].alt))}</button>`; };
     $("chips").innerHTML = mode !== "search" ? "" : active.map(([label, , s, ref], i) => s === "quick" ? "" :
       `<span class="chip on"><button class="chip-label" data-edit="${s}">${esc(label)}</button>${swap(ref)}<button class="chip-x" data-remove="${i}" aria-label="${esc(t("remove", label))}">${icon("x")}</button></span>`).join("") +
-      (ignoredNote.length ? `<span class="chip muted">${esc(t("ignored", ignoredNote.join("・")))}<button class="chip-x" data-ignored-x="1" aria-label="${esc(t("close"))}">${icon("x")}</button></span>` : "") +
+      (ignoredNote.length ? `<span class="chip muted">${esc(t("ignored", ignoredNote.join(t("sep"))))}<button class="chip-x" data-ignored-x="1" aria-label="${esc(t("close"))}">${icon("x")}</button></span>` : "") +
       (active.length > 1 && mapHits.length ? `<button class="chip ghost" data-clear="1">${esc(t("clearAll"))}</button>` : "");
     drawMap();
     listResults();
@@ -381,6 +382,7 @@
     if (!moved && !sayTimer) sayTimer = setTimeout(() => { $("count-live").textContent = $("count").textContent; sayTimer = null; }, 700);
     $("fit").hidden = !here || !mapHits.length;
     $("fit").textContent = t("fitAll", num(mapHits.length));
+    $("fit").setAttribute("aria-label", t("fitAllShow", num(mapHits.length)));
     $("sort").hidden = hits.length < 2;
     $("compare").hidden = mode !== "favorites" || hits.length < 2;
     renderQuick();
@@ -530,7 +532,7 @@
   // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
   function renderSearches() {
     const box = $("searches"), key = searchKey(q), here = mode === "search", prefs = prefParam(chosen);
-    const label = (query) => activeConditions(query).filter(([, , s]) => s !== "quick").map(([l]) => l).slice(0, 3).join("・");
+    const label = (query) => activeConditions(query).filter(([, , s]) => s !== "quick").map(([l]) => l).slice(0, 3).join(t("sep"));
     box.hidden = !here || !searches.length;
     if (!box.hidden) {
       box.setAttribute("aria-label", t("savedSearches"));
@@ -540,7 +542,7 @@
         const k = `${chosen}|${dataVersion}|${s.seen}|${s.c}`;
         if (s.seen && !away && !freshCounts.has(k)) freshCounts.set(k, Filter.count(db, { ...query, since: s.seen }));
         const n = s.seen && !away ? freshCounts.get(k) : 0;
-        const where = away ? `${prefsFromParam(s.p).map(prefName).join("・")}: ` : "";
+        const where = away ? `${prefsFromParam(s.p).map(prefName).join(t("sep"))}: ` : "";
         const name = where + (label(query) || t("allListings"));
         return `<span class="chip saved${s.c === key && !away ? " on" : ""}"><button class="chip-label" data-saved-search="${i}">${esc(name)}</button>${
           n ? `<span class="n fresh">${esc(t("freshN", num(n)))}</span>` : ""}<button class="chip-x" data-unsave-search="${i}" aria-label="${esc(t("unkeepSearch"))}: ${esc(name)}">${icon("x")}</button></span>`;
@@ -634,7 +636,7 @@
     // the conditions the text would add, as they'll show once applied (dashed: not yet)
     const now = new Set(activeConditions().map(([l]) => l));
     $("pending").innerHTML = (applied ? activeConditions(applied).filter(([l, , s]) => s !== "quick" && !now.has(l)).map(([l]) =>
-      `<span class="chip pend">${esc(l)}</span>`).join("") : "") + (read.ignored.length ? `<span class="chip muted">${esc(t("ignored", read.ignored.join("・")))}</span>` : "");
+      `<span class="chip pend">${esc(l)}</span>`).join("") : "") + (read.ignored.length ? `<span class="chip muted">${esc(t("ignored", read.ignored.join(t("sep"))))}</span>` : "");
     $("pending").hidden = !$("pending").innerHTML;
     $("suggest").innerHTML = options.map((o, i) => `<li role="option" id="sg-${i}" class="sg ${o.cls || ""}" aria-selected="false" data-sg="${i}">${o.html}</li>`).join("");
     openSuggest(true);
@@ -705,7 +707,7 @@
       if (of[f]) out.push([t("flags")[f], reset(f), f === "post1981" ? "age" : QUICK.includes(f) ? "quick" : "extra"]);
     }
     if (of.feesMax != null) out.push([t("chipFees", of.feesMax), reset("feesMax"), "extra"]);
-    if (of.near.length) out.push([t("chipNear", of.near.map((k) => t("nearKinds")[k] || k).join("・"), of.nearWalk ?? Filter.NEAR_WALK), reset("near", "nearWalk"), "near"]);
+    if (of.near.length) out.push([t("chipNear", of.near.map((k) => t("nearKinds")[k] || k).join(t("sep")), of.nearWalk ?? Filter.NEAR_WALK), reset("near", "nearWalk"), "near"]);
     if (of.since) out.push([t("sinceVisit"), reset("since"), "quick"]);
     for (const f of of.features) out.push([feature(f), drop("features", f), "extra"]);
     return out;
@@ -798,10 +800,11 @@
       <div class="opts">${PICKS.filter((f) => q[f] || (flagKnown(f) && fits[f] !== false)).map((f) => flag(f, facets[f])).join("")}</div>
       ${condos || q.feesMax != null ? select("feesMax", t("feesLabel"), FEES, (v) => t("feesMax", v)) : ""}
       ${shownTags.length ? `<details class="group"${q.features.length ? " open" : ""}><summary>${esc(t("moreTags"))}</summary><div class="opts">${shownTags.map(tagChip).join("")}</div></details>` : ""}`));
-    sec("near", nearKinds().length ? fold("near", q.near.length ? t("chipNear", q.near.map((k) => t("nearKinds")[k] || k).join("・"), q.nearWalk ?? Filter.NEAR_WALK) : "", nearHtml) : "");
+    sec("near", nearKinds().length ? fold("near", q.near.length ? t("chipNear", q.near.map((k) => t("nearKinds")[k] || k).join(t("sep")), q.nearWalk ?? Filter.NEAR_WALK) : "", nearHtml) : "");
     $("apply").textContent = !WIDE.matches && view && mode === "search" ? t("showInView", num(Filter.count({ ...db, items: inView() }, q)))
       : t("show", num(facets.total));
     $("clear").disabled = !activeConditions().length;
+    $("filters-scope").textContent = t("countsScope", ...prefsLabel(chosen));  // (the list counts the map's view)
   }
 
   function stationList() {
@@ -874,6 +877,8 @@
   const BIG = matchMedia("(min-width: 700px)").matches && (navigator.deviceMemory ?? 8) >= 4;
   const maxPrefs = () => (BIG ? manifest.prefs.length : 10);
   const allPrefs = () => manifest.prefs.map(([slug]) => slug);
+  // the prefectures' names, and whether they're all of them (said as 全国): countsScope, loadingPrefs
+  const prefsLabel = (list) => [list.map(prefName).join(t("sep")), list.length > 1 && list.length === manifest.prefs.length];
   const prefParam = (list) => (list.length > 1 && list.length === manifest.prefs.length ? "all" : list.join(","));  // p=
   const prefName = (slug) => place(manifest.prefs.find(([s]) => s === slug)?.[1] ?? slug);
   let prefsUrl = null;  // the URL the picker has chosen (kept when it closes, also by the back button)
@@ -1079,9 +1084,10 @@
         iconSize: [w, 26], iconAnchor: [w / 2, 32] });
     });
   }
+  // (its size on a log scale: 2 homes 24 px, 100 33 px, 1,000 39 px, 10,000 44 px)
   function clusterIcon(n) {
-    const size = n < 10 ? 30 : n < 100 ? 36 : n < 1000 ? 44 : 52;
-    return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl" style="width:${size}px;height:${size}px">${countLabel(n)}</div>`, iconSize: [size, size] }));
+    const size = Math.round(22 + 5.5 * Math.log10(Math.max(2, n)));
+    return cachedIcon(`c${n}`, () => L.divIcon({ className: "", html: `<div class="cl${n >= 1000 ? " big" : ""}" style="width:${size}px;height:${size}px">${countLabel(n)}</div>`, iconSize: [size, size] }));
   }
   let priced = false;  // the town markers show prices (zoomed in)
 
@@ -1105,8 +1111,19 @@
     markerLayer = L.layerGroup().addTo(map);
     if (!COARSE.matches) L.control.zoom({ position: "topright", zoomInTitle: t("zoomIn"), zoomOutTitle: t("zoomOut") }).addTo(map);
     map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
-    map.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "topleft");  // (phones: the sheet is at the bottom)
-    L.tileLayer(TILES, { maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>' }).addTo(map);
+    // (phones: bottom left, just above the sheet: style.css moves the corner with it)
+    map.attributionControl.setPosition(SPLIT.matches ? "bottomright" : "bottomleft");
+    L.tileLayer(TILES, { maxZoom: 18 }).addTo(map);
+    credits();
+  }
+  // The map's data credits in the page's language (the tiles; the lines once rail.json is loaded)
+  let creditsShown = [];
+  function credits() {
+    if (!map) return;
+    for (const c of creditsShown) map.attributionControl.removeAttribution(c);
+    creditsShown = [`<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">${esc(t("tileCredit"))}</a>`];
+    if (rail) creditsShown.push(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
+    for (const c of creditsShown) map.attributionControl.addAttribution(c);
   }
 
   // The map and its tiles before the listings (a phone's first visit: ~2 s sooner) when it's known where it opens: the
@@ -1162,7 +1179,7 @@
     for (let k = 0; k < m; k++) start[k + 1] += start[k];
     const homes = new Int32Array(start[m]), next = start.slice(0, m);
     for (let i = 0; i < n; i++) if (of[i] >= 0) homes[next[of[i]]++] = mapHits[i];
-    const index = new Supercluster({ radius: 48, extent: 256, maxZoom: CLUSTER_MAX,
+    const index = new Supercluster({ radius: 60, extent: 256, maxZoom: CLUSTER_MAX,  // (60: fewer, calmer clusters)
       map: (props) => ({ n: props.n }), reduce: (sum, props) => { sum.n += props.n; } });
     index.load(Array.from({ length: m }, (_, i) => ({ type: "Feature", properties: { i, n: start[i + 1] - start[i] }, geometry: { type: "Point", coordinates: [lng[i], lat[i]] } })));
     compact(index, m);
@@ -1194,7 +1211,7 @@
   function homesMarker(at, list, own = true) {
     const towns = new Map();
     for (const h of list) if (!towns.has(get.townKey(h))) towns.set(get.townKey(h), get.town(h));
-    const names = [...towns.values()].join("・");
+    const names = [...towns.values()].join(t("sep"));
     return L.marker(at, { icon: townIcon(list, priced, own), pricedAs: priced, list, own, title: `${names} ${t("count", countLabel(list.length))}` })
       .bindPopup(() => popup(names, inOrder(list)), { autoPanPadding: [56, 56] });
   }
@@ -1284,14 +1301,19 @@
     return d;
   }).catch(() => { railData = null; return null; }));
   const COARSE_BELOW = 11;  // zoom levels below this draw the lines' coarse copy
-  const stationRadius = (z, lines) => (z < 13 ? 3 : z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
-  const halo = () => (document.documentElement.dataset.theme === "dark" ? "#0d0f13" : "#ffffff");  // under each line
+  const STATION_ZOOM = 13;  // stations from this zoom (zoomed out, their dots crowd out the homes' markers)
+  const stationRadius = (z, lines) => (z < 15 ? 4.5 : 6) + (lines > 1 ? 1.5 : 0);
+  const dark = () => document.documentElement.dataset.theme === "dark";
+  const halo = () => (dark() ? "#0d0f13" : "#ffffff");  // under each line
+  // a station's ring and fill: dark on light in the light theme, the other way round in the dark one (as
+  // style.css .station-label; the canvas can't read CSS variables)
+  const dotColours = () => (dark() ? { color: "#f2f4f7", fillColor: "#171a21" } : { color: "#1d2026", fillColor: "#ffffff" });
   const latlngs = (parts) => parts.map((p) => p.map(([lng, lat]) => [lat, lng]));
   const lineName = (line) => (S.lang === "en" && line[2]) || line[1];
   const operatorName = (op) => (S.lang === "en" && op[1]) || op[3] || op[0];  // JR東日本 rather than 東日本旅客鉄道
   let rail = null, railLines = [], railHalos = [], railStations = null, railLabels = null, railAsked = false;
   let railStyled = null, radiusBand = null;  // how the lines and the stations are styled now (restyled on a change)
-  let lineStyle = null;                      // ... as {z, base, focus, colour}, for the lines added later
+  let lineStyle = null;                      // ... as {z, band, base, focus, colour}, for the lines added later
   let railShapes = [];                       // per line [its paths, its coarse paths (zoomed out)] as Leaflet takes them
   let railDots = [];                         // each station's marker (null until near the view); those near it are in railStations
   let railCanvas = null;                     // the lines' and stations' canvas
@@ -1306,12 +1328,12 @@
     const coarse = map.getZoom() < COARSE_BELOW ? 1 : 0;
     railHalos = railShapes.map((shapes) => Object.assign(L.polyline(shapes[coarse], { renderer: canvas, interactive: false }), { shape: coarse }));
     railLines = rail.lines.map((line, i) => Object.assign(L.polyline(railShapes[i][coarse], { renderer: canvas, color: line[3], interactive: false }), { shape: coarse }));
-    // stations as on a transit map: a white dot in a dark ring, bigger where lines meet and as you zoom in (each made
+    // stations as on a transit map: a dot in a contrasting ring (dotColours), bigger where lines meet and as you zoom in (each made
     // the first time it's near the view: cullRail)
     railDots = new Array(rail.stations.length).fill(null);
     railStations = L.layerGroup();
     railLabels = L.layerGroup();
-    map.attributionControl.addAttribution(`<span title="${esc(rail.attribution)}">${esc(t("railCredit"))}</span>`);
+    credits();
     const open = document.createElement("button"), panel = document.createElement("div");
     open.className = "rail-btn";
     panel.className = "rail-panel";
@@ -1380,22 +1402,24 @@
     return (chosenSet = new Set(names.size ? rail.stations.filter(([n]) => names.has(n)).flatMap(([, , , lines]) => lines) : []));
   }
 
-  // Lines unless switched off (all, or by operator), each on a halo so it reads on any part of the map; stations once
-  // there's room for them (zoom 11+), their names from 14.
+  // Lines unless switched off (all, or by operator), each on a halo so it reads on any part of the map: thin and
+  // faint zoomed out (the homes' markers come first), full strength zoomed in; stations once there's room for them
+  // (STATION_ZOOM, 13+), their names from 14.
   function showRail() {
     if (!rail || !map) return;
     const z = map.getZoom(), on = settings.rail !== false, focus = chosenLines(), colour = halo();
-    const band = z < 11 ? 0 : z < 13 ? 1 : z < 15 ? 2 : 3, base = [2, 3, 4.5, 6][band];
+    const band = z < 11 ? 0 : z < 13 ? 1 : z < 15 ? 2 : 3, base = [1.5, 2, 4, 6][band];
     const style = [band, on, [...hiddenOps].sort(), [...focus], colour].join("|");
-    lineStyle = { z, base, focus, colour };
+    lineStyle = { z, band, base, focus, colour };
     if (style !== railStyled) railLines.forEach((l, i) => { if (map.hasLayer(l)) styleLine(i); });
     railStyled = style;
-    const stations = on && z >= 11;
+    const stations = on && z >= STATION_ZOOM;
     if (stations !== map.hasLayer(railStations)) {
       if (stations) { railStations.addTo(map); railLabels.addTo(map); } else { railStations.remove(); railLabels.remove(); }
     }
-    if (stations && radiusBand !== (z < 13 ? 0 : z < 15 ? 1 : 2)) {
-      radiusBand = z < 13 ? 0 : z < 15 ? 1 : 2;
+    const dots = `${z < 15 ? 1 : 2}|${colour}`;  // (their size band and the theme)
+    if (stations && radiusBand !== dots) {
+      radiusBand = dots;
       railStations.eachLayer(styleDot);
     }
     cullRail();
@@ -1406,16 +1430,16 @@
   }
 
   function styleLine(i) {
-    const { z, base, focus, colour } = lineStyle, l = railLines[i], h = railHalos[i], shape = z < COARSE_BELOW ? 1 : 0;
+    const { z, band, base, focus, colour } = lineStyle, l = railLines[i], h = railHalos[i], shape = z < COARSE_BELOW ? 1 : 0;
     if (l.shape !== shape) { l.shape = h.shape = shape; l.setLatLngs(railShapes[i][shape]); h.setLatLngs(railShapes[i][shape]); }
     const lit = focus.has(i), faded = focus.size && !lit, weight = base + (lit ? 3 : 0);
-    l.setStyle({ weight, opacity: faded ? 0.25 : z < 11 ? 0.75 : 0.95 });
-    h.setStyle({ weight: weight + 3, color: colour, opacity: faded ? 0 : z < 11 ? 0.5 : 0.85 });
+    l.setStyle({ weight, opacity: faded ? 0.2 : lit ? 0.95 : [0.45, 0.55, 0.85, 0.95][band] });
+    h.setStyle({ weight: weight + (band < 2 ? 2 : 3), color: colour, opacity: faded ? 0 : [0.3, 0.4, 0.8, 0.85][band] });
     if (lit) { h.bringToFront(); l.bringToFront(); }
   }
   function styleDot(m) {
     m.band = radiusBand;
-    m.setStyle({ radius: stationRadius(map.getZoom(), m.options.lines) });
+    m.setStyle({ radius: stationRadius(map.getZoom(), m.options.lines), ...dotColours() });
   }
   // Only the lines and stations in and around the view are on the map (Leaflet reprojects every path on the map at
   // each zoom); the others are added as the map moves to them, half a screen ahead.
@@ -1440,7 +1464,7 @@
     }
   }
   function stationDot([name, lat, lng, lines]) {
-    return L.circleMarker([lat, lng], { renderer: railCanvas, radius: 4, color: "#1d2026", weight: 2, fillColor: "#fff", fillOpacity: 1,
+    return L.circleMarker([lat, lng], { renderer: railCanvas, radius: 4, ...dotColours(), weight: 2, fillOpacity: 1,
       lines: lines.length }).bindTooltip(name, { direction: "top", offset: [0, -5] }).bindPopup(() => stationPopup(name, lines));
   }
 
@@ -1448,7 +1472,7 @@
   function stationPopup(name, lines) {
     const s = db.index.stations.find((n) => n === name || n.startsWith(name + "（"));
     const n = s ? Filter.count(db, { ...q, stations: [s] }) : 0;  // under the current conditions
-    return `<strong>${esc(t("station", stationName(s || name)))}</strong><div class="meta wrap">${esc(lines.map((i) => lineName(rail.lines[i])).join("・"))}</div>${
+    return `<strong>${esc(t("station", stationName(s || name)))}</strong><div class="meta wrap">${esc(lines.map((i) => lineName(rail.lines[i])).join(t("sep")))}</div>${
       n ? `<button class="btn primary station-pick" data-station-pick="${esc(s)}">${esc(t("stationHomes", num(n)))}</button>` : ""}`;
   }
 
@@ -1817,7 +1841,8 @@
   }
 
   // Where this listing's price per ㎡ sits among similar ones in the loaded data: same area and type (resale: built
-  // within 10 years of it). Condos and land only (a house's price per ㎡ of building is mostly its land).
+  // within 10 years of it). The bar runs from their 5th to 95th percentile; ticks at the quartiles and (taller) the
+  // median, this listing a dot; a legend says so. Condos and land only (a house's price per ㎡ of building is mostly its land).
   function market(it) {
     if (!it.unit || !(isCondo(it.type) || it.type === "land")) return "";
     const band = it.type.startsWith("used") && it.ageMonths != null, units = [];
@@ -1833,6 +1858,7 @@
     return `<section class="d-sec market"><h3>${esc(t("market"))}</h3>
       <div class="mbar" aria-hidden="true"><i style="left:${pos(at(0.25))}%"></i><i class="mid" style="left:${pos(mid)}%"></i><i style="left:${pos(at(0.75))}%"></i><b style="left:${pos(it.unit)}%"></b></div>
       <div class="mscale" aria-hidden="true"><span>${esc(t("perM2", lo))}</span><span>${esc(t("perM2", hi))}</span></div>
+      <div class="mlegend" aria-hidden="true"><span><b></b>${esc(t("marketSelf"))}</span><span><i class="mid"></i>${esc(t("marketMid"))}</span><span><i></i>${esc(t("marketQuart"))}</span></div>
       <p>${esc(Math.abs(diff) < 3 ? t("marketSame", where, kind) : t("marketDiff", where, kind, Math.abs(diff), diff < 0))}</p>
       <p class="meta">${esc(t("marketN", num(units.length), band))}</p></section>`;
   }
@@ -2162,7 +2188,8 @@
     for (const el of [document.querySelector(".bar"), $("panel")]) el.inert = open;
     $("map").inert = open || (!SPLIT.matches && $("panel").dataset.sheet === "full");
     const full = $("panel").dataset.sheet === "full";
-    $("panel").style.setProperty("--peek", `${$("panel").querySelector(".panel-head").offsetHeight}px`);  // peek: its head
+    // peek: its head (on the layout: the map's credits sit above it too)
+    $("panel").parentElement.style.setProperty("--peek", `${$("panel").querySelector(".panel-head").offsetHeight}px`);
     $("sheet-handle").setAttribute("aria-expanded", full);
     $("sheet-handle").setAttribute("aria-label", t(full ? "sheetCollapse" : "sheetExpand"));
     // desktop: the rail can be hidden, giving its width to the results
@@ -2492,10 +2519,18 @@
       return fetching.get(slug).then(() => {
         if (todo.length > 1) $("count").textContent = t("loadingSome", ++done, todo.length);  // all of Japan: 47
       });
-    }));
+    })).finally(() => { $("loading").hidden = true; });
     dataChanged();
     offerNewer();
     await frame();  // the count drawn before the first search
+  }
+  // While prefectures' indexes load (Tokyo's: seconds on a phone): said in the list's head and above the list, and
+  // announced (role=status); hidden once they're loaded (loadPrefs)
+  function showLoading(slugs) {
+    const text = t("loadingPrefs", ...prefsLabel(slugs)), note = $("loading");
+    $("count").textContent = text;
+    note.hidden = false;
+    note.textContent = text;
   }
 
   // The service worker (sw.js) shows a prefecture's index from this browser's cache, then fetches it again; when the
@@ -2557,7 +2592,7 @@
   function route() {
     const want = prefsFromHash(), missing = want.filter((s) => !loaded.has(s));
     if (missing.length) {  // load them, then come back
-      $("count").textContent = t("loading");
+      showLoading(missing);
       loadPrefs(missing).then(route, () => {  // still the prefectures shown: the URL says so again
         toast(t("offline"));
         if (chosen.length) setPrefs(chosen, false);
@@ -2582,6 +2617,7 @@
     applyTheme();
     applyLanguage();
     $("list").innerHTML = '<div class="skeleton"></div>'.repeat(6);
+    $("count").textContent = t("loading");
     try {
       manifest = await (await fetch("data/index.json")).json();
       const last = ls.get("suumo.last");
@@ -2594,6 +2630,7 @@
         history.replaceState(null, "", "#" + linked.toString());
         history.pushState({ tab: 1 }, "", url);
       }
+      showLoading(prefsFromHash());
       await loadPrefs(prefsFromHash());
       choosePrefs(prefsFromHash());
       // where the map opens: the link's place (old links: the area they showed), its listing, else the results
