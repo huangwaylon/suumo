@@ -1,0 +1,1579 @@
+[
+ {
+  "area_code": "27106",
+  "id": "21984405",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44900000,
+   "price": 43800000
+  },
+  "pref": "osaka",
+  "seq": 252018,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27109",
+  "id": "22045817",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 66800000,
+   "price": 64800000
+  },
+  "pref": "osaka",
+  "seq": 252019,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27111",
+  "id": "22264236",
+  "kind": "new",
+  "payload": {
+   "price": 11800000
+  },
+  "pref": "osaka",
+  "seq": 252020,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27114",
+  "id": "22065904",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 25900000
+  },
+  "pref": "osaka",
+  "seq": 252021,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27114",
+  "id": "20592069",
+  "kind": "relisted",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "osaka",
+  "seq": 252022,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27115",
+  "id": "20753386",
+  "kind": "new",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "osaka",
+  "seq": 252023,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27117",
+  "id": "21524461",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 48800000,
+   "price": 45800000
+  },
+  "pref": "osaka",
+  "seq": 252024,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27117",
+  "id": "21865419",
+  "kind": "new",
+  "payload": {
+   "price": 45800000
+  },
+  "pref": "osaka",
+  "seq": 252025,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27118",
+  "id": "22264419",
+  "kind": "new",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "osaka",
+  "seq": 252026,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27118",
+  "id": "21297275",
+  "kind": "relisted",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "osaka",
+  "seq": 252027,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27118",
+  "id": "22264061",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "osaka",
+  "seq": 252028,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27118",
+  "id": "21835901",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 56800000,
+   "price": 54900000
+  },
+  "pref": "osaka",
+  "seq": 252029,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27119",
+  "id": "22264487",
+  "kind": "new",
+  "payload": {
+   "price": 29000000
+  },
+  "pref": "osaka",
+  "seq": 252030,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27123",
+  "id": "21312762",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "osaka",
+  "seq": 252031,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27123",
+  "id": "22250872",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44990000,
+   "price": 43990000
+  },
+  "pref": "osaka",
+  "seq": 252032,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27126",
+  "id": "21868505",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 31900000
+  },
+  "pref": "osaka",
+  "seq": 252033,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27127",
+  "id": "22264209",
+  "kind": "new",
+  "payload": {
+   "price": 96800000
+  },
+  "pref": "osaka",
+  "seq": 252034,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27127",
+  "id": "21944432",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 126990000,
+   "price": 119790000
+  },
+  "pref": "osaka",
+  "seq": 252035,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27128",
+  "id": "22263913",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "osaka",
+  "seq": 252036,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27128",
+  "id": "21768496",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37500000,
+   "price": 36500000
+  },
+  "pref": "osaka",
+  "seq": 252037,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27128",
+  "id": "21835900",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 45900000
+  },
+  "pref": "osaka",
+  "seq": 252038,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27128",
+  "id": "21295539",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 124000000,
+   "price": 119900000
+  },
+  "pref": "osaka",
+  "seq": 252039,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27141",
+  "id": "22264467",
+  "kind": "new",
+  "payload": {
+   "price": 11800000
+  },
+  "pref": "osaka",
+  "seq": 252040,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27203",
+  "id": "21857354",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "osaka",
+  "seq": 252041,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27203",
+  "id": "21984109",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25800000,
+   "price": 24500000
+  },
+  "pref": "osaka",
+  "seq": 252042,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27203",
+  "id": "22263901",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "osaka",
+  "seq": 252043,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "22065905",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "osaka",
+  "seq": 252044,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "22099476",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28990000,
+   "price": 27990000
+  },
+  "pref": "osaka",
+  "seq": 252045,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "22131857",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "osaka",
+  "seq": 252046,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "21974627",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32990000,
+   "price": 31990000
+  },
+  "pref": "osaka",
+  "seq": 252047,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "21915636",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34900000,
+   "price": 33900000
+  },
+  "pref": "osaka",
+  "seq": 252048,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "22250579",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 33990000
+  },
+  "pref": "osaka",
+  "seq": 252049,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "21448230",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "osaka",
+  "seq": 252050,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "21589136",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 59800000,
+   "price": 56800000
+  },
+  "pref": "osaka",
+  "seq": 252051,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27205",
+  "id": "21448232",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 65990000,
+   "price": 63990000
+  },
+  "pref": "osaka",
+  "seq": 252052,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27207",
+  "id": "22263713",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "osaka",
+  "seq": 252053,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27207",
+  "id": "22263720",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "osaka",
+  "seq": 252054,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27207",
+  "id": "22042835",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29990000,
+   "price": 28990000
+  },
+  "pref": "osaka",
+  "seq": 252055,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27210",
+  "id": "22263874",
+  "kind": "new",
+  "payload": {
+   "price": 6800000
+  },
+  "pref": "osaka",
+  "seq": 252056,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21960452",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21800000,
+   "price": 20800000
+  },
+  "pref": "osaka",
+  "seq": 252057,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22220844",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "osaka",
+  "seq": 252058,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21013738",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12380000,
+   "price": 12280000
+  },
+  "pref": "osaka",
+  "seq": 252059,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22263728",
+  "kind": "new",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "osaka",
+  "seq": 252060,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "78597489",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14580000,
+   "price": 14480000
+  },
+  "pref": "osaka",
+  "seq": 252061,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21136343",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16680000,
+   "price": 16580000
+  },
+  "pref": "osaka",
+  "seq": 252062,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "20484888",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16780000,
+   "price": 16680000
+  },
+  "pref": "osaka",
+  "seq": 252063,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21937532",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "osaka",
+  "seq": 252064,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22263642",
+  "kind": "new",
+  "payload": {
+   "price": 22500000
+  },
+  "pref": "osaka",
+  "seq": 252065,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22263912",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "osaka",
+  "seq": 252066,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21875324",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "osaka",
+  "seq": 252067,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22035655",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "osaka",
+  "seq": 252068,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "21482262",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 31900000
+  },
+  "pref": "osaka",
+  "seq": 252069,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27211",
+  "id": "22263911",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "osaka",
+  "seq": 252070,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27214",
+  "id": "22157422",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9980000,
+   "price": 8980000
+  },
+  "pref": "osaka",
+  "seq": 252071,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27215",
+  "id": "22264354",
+  "kind": "new",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "osaka",
+  "seq": 252072,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27215",
+  "id": "21746047",
+  "kind": "relisted",
+  "payload": {
+   "price": 42980000
+  },
+  "pref": "osaka",
+  "seq": 252073,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "27121",
+  "id": "22215596",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 32800000
+  },
+  "pref": "osaka",
+  "seq": 252074,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27125",
+  "id": "22264239",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "osaka",
+  "seq": 252075,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27126",
+  "id": "22264238",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "osaka",
+  "seq": 252076,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27141",
+  "id": "22257816",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 38800000
+  },
+  "pref": "osaka",
+  "seq": 252077,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27143",
+  "id": "22180192",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "osaka",
+  "seq": 252078,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27145",
+  "id": "22257530",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "osaka",
+  "seq": 252079,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27145",
+  "id": "22244825",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "osaka",
+  "seq": 252080,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27145",
+  "id": "22236747",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 47800000,
+   "price": 46800000
+  },
+  "pref": "osaka",
+  "seq": 252081,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27202",
+  "id": "22257430",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "osaka",
+  "seq": 252082,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27202",
+  "id": "22257425",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "osaka",
+  "seq": 252083,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27202",
+  "id": "22257434",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "osaka",
+  "seq": 252084,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27202",
+  "id": "22217563",
+  "kind": "new",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "osaka",
+  "seq": 252085,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27203",
+  "id": "22216010",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "osaka",
+  "seq": 252086,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27204",
+  "id": "22263905",
+  "kind": "new",
+  "payload": {
+   "price": 46980000
+  },
+  "pref": "osaka",
+  "seq": 252087,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27206",
+  "id": "22246123",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "osaka",
+  "seq": 252088,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27206",
+  "id": "22257422",
+  "kind": "new",
+  "payload": {
+   "price": 30500000
+  },
+  "pref": "osaka",
+  "seq": 252089,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27207",
+  "id": "21474949",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35980000,
+   "price": 34980000
+  },
+  "pref": "osaka",
+  "seq": 252090,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27207",
+  "id": "22215792",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 39800000
+  },
+  "pref": "osaka",
+  "seq": 252091,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27207",
+  "id": "22263736",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "osaka",
+  "seq": 252092,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27207",
+  "id": "21534246",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 57990000,
+   "price": 55990000
+  },
+  "pref": "osaka",
+  "seq": 252093,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27208",
+  "id": "22217576",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "osaka",
+  "seq": 252094,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27208",
+  "id": "22237993",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "osaka",
+  "seq": 252095,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27208",
+  "id": "22263674",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "osaka",
+  "seq": 252096,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27208",
+  "id": "22217586",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "osaka",
+  "seq": 252097,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "22222317",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "osaka",
+  "seq": 252098,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "21663709",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 37800000
+  },
+  "pref": "osaka",
+  "seq": 252099,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "22261411",
+  "kind": "new",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "osaka",
+  "seq": 252100,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "21984269",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36990000,
+   "price": 34990000
+  },
+  "pref": "osaka",
+  "seq": 252101,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "22187666",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 35800000
+  },
+  "pref": "osaka",
+  "seq": 252102,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27210",
+  "id": "21753287",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45800000,
+   "price": 45900000
+  },
+  "pref": "osaka",
+  "seq": 252103,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27212",
+  "id": "22257709",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "osaka",
+  "seq": 252104,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27212",
+  "id": "22264237",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "osaka",
+  "seq": 252105,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27213",
+  "id": "22217619",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "osaka",
+  "seq": 252106,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27213",
+  "id": "22263603",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "osaka",
+  "seq": 252107,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27213",
+  "id": "22263606",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "osaka",
+  "seq": 252108,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27213",
+  "id": "22263618",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "osaka",
+  "seq": 252109,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27213",
+  "id": "22263615",
+  "kind": "new",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "osaka",
+  "seq": 252110,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27214",
+  "id": "22258278",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 28800000
+  },
+  "pref": "osaka",
+  "seq": 252111,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27215",
+  "id": "22224646",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 31800000
+  },
+  "pref": "osaka",
+  "seq": 252112,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27215",
+  "id": "22224677",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "osaka",
+  "seq": 252113,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27216",
+  "id": "22263588",
+  "kind": "new",
+  "payload": {
+   "price": 27980000
+  },
+  "pref": "osaka",
+  "seq": 252114,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27217",
+  "id": "22258106",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "osaka",
+  "seq": 252115,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27217",
+  "id": "22258183",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 25800000
+  },
+  "pref": "osaka",
+  "seq": 252116,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27219",
+  "id": "22257527",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "osaka",
+  "seq": 252117,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27222",
+  "id": "22133805",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "osaka",
+  "seq": 252118,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27224",
+  "id": "22215888",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30300000,
+   "price": 29300000
+  },
+  "pref": "osaka",
+  "seq": 252119,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27224",
+  "id": "22215910",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31300000,
+   "price": 30300000
+  },
+  "pref": "osaka",
+  "seq": 252120,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27225",
+  "id": "22238061",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "osaka",
+  "seq": 252121,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27225",
+  "id": "22257416",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "osaka",
+  "seq": 252122,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27225",
+  "id": "22239406",
+  "kind": "new",
+  "payload": {
+   "price": 36800000
+  },
+  "pref": "osaka",
+  "seq": 252123,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27225",
+  "id": "22238098",
+  "kind": "new",
+  "payload": {
+   "price": 44900000
+  },
+  "pref": "osaka",
+  "seq": 252124,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27226",
+  "id": "22258490",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "osaka",
+  "seq": 252125,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27227",
+  "id": "22264234",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "osaka",
+  "seq": 252126,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27227",
+  "id": "22257638",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 32800000
+  },
+  "pref": "osaka",
+  "seq": 252127,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27227",
+  "id": "22263709",
+  "kind": "new",
+  "payload": {
+   "price": 36800000
+  },
+  "pref": "osaka",
+  "seq": 252128,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27228",
+  "id": "22263668",
+  "kind": "new",
+  "payload": {
+   "price": 20800000
+  },
+  "pref": "osaka",
+  "seq": 252129,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27231",
+  "id": "22258535",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "osaka",
+  "seq": 252130,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27232",
+  "id": "22217631",
+  "kind": "new",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "osaka",
+  "seq": 252131,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27232",
+  "id": "22258377",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21800000,
+   "price": 20900000
+  },
+  "pref": "osaka",
+  "seq": 252132,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27232",
+  "id": "22263623",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "osaka",
+  "seq": 252133,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27340",
+  "id": "22217549",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "osaka",
+  "seq": 252134,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27360",
+  "id": "22263602",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "osaka",
+  "seq": 252135,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27360",
+  "id": "22263601",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "osaka",
+  "seq": 252136,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27360",
+  "id": "22263608",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "osaka",
+  "seq": 252137,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27380",
+  "id": "22263587",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "osaka",
+  "seq": 252138,
+  "type": "new_house"
+ },
+ {
+  "area_code": "27120",
+  "id": "22264398",
+  "kind": "new",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "osaka",
+  "seq": 252139,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27142",
+  "id": "22264468",
+  "kind": "new",
+  "payload": {
+   "price": 30990000
+  },
+  "pref": "osaka",
+  "seq": 252140,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27143",
+  "id": "22256169",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "osaka",
+  "seq": 252141,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27144",
+  "id": "21826208",
+  "kind": "new",
+  "payload": {
+   "price": 20990000
+  },
+  "pref": "osaka",
+  "seq": 252142,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27203",
+  "id": "22263899",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "osaka",
+  "seq": 252143,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27207",
+  "id": "22264013",
+  "kind": "new",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "osaka",
+  "seq": 252144,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27211",
+  "id": "22225210",
+  "kind": "relisted",
+  "payload": {
+   "price": 63900000
+  },
+  "pref": "osaka",
+  "seq": 252145,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27212",
+  "id": "22084213",
+  "kind": "relisted",
+  "payload": {
+   "price": 14800000
+  },
+  "pref": "osaka",
+  "seq": 252146,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27215",
+  "id": "22263747",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "osaka",
+  "seq": 252147,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27215",
+  "id": "22264295",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "osaka",
+  "seq": 252148,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27215",
+  "id": "21611140",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "osaka",
+  "seq": 252149,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27229",
+  "id": "22263792",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "osaka",
+  "seq": 252150,
+  "type": "used_house"
+ },
+ {
+  "area_code": "27208",
+  "id": "22264044",
+  "kind": "new",
+  "payload": {
+   "price": 18000000
+  },
+  "pref": "osaka",
+  "seq": 252151,
+  "type": "land"
+ },
+ {
+  "area_code": "27212",
+  "id": "22198222",
+  "kind": "new",
+  "payload": {
+   "price": 18000000
+  },
+  "pref": "osaka",
+  "seq": 252152,
+  "type": "land"
+ },
+ {
+  "area_code": "27221",
+  "id": "22084335",
+  "kind": "new",
+  "payload": {
+   "price": 35300000
+  },
+  "pref": "osaka",
+  "seq": 252153,
+  "type": "land"
+ },
+ {
+  "area_code": "27227",
+  "id": "22263712",
+  "kind": "new",
+  "payload": {
+   "price": 16000000
+  },
+  "pref": "osaka",
+  "seq": 252154,
+  "type": "land"
+ },
+ {
+  "area_code": "27227",
+  "id": "22264235",
+  "kind": "new",
+  "payload": {
+   "price": 47800000
+  },
+  "pref": "osaka",
+  "seq": 252155,
+  "type": "land"
+ }
+]

@@ -1,0 +1,627 @@
+[
+ {
+  "area_code": "09201",
+  "id": "22262158",
+  "kind": "new",
+  "payload": {
+   "price": 81000000
+  },
+  "pref": "tochigi",
+  "seq": 673708,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "09202",
+  "id": "22264356",
+  "kind": "new",
+  "payload": {
+   "price": 20990000
+  },
+  "pref": "tochigi",
+  "seq": 673709,
+  "type": "new_house"
+ },
+ {
+  "area_code": "09201",
+  "id": "20854053",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22000000,
+   "price": 24800000
+  },
+  "pref": "tochigi",
+  "seq": 673710,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09201",
+  "id": "21616474",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21990000,
+   "price": 20990000
+  },
+  "pref": "tochigi",
+  "seq": 673711,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09202",
+  "id": "22264302",
+  "kind": "new",
+  "payload": {
+   "price": 13980000
+  },
+  "pref": "tochigi",
+  "seq": 673712,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09202",
+  "id": "22264318",
+  "kind": "new",
+  "payload": {
+   "price": 13990000
+  },
+  "pref": "tochigi",
+  "seq": 673713,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09203",
+  "id": "22264537",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "tochigi",
+  "seq": 673714,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09208",
+  "id": "21339464",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20500000,
+   "price": 19990000
+  },
+  "pref": "tochigi",
+  "seq": 673715,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09213",
+  "id": "22259508",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15800000,
+   "price": 13800000
+  },
+  "pref": "tochigi",
+  "seq": 673716,
+  "type": "used_house"
+ },
+ {
+  "area_code": "09202",
+  "id": "77065172",
+  "kind": "relisted",
+  "payload": {
+   "price": 600000
+  },
+  "pref": "tochigi",
+  "seq": 673717,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "73985218",
+  "kind": "relisted",
+  "payload": {
+   "price": 1000000
+  },
+  "pref": "tochigi",
+  "seq": 673718,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "76922115",
+  "kind": "relisted",
+  "payload": {
+   "price": 1280000
+  },
+  "pref": "tochigi",
+  "seq": 673719,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "20804606",
+  "kind": "relisted",
+  "payload": {
+   "price": 1800000
+  },
+  "pref": "tochigi",
+  "seq": 673720,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "21180486",
+  "kind": "relisted",
+  "payload": {
+   "price": 2100000
+  },
+  "pref": "tochigi",
+  "seq": 673721,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "20447763",
+  "kind": "relisted",
+  "payload": {
+   "price": 3200000
+  },
+  "pref": "tochigi",
+  "seq": 673722,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "73304688",
+  "kind": "relisted",
+  "payload": {
+   "price": 3500000
+  },
+  "pref": "tochigi",
+  "seq": 673723,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "96729766",
+  "kind": "relisted",
+  "payload": {
+   "price": 4000000
+  },
+  "pref": "tochigi",
+  "seq": 673724,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "79151155",
+  "kind": "relisted",
+  "payload": {
+   "price": 4400000
+  },
+  "pref": "tochigi",
+  "seq": 673725,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "78693348",
+  "kind": "relisted",
+  "payload": {
+   "price": 5200000
+  },
+  "pref": "tochigi",
+  "seq": 673726,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "20843864",
+  "kind": "relisted",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "tochigi",
+  "seq": 673727,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "73237598",
+  "kind": "relisted",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "tochigi",
+  "seq": 673728,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "78802793",
+  "kind": "relisted",
+  "payload": {
+   "price": 6500000
+  },
+  "pref": "tochigi",
+  "seq": 673729,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "20297935",
+  "kind": "relisted",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "tochigi",
+  "seq": 673730,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "78994581",
+  "kind": "relisted",
+  "payload": {
+   "price": 9000000
+  },
+  "pref": "tochigi",
+  "seq": 673731,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "77237744",
+  "kind": "relisted",
+  "payload": {
+   "price": 9900000
+  },
+  "pref": "tochigi",
+  "seq": 673732,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "21333272",
+  "kind": "relisted",
+  "payload": {
+   "price": 12000000
+  },
+  "pref": "tochigi",
+  "seq": 673733,
+  "type": "land"
+ },
+ {
+  "area_code": "09202",
+  "id": "79141374",
+  "kind": "relisted",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "tochigi",
+  "seq": 673734,
+  "type": "land"
+ },
+ {
+  "area_code": "25201",
+  "id": "22224895",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24990000,
+   "price": 26990000
+  },
+  "pref": "shiga",
+  "seq": 673735,
+  "type": "new_house"
+ },
+ {
+  "area_code": "25201",
+  "id": "22225153",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32800000
+  },
+  "pref": "shiga",
+  "seq": 673736,
+  "type": "new_house"
+ },
+ {
+  "area_code": "25201",
+  "id": "22261766",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "shiga",
+  "seq": 673737,
+  "type": "new_house"
+ },
+ {
+  "area_code": "25201",
+  "id": "21756078",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "shiga",
+  "seq": 673738,
+  "type": "used_house"
+ },
+ {
+  "area_code": "25206",
+  "id": "21673367",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "shiga",
+  "seq": 673739,
+  "type": "used_house"
+ },
+ {
+  "area_code": "25206",
+  "id": "21671258",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "shiga",
+  "seq": 673740,
+  "type": "used_house"
+ },
+ {
+  "area_code": "25201",
+  "id": "22133076",
+  "kind": "new",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "shiga",
+  "seq": 673741,
+  "type": "land"
+ },
+ {
+  "area_code": "32201",
+  "id": "22264307",
+  "kind": "new",
+  "payload": {
+   "price": 7000000
+  },
+  "pref": "shimane",
+  "seq": 673742,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33211",
+  "id": "21669832",
+  "kind": "relisted",
+  "payload": {
+   "price": 15800000
+  },
+  "pref": "okayama",
+  "seq": 673743,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "33101",
+  "id": "22045970",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29980000,
+   "price": 28800000
+  },
+  "pref": "okayama",
+  "seq": 673744,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33102",
+  "id": "22039132",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35990000,
+   "price": 34990000
+  },
+  "pref": "okayama",
+  "seq": 673745,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33102",
+  "id": "22038946",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 32990000
+  },
+  "pref": "okayama",
+  "seq": 673746,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33102",
+  "id": "21708278",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33990000
+  },
+  "pref": "okayama",
+  "seq": 673747,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33103",
+  "id": "21938122",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25990000,
+   "price": 24990000
+  },
+  "pref": "okayama",
+  "seq": 673748,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33103",
+  "id": "22201579",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 31990000
+  },
+  "pref": "okayama",
+  "seq": 673749,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33104",
+  "id": "21702008",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26990000,
+   "price": 25990000
+  },
+  "pref": "okayama",
+  "seq": 673750,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33202",
+  "id": "22111026",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26980000,
+   "price": 25980000
+  },
+  "pref": "okayama",
+  "seq": 673751,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33202",
+  "id": "21610265",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17800000,
+   "price": 16800000
+  },
+  "pref": "okayama",
+  "seq": 673752,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33202",
+  "id": "21039308",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17800000,
+   "price": 18800000
+  },
+  "pref": "okayama",
+  "seq": 673753,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33208",
+  "id": "20064001",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34300000,
+   "price": 33800000
+  },
+  "pref": "okayama",
+  "seq": 673754,
+  "type": "new_house"
+ },
+ {
+  "area_code": "33103",
+  "id": "21250438",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18000000,
+   "price": 16800000
+  },
+  "pref": "okayama",
+  "seq": 673755,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33202",
+  "id": "20936532",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 5500000,
+   "price": 4000000
+  },
+  "pref": "okayama",
+  "seq": 673756,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33202",
+  "id": "22258807",
+  "kind": "new",
+  "payload": {
+   "price": 22990000
+  },
+  "pref": "okayama",
+  "seq": 673757,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33211",
+  "id": "22264516",
+  "kind": "new",
+  "payload": {
+   "price": 500000
+  },
+  "pref": "okayama",
+  "seq": 673758,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33340",
+  "id": "22264351",
+  "kind": "new",
+  "payload": {
+   "price": 13500000
+  },
+  "pref": "okayama",
+  "seq": 673759,
+  "type": "used_house"
+ },
+ {
+  "area_code": "33101",
+  "id": "22264379",
+  "kind": "new",
+  "payload": {
+   "price": 500000
+  },
+  "pref": "okayama",
+  "seq": 673760,
+  "type": "land"
+ },
+ {
+  "area_code": "33202",
+  "id": "77389990",
+  "kind": "relisted",
+  "payload": {
+   "price": 4980000
+  },
+  "pref": "okayama",
+  "seq": 673761,
+  "type": "land"
+ },
+ {
+  "area_code": "33208",
+  "id": "21130864",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 6000000,
+   "price": 6900000
+  },
+  "pref": "okayama",
+  "seq": 673762,
+  "type": "land"
+ }
+]
