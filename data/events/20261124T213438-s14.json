@@ -1,0 +1,5356 @@
+[
+ {
+  "area_code": "23101",
+  "id": "22258650",
+  "kind": "new",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "aichi",
+  "seq": 387624,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23102",
+  "id": "20852772",
+  "kind": "relisted",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "aichi",
+  "seq": 387625,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23102",
+  "id": "20390861",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 82900000,
+   "price": 75800000
+  },
+  "pref": "aichi",
+  "seq": 387626,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23102",
+  "id": "22258660",
+  "kind": "new",
+  "payload": {
+   "price": 19980000
+  },
+  "pref": "aichi",
+  "seq": 387627,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23104",
+  "id": "76318096",
+  "kind": "relisted",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "aichi",
+  "seq": 387628,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23104",
+  "id": "76318096",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 38800000
+  },
+  "pref": "aichi",
+  "seq": 387629,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23104",
+  "id": "76318097",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41900000,
+   "price": 40800000
+  },
+  "pref": "aichi",
+  "seq": 387630,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23104",
+  "id": "75689571",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43900000,
+   "price": 42000000
+  },
+  "pref": "aichi",
+  "seq": 387631,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23104",
+  "id": "22257567",
+  "kind": "new",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387632,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23106",
+  "id": "22258913",
+  "kind": "new",
+  "payload": {
+   "price": 36000000
+  },
+  "pref": "aichi",
+  "seq": 387633,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23107",
+  "id": "22259288",
+  "kind": "new",
+  "payload": {
+   "price": 17000000
+  },
+  "pref": "aichi",
+  "seq": 387634,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23108",
+  "id": "21913900",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "aichi",
+  "seq": 387635,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23108",
+  "id": "22240871",
+  "kind": "new",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "aichi",
+  "seq": 387636,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23111",
+  "id": "20423627",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17800000,
+   "price": 19800000
+  },
+  "pref": "aichi",
+  "seq": 387637,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23113",
+  "id": "77780447",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25990000,
+   "price": 24900000
+  },
+  "pref": "aichi",
+  "seq": 387638,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23113",
+  "id": "22258612",
+  "kind": "new",
+  "payload": {
+   "price": 18980000
+  },
+  "pref": "aichi",
+  "seq": 387639,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23113",
+  "id": "22258621",
+  "kind": "new",
+  "payload": {
+   "price": 19980000
+  },
+  "pref": "aichi",
+  "seq": 387640,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23114",
+  "id": "21455591",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37990000,
+   "price": 35800000
+  },
+  "pref": "aichi",
+  "seq": 387641,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23115",
+  "id": "22258987",
+  "kind": "new",
+  "payload": {
+   "price": 24990000
+  },
+  "pref": "aichi",
+  "seq": 387642,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23115",
+  "id": "21185856",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387643,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23202",
+  "id": "22197629",
+  "kind": "new",
+  "payload": {
+   "price": 30980000
+  },
+  "pref": "aichi",
+  "seq": 387644,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23206",
+  "id": "22259002",
+  "kind": "new",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387645,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23206",
+  "id": "21838562",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18900000,
+   "price": 16900000
+  },
+  "pref": "aichi",
+  "seq": 387646,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23210",
+  "id": "21588515",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387647,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23210",
+  "id": "20874013",
+  "kind": "new",
+  "payload": {
+   "price": 15200000
+  },
+  "pref": "aichi",
+  "seq": 387648,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23211",
+  "id": "21771970",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17980000,
+   "price": 16980000
+  },
+  "pref": "aichi",
+  "seq": 387649,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23217",
+  "id": "20033954",
+  "kind": "relisted",
+  "payload": {
+   "price": 15800000
+  },
+  "pref": "aichi",
+  "seq": 387650,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23226",
+  "id": "22250628",
+  "kind": "new",
+  "payload": {
+   "price": 13900000
+  },
+  "pref": "aichi",
+  "seq": 387651,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23238",
+  "id": "22258002",
+  "kind": "new",
+  "payload": {
+   "price": 39200000
+  },
+  "pref": "aichi",
+  "seq": 387652,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23238",
+  "id": "22054769",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 24900000
+  },
+  "pref": "aichi",
+  "seq": 387653,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "23101",
+  "id": "21253151",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387654,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "21397533",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387655,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22234012",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387656,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22194997",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 68800000,
+   "price": 65800000
+  },
+  "pref": "aichi",
+  "seq": 387657,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "20457718",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 79800000,
+   "price": 82800000
+  },
+  "pref": "aichi",
+  "seq": 387658,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "21526807",
+  "kind": "new",
+  "payload": {
+   "price": 84800000
+  },
+  "pref": "aichi",
+  "seq": 387659,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "21243149",
+  "kind": "new",
+  "payload": {
+   "price": 89800000
+  },
+  "pref": "aichi",
+  "seq": 387660,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "21915233",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387661,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "20609597",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387662,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "21707085",
+  "kind": "new",
+  "payload": {
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387663,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22065529",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 68800000,
+   "price": 65800000
+  },
+  "pref": "aichi",
+  "seq": 387664,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22065570",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 69800000,
+   "price": 66800000
+  },
+  "pref": "aichi",
+  "seq": 387665,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "20753347",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387666,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "22257849",
+  "kind": "new",
+  "payload": {
+   "price": 54900000
+  },
+  "pref": "aichi",
+  "seq": 387667,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "20529315",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387668,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "21915203",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387669,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "20526974",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387670,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "20526971",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45800000,
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387671,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23102",
+  "id": "20529313",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45800000,
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387672,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "21205806",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36400000,
+   "price": 35400000
+  },
+  "pref": "aichi",
+  "seq": 387673,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "22254030",
+  "kind": "new",
+  "payload": {
+   "price": 36400000
+  },
+  "pref": "aichi",
+  "seq": 387674,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "20883871",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387675,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "20883870",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387676,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "20883872",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387677,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "21126079",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36400000,
+   "price": 35400000
+  },
+  "pref": "aichi",
+  "seq": 387678,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "22121524",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36400000,
+   "price": 35400000
+  },
+  "pref": "aichi",
+  "seq": 387679,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "22086894",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36400000,
+   "price": 35400000
+  },
+  "pref": "aichi",
+  "seq": 387680,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "21126081",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36400000,
+   "price": 35400000
+  },
+  "pref": "aichi",
+  "seq": 387681,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "21449013",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41900000,
+   "price": 39900000
+  },
+  "pref": "aichi",
+  "seq": 387682,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "21082856",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 52990000
+  },
+  "pref": "aichi",
+  "seq": 387683,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23104",
+  "id": "21396911",
+  "kind": "new",
+  "payload": {
+   "price": 51800000
+  },
+  "pref": "aichi",
+  "seq": 387684,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23104",
+  "id": "21360761",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54800000,
+   "price": 51800000
+  },
+  "pref": "aichi",
+  "seq": 387685,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23104",
+  "id": "21350883",
+  "kind": "new",
+  "payload": {
+   "price": 51800000
+  },
+  "pref": "aichi",
+  "seq": 387686,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23104",
+  "id": "22216747",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 51990000,
+   "price": 54990000
+  },
+  "pref": "aichi",
+  "seq": 387687,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23105",
+  "id": "22258488",
+  "kind": "new",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "aichi",
+  "seq": 387688,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23105",
+  "id": "22254137",
+  "kind": "new",
+  "payload": {
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387689,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23105",
+  "id": "21776426",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 64800000,
+   "price": 61800000
+  },
+  "pref": "aichi",
+  "seq": 387690,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23105",
+  "id": "21062326",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 64800000,
+   "price": 61800000
+  },
+  "pref": "aichi",
+  "seq": 387691,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23106",
+  "id": "22037094",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387692,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23106",
+  "id": "22194132",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387693,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23106",
+  "id": "21901246",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387694,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23106",
+  "id": "20798942",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387695,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "21236744",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 50990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387696,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "21527446",
+  "kind": "new",
+  "payload": {
+   "price": 62800000
+  },
+  "pref": "aichi",
+  "seq": 387697,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "21904227",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387698,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "21904246",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 62800000,
+   "price": 59800000
+  },
+  "pref": "aichi",
+  "seq": 387699,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "21904223",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 64800000,
+   "price": 61800000
+  },
+  "pref": "aichi",
+  "seq": 387700,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23107",
+  "id": "22250655",
+  "kind": "new",
+  "payload": {
+   "price": 67800000
+  },
+  "pref": "aichi",
+  "seq": 387701,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23108",
+  "id": "21700876",
+  "kind": "relisted",
+  "payload": {
+   "price": 52990000
+  },
+  "pref": "aichi",
+  "seq": 387702,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "21180879",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 35800000
+  },
+  "pref": "aichi",
+  "seq": 387703,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "22076810",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387704,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "21799071",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387705,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "22232846",
+  "kind": "new",
+  "payload": {
+   "price": null
+  },
+  "pref": "aichi",
+  "seq": 387706,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "21555203",
+  "kind": "relisted",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387707,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "22026737",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387708,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "20608259",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387709,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "21003732",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49800000,
+   "price": 47800000
+  },
+  "pref": "aichi",
+  "seq": 387710,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "21877238",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 59800000,
+   "price": 57800000
+  },
+  "pref": "aichi",
+  "seq": 387711,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23109",
+  "id": "22026685",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 59800000,
+   "price": 57800000
+  },
+  "pref": "aichi",
+  "seq": 387712,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "20482097",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36990000,
+   "price": 34990000
+  },
+  "pref": "aichi",
+  "seq": 387713,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "21189994",
+  "kind": "relisted",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "aichi",
+  "seq": 387714,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "21189994",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 43800000
+  },
+  "pref": "aichi",
+  "seq": 387715,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "21165361",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 43800000
+  },
+  "pref": "aichi",
+  "seq": 387716,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "21574374",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387717,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "22258353",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387718,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23110",
+  "id": "21208074",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36990000,
+   "price": 34990000
+  },
+  "pref": "aichi",
+  "seq": 387719,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23111",
+  "id": "21417044",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387720,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23111",
+  "id": "21739695",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387721,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23111",
+  "id": "21258203",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387722,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23111",
+  "id": "79173031",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 29900000
+  },
+  "pref": "aichi",
+  "seq": 387723,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23111",
+  "id": "22109590",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387724,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "20976853",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 32990000
+  },
+  "pref": "aichi",
+  "seq": 387725,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21672955",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387726,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "20854551",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387727,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21201810",
+  "kind": "relisted",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "aichi",
+  "seq": 387728,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21201810",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 32990000
+  },
+  "pref": "aichi",
+  "seq": 387729,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21642597",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387730,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21709830",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387731,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "22151086",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39990000
+  },
+  "pref": "aichi",
+  "seq": 387732,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21746245",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46990000,
+   "price": 44990000
+  },
+  "pref": "aichi",
+  "seq": 387733,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "20698970",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387734,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "20687825",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387735,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21171535",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387736,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21895937",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387737,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "22151036",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387738,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "20794761",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387739,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "21896887",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 49990000
+  },
+  "pref": "aichi",
+  "seq": 387740,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23112",
+  "id": "22086168",
+  "kind": "new",
+  "payload": {
+   "price": 59800000
+  },
+  "pref": "aichi",
+  "seq": 387741,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21151017",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37990000,
+   "price": 36990000
+  },
+  "pref": "aichi",
+  "seq": 387742,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21150020",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387743,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21149678",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387744,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21350851",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387745,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21381759",
+  "kind": "relisted",
+  "payload": {
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387746,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21381759",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387747,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21360164",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387748,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "21360117",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387749,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "20979880",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45800000,
+   "price": 51800000
+  },
+  "pref": "aichi",
+  "seq": 387750,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "22257726",
+  "kind": "new",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387751,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23113",
+  "id": "22258001",
+  "kind": "new",
+  "payload": {
+   "price": 45800000
+  },
+  "pref": "aichi",
+  "seq": 387752,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23114",
+  "id": "21433790",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387753,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23114",
+  "id": "22192929",
+  "kind": "new",
+  "payload": {
+   "price": 40800000
+  },
+  "pref": "aichi",
+  "seq": 387754,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23114",
+  "id": "22195892",
+  "kind": "new",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "aichi",
+  "seq": 387755,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23114",
+  "id": "22076978",
+  "kind": "new",
+  "payload": {
+   "price": 57990000
+  },
+  "pref": "aichi",
+  "seq": 387756,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23114",
+  "id": "21953596",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 38990000
+  },
+  "pref": "aichi",
+  "seq": 387757,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23115",
+  "id": "22258365",
+  "kind": "new",
+  "payload": {
+   "price": 57900000
+  },
+  "pref": "aichi",
+  "seq": 387758,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23115",
+  "id": "21469366",
+  "kind": "relisted",
+  "payload": {
+   "price": 67990000
+  },
+  "pref": "aichi",
+  "seq": 387759,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23116",
+  "id": "21005585",
+  "kind": "relisted",
+  "payload": {
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387760,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23116",
+  "id": "21109039",
+  "kind": "relisted",
+  "payload": {
+   "price": 59900000
+  },
+  "pref": "aichi",
+  "seq": 387761,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23116",
+  "id": "22189854",
+  "kind": "new",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "aichi",
+  "seq": 387762,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21373597",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 387763,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21349571",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 387764,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "22242468",
+  "kind": "new",
+  "payload": {
+   "price": 22600000
+  },
+  "pref": "aichi",
+  "seq": 387765,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21766110",
+  "kind": "new",
+  "payload": {
+   "price": 26980000
+  },
+  "pref": "aichi",
+  "seq": 387766,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21766111",
+  "kind": "new",
+  "payload": {
+   "price": 30980000
+  },
+  "pref": "aichi",
+  "seq": 387767,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21261480",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 387768,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21265407",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 387769,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21132575",
+  "kind": "new",
+  "payload": {
+   "price": 32600000
+  },
+  "pref": "aichi",
+  "seq": 387770,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21334223",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387771,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21265461",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387772,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22137988",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387773,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22058149",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387774,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21441539",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387775,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21805914",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387776,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "20008258",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387777,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21818342",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387778,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21820098",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387779,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21499763",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387780,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21499899",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387781,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21356406",
+  "kind": "new",
+  "payload": {
+   "price": 36980000
+  },
+  "pref": "aichi",
+  "seq": 387782,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21720388",
+  "kind": "new",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "aichi",
+  "seq": 387783,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21720385",
+  "kind": "new",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "aichi",
+  "seq": 387784,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21494493",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 387785,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22258084",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "aichi",
+  "seq": 387786,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "21445187",
+  "kind": "new",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387787,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22115609",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 44800000
+  },
+  "pref": "aichi",
+  "seq": 387788,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22258087",
+  "kind": "new",
+  "payload": {
+   "price": 44900000
+  },
+  "pref": "aichi",
+  "seq": 387789,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22115608",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 47900000,
+   "price": 45800000
+  },
+  "pref": "aichi",
+  "seq": 387790,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21028744",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387791,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "20990314",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387792,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "79034278",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387793,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21673075",
+  "kind": "new",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387794,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "22258968",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387795,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21664473",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 29800000
+  },
+  "pref": "aichi",
+  "seq": 387796,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21482688",
+  "kind": "relisted",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387797,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21502933",
+  "kind": "relisted",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387798,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21502933",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35980000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387799,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21131751",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35980000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387800,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "79037820",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387801,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "79070039",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387802,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21947662",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21800000,
+   "price": 19800000
+  },
+  "pref": "aichi",
+  "seq": 387803,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "21594998",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29490000,
+   "price": 24990000
+  },
+  "pref": "aichi",
+  "seq": 387804,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "22223884",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 32990000
+  },
+  "pref": "aichi",
+  "seq": 387805,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "22130137",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35980000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387806,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "22257654",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387807,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "21345073",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387808,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "21793964",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387809,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "21710634",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387810,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "22257569",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "aichi",
+  "seq": 387811,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "22184885",
+  "kind": "new",
+  "payload": {
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 387812,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "21868551",
+  "kind": "relisted",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387813,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "21915410",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 29900000
+  },
+  "pref": "aichi",
+  "seq": 387814,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "22258098",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387815,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "22258059",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387816,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "22258060",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 387817,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "22258058",
+  "kind": "new",
+  "payload": {
+   "price": 40900000
+  },
+  "pref": "aichi",
+  "seq": 387818,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "20722000",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387819,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22044724",
+  "kind": "relisted",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387820,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22044724",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387821,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21568434",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387822,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "20519209",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387823,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "79147676",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387824,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22254032",
+  "kind": "new",
+  "payload": {
+   "price": 36300000
+  },
+  "pref": "aichi",
+  "seq": 387825,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22112272",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39990000
+  },
+  "pref": "aichi",
+  "seq": 387826,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22126543",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39990000
+  },
+  "pref": "aichi",
+  "seq": 387827,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22254033",
+  "kind": "new",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "aichi",
+  "seq": 387828,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22058599",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387829,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21839372",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387830,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21929538",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387831,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21538591",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30000000
+  },
+  "pref": "aichi",
+  "seq": 387832,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "79164795",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387833,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21772213",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387834,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "20600042",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 387835,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22058598",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387836,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21739424",
+  "kind": "new",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "aichi",
+  "seq": 387837,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21839370",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387838,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21839371",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387839,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21510219",
+  "kind": "relisted",
+  "payload": {
+   "price": 36840000
+  },
+  "pref": "aichi",
+  "seq": 387840,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21510220",
+  "kind": "relisted",
+  "payload": {
+   "price": 37840000
+  },
+  "pref": "aichi",
+  "seq": 387841,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22082137",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39990000
+  },
+  "pref": "aichi",
+  "seq": 387842,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21443269",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39990000
+  },
+  "pref": "aichi",
+  "seq": 387843,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21475599",
+  "kind": "new",
+  "payload": {
+   "price": 42990000
+  },
+  "pref": "aichi",
+  "seq": 387844,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21475597",
+  "kind": "relisted",
+  "payload": {
+   "price": 43990000
+  },
+  "pref": "aichi",
+  "seq": 387845,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22258668",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387846,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23207",
+  "id": "22142850",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "aichi",
+  "seq": 387847,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23208",
+  "id": "21620512",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 387848,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "22080973",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387849,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "21340898",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23800000
+  },
+  "pref": "aichi",
+  "seq": 387850,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "22169067",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "aichi",
+  "seq": 387851,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "21717832",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387852,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "21715587",
+  "kind": "new",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387853,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "21867136",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387854,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "21818009",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387855,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "20624756",
+  "kind": "new",
+  "payload": {
+   "price": 27300000
+  },
+  "pref": "aichi",
+  "seq": 387856,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23209",
+  "id": "22258273",
+  "kind": "new",
+  "payload": {
+   "price": 28770000
+  },
+  "pref": "aichi",
+  "seq": 387857,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "20992797",
+  "kind": "new",
+  "payload": {
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387858,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "20655481",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387859,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "22196497",
+  "kind": "new",
+  "payload": {
+   "price": 44900000
+  },
+  "pref": "aichi",
+  "seq": 387860,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "20608244",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387861,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "20617867",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387862,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "21136208",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387863,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "21117743",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387864,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23210",
+  "id": "21126784",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35550000,
+   "price": 34770000
+  },
+  "pref": "aichi",
+  "seq": 387865,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21785661",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35300000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387866,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "22205684",
+  "kind": "new",
+  "payload": {
+   "price": 45900000
+  },
+  "pref": "aichi",
+  "seq": 387867,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "22206531",
+  "kind": "new",
+  "payload": {
+   "price": 51900000
+  },
+  "pref": "aichi",
+  "seq": 387868,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21794430",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387869,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21794431",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387870,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21794432",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387871,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21660165",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35300000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387872,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21183743",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35300000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387873,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21604380",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40000000,
+   "price": 39800000
+  },
+  "pref": "aichi",
+  "seq": 387874,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21670759",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38900000,
+   "price": 40900000
+  },
+  "pref": "aichi",
+  "seq": 387875,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "22235789",
+  "kind": "new",
+  "payload": {
+   "price": 45900000
+  },
+  "pref": "aichi",
+  "seq": 387876,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22109688",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40550000,
+   "price": 39550000
+  },
+  "pref": "aichi",
+  "seq": 387877,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "20827205",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39770000,
+   "price": 39550000
+  },
+  "pref": "aichi",
+  "seq": 387878,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "20959328",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39770000,
+   "price": 39550000
+  },
+  "pref": "aichi",
+  "seq": 387879,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "21090000",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "aichi",
+  "seq": 387880,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22038779",
+  "kind": "relisted",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387881,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22038779",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387882,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22038780",
+  "kind": "relisted",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387883,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22038780",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36900000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387884,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "21875170",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387885,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "22258410",
+  "kind": "new",
+  "payload": {
+   "price": 37770000
+  },
+  "pref": "aichi",
+  "seq": 387886,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "21136153",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39770000,
+   "price": 39550000
+  },
+  "pref": "aichi",
+  "seq": 387887,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23212",
+  "id": "75944917",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23700000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387888,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21438018",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387889,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21805900",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387890,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21034829",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387891,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22066170",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387892,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22105855",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 387893,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22200439",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387894,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22208148",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387895,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21883033",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 49800000
+  },
+  "pref": "aichi",
+  "seq": 387896,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812111",
+  "kind": "relisted",
+  "payload": {
+   "price": 16900000
+  },
+  "pref": "aichi",
+  "seq": 387897,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812111",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17900000,
+   "price": 16900000
+  },
+  "pref": "aichi",
+  "seq": 387898,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812109",
+  "kind": "relisted",
+  "payload": {
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387899,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812109",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387900,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812110",
+  "kind": "relisted",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387901,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21812110",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387902,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21987323",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 387903,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21987321",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 387904,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "21987322",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 387905,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22043934",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17900000,
+   "price": 16900000
+  },
+  "pref": "aichi",
+  "seq": 387906,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22043932",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "aichi",
+  "seq": 387907,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23213",
+  "id": "22043933",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "aichi",
+  "seq": 387908,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23214",
+  "id": "22258088",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "aichi",
+  "seq": 387909,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21646809",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 387910,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "20780895",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23800000,
+   "price": 22800000
+  },
+  "pref": "aichi",
+  "seq": 387911,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "20632836",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23800000,
+   "price": 22800000
+  },
+  "pref": "aichi",
+  "seq": 387912,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21842126",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "aichi",
+  "seq": 387913,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21842130",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "aichi",
+  "seq": 387914,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "22148043",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 387915,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21842131",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387916,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21979176",
+  "kind": "relisted",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "aichi",
+  "seq": 387917,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21842121",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "aichi",
+  "seq": 387918,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21842128",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "aichi",
+  "seq": 387919,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "20875929",
+  "kind": "relisted",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "aichi",
+  "seq": 387920,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "20875927",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387921,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21979177",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387922,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21979175",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387923,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21777900",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31980000,
+   "price": 30980000
+  },
+  "pref": "aichi",
+  "seq": 387924,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21528953",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29990000,
+   "price": 28990000
+  },
+  "pref": "aichi",
+  "seq": 387925,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21779758",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387926,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "22158391",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387927,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21779760",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387928,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21779757",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387929,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23219",
+  "id": "21998745",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 387930,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21004125",
+  "kind": "relisted",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387931,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21004125",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28500000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387932,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21242023",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387933,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21012020",
+  "kind": "relisted",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387934,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21012020",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387935,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21535552",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387936,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "20960266",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28500000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387937,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23220",
+  "id": "21598639",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387938,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23222",
+  "id": "22109722",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 28900000
+  },
+  "pref": "aichi",
+  "seq": 387939,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23222",
+  "id": "21250546",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387940,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23222",
+  "id": "21435563",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387941,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23222",
+  "id": "21234901",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "aichi",
+  "seq": 387942,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23223",
+  "id": "20168831",
+  "kind": "relisted",
+  "payload": {
+   "price": 19400000
+  },
+  "pref": "aichi",
+  "seq": 387943,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21985481",
+  "kind": "relisted",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 387944,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21277845",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 387945,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21342270",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "aichi",
+  "seq": 387946,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21192804",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 387947,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "22258057",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387948,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21435561",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 387949,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "22258056",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 387950,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21214532",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 387951,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21435529",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 387952,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "21435528",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 387953,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "22258159",
+  "kind": "new",
+  "payload": {
+   "price": 13820000
+  },
+  "pref": "aichi",
+  "seq": 387954,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23224",
+  "id": "22254302",
+  "kind": "new",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "aichi",
+  "seq": 387955,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21476969",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387956,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21911448",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387957,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21474878",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387958,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "22199447",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "aichi",
+  "seq": 387959,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21581478",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "aichi",
+  "seq": 387960,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21411160",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387961,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21414193",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387962,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21787916",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387963,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21891176",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387964,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21484656",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36500000,
+   "price": 35900000
+  },
+  "pref": "aichi",
+  "seq": 387965,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23226",
+  "id": "21475138",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40500000,
+   "price": 39900000
+  },
+  "pref": "aichi",
+  "seq": 387966,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21436125",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387967,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21294855",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387968,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21443443",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387969,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21924318",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387970,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21620084",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "aichi",
+  "seq": 387971,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "22170538",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27770000,
+   "price": 28770000
+  },
+  "pref": "aichi",
+  "seq": 387972,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21333839",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32770000,
+   "price": 31770000
+  },
+  "pref": "aichi",
+  "seq": 387973,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21142406",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387974,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23227",
+  "id": "21034823",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387975,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23228",
+  "id": "20558062",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26980000,
+   "price": 25980000
+  },
+  "pref": "aichi",
+  "seq": 387976,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23228",
+  "id": "21409429",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 39900000
+  },
+  "pref": "aichi",
+  "seq": 387977,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23229",
+  "id": "21410764",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 52800000,
+   "price": 50800000
+  },
+  "pref": "aichi",
+  "seq": 387978,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23229",
+  "id": "21410465",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 52800000,
+   "price": 50800000
+  },
+  "pref": "aichi",
+  "seq": 387979,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23230",
+  "id": "21597979",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "aichi",
+  "seq": 387980,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23230",
+  "id": "21604740",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "aichi",
+  "seq": 387981,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21153794",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "aichi",
+  "seq": 387982,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21180465",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "aichi",
+  "seq": 387983,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21195036",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "aichi",
+  "seq": 387984,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21864842",
+  "kind": "relisted",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "aichi",
+  "seq": 387985,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21864842",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26800000
+  },
+  "pref": "aichi",
+  "seq": 387986,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21160546",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "aichi",
+  "seq": 387987,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "22154919",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "aichi",
+  "seq": 387988,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21160545",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28500000,
+   "price": 26800000
+  },
+  "pref": "aichi",
+  "seq": 387989,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23232",
+  "id": "21160547",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "aichi",
+  "seq": 387990,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23233",
+  "id": "20911032",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 27900000
+  },
+  "pref": "aichi",
+  "seq": 387991,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23233",
+  "id": "22257563",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387992,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23233",
+  "id": "21147891",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 33900000
+  },
+  "pref": "aichi",
+  "seq": 387993,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23234",
+  "id": "22059155",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "aichi",
+  "seq": 387994,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23234",
+  "id": "20951247",
+  "kind": "relisted",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "aichi",
+  "seq": 387995,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23234",
+  "id": "20951248",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "aichi",
+  "seq": 387996,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23235",
+  "id": "21422485",
+  "kind": "new",
+  "payload": {
+   "price": 26700000
+  },
+  "pref": "aichi",
+  "seq": 387997,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23235",
+  "id": "21133223",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 387998,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23235",
+  "id": "21419072",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 387999,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23235",
+  "id": "21419073",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 388000,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21509408",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "aichi",
+  "seq": 388001,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21381651",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388002,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21235650",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 31900000
+  },
+  "pref": "aichi",
+  "seq": 388003,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "20899109",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388004,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21326515",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388005,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21280575",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388006,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21286070",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388007,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21336077",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388008,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23237",
+  "id": "21280762",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28770000,
+   "price": 28330000
+  },
+  "pref": "aichi",
+  "seq": 388009,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23238",
+  "id": "22194252",
+  "kind": "new",
+  "payload": {
+   "price": 57900000
+  },
+  "pref": "aichi",
+  "seq": 388010,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23238",
+  "id": "22233880",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 388011,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23302",
+  "id": "21984258",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 388012,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23302",
+  "id": "21474094",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 388013,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23302",
+  "id": "21041091",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "aichi",
+  "seq": 388014,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23360",
+  "id": "21236117",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 388015,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23360",
+  "id": "22204545",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 388016,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23360",
+  "id": "21183459",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "aichi",
+  "seq": 388017,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "20688269",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 28800000
+  },
+  "pref": "aichi",
+  "seq": 388018,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "21286245",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 388019,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "21857019",
+  "kind": "relisted",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 388020,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "21857019",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 388021,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "21362150",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 388022,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170494",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 388023,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170495",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 388024,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170493",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "aichi",
+  "seq": 388025,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170498",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 388026,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170497",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 388027,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "22170496",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "aichi",
+  "seq": 388028,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23420",
+  "id": "21164184",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 30800000
+  },
+  "pref": "aichi",
+  "seq": 388029,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "21191835",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29770000,
+   "price": 28770000
+  },
+  "pref": "aichi",
+  "seq": 388030,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "22183129",
+  "kind": "new",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "aichi",
+  "seq": 388031,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "20827281",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29770000,
+   "price": 28770000
+  },
+  "pref": "aichi",
+  "seq": 388032,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "21555194",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30550000
+  },
+  "pref": "aichi",
+  "seq": 388033,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "21144082",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31330000,
+   "price": 30550000
+  },
+  "pref": "aichi",
+  "seq": 388034,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23500",
+  "id": "22258085",
+  "kind": "new",
+  "payload": {
+   "price": 31330000
+  },
+  "pref": "aichi",
+  "seq": 388035,
+  "type": "new_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22258881",
+  "kind": "new",
+  "payload": {
+   "price": 52990000
+  },
+  "pref": "aichi",
+  "seq": 388036,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23103",
+  "id": "22099335",
+  "kind": "relisted",
+  "payload": {
+   "price": 7900000
+  },
+  "pref": "aichi",
+  "seq": 388037,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23104",
+  "id": "22240872",
+  "kind": "new",
+  "payload": {
+   "price": 79800000
+  },
+  "pref": "aichi",
+  "seq": 388038,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23115",
+  "id": "21137397",
+  "kind": "relisted",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 388039,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23115",
+  "id": "22258706",
+  "kind": "new",
+  "payload": {
+   "price": 34300000
+  },
+  "pref": "aichi",
+  "seq": 388040,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23201",
+  "id": "21101347",
+  "kind": "relisted",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "aichi",
+  "seq": 388041,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23202",
+  "id": "22259023",
+  "kind": "new",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "aichi",
+  "seq": 388042,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23203",
+  "id": "20922537",
+  "kind": "new",
+  "payload": {
+   "price": 10000000
+  },
+  "pref": "aichi",
+  "seq": 388043,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23204",
+  "id": "22259054",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "aichi",
+  "seq": 388044,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23205",
+  "id": "21769459",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22000000,
+   "price": 19000000
+  },
+  "pref": "aichi",
+  "seq": 388045,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22234946",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "aichi",
+  "seq": 388046,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22257902",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "aichi",
+  "seq": 388047,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22258667",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "aichi",
+  "seq": 388048,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "22258932",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "aichi",
+  "seq": 388049,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "20984962",
+  "kind": "relisted",
+  "payload": {
+   "price": 29500000
+  },
+  "pref": "aichi",
+  "seq": 388050,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23206",
+  "id": "21716543",
+  "kind": "relisted",
+  "payload": {
+   "price": 29990000
+  },
+  "pref": "aichi",
+  "seq": 388051,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21120847",
+  "kind": "relisted",
+  "payload": {
+   "price": 23500000
+  },
+  "pref": "aichi",
+  "seq": 388052,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23211",
+  "id": "21330924",
+  "kind": "relisted",
+  "payload": {
+   "price": 34980000
+  },
+  "pref": "aichi",
+  "seq": 388053,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23217",
+  "id": "21786033",
+  "kind": "new",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "aichi",
+  "seq": 388054,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23302",
+  "id": "22031259",
+  "kind": "new",
+  "payload": {
+   "price": 43990000
+  },
+  "pref": "aichi",
+  "seq": 388055,
+  "type": "used_house"
+ },
+ {
+  "area_code": "23101",
+  "id": "22258776",
+  "kind": "new",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "aichi",
+  "seq": 388056,
+  "type": "land"
+ },
+ {
+  "area_code": "23101",
+  "id": "22258736",
+  "kind": "new",
+  "payload": {
+   "price": 63980000
+  },
+  "pref": "aichi",
+  "seq": 388057,
+  "type": "land"
+ },
+ {
+  "area_code": "23103",
+  "id": "22258788",
+  "kind": "new",
+  "payload": {
+   "price": 9500000
+  },
+  "pref": "aichi",
+  "seq": 388058,
+  "type": "land"
+ },
+ {
+  "area_code": "23103",
+  "id": "22258763",
+  "kind": "new",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "aichi",
+  "seq": 388059,
+  "type": "land"
+ },
+ {
+  "area_code": "23104",
+  "id": "22256225",
+  "kind": "new",
+  "payload": {
+   "price": 33000000
+  },
+  "pref": "aichi",
+  "seq": 388060,
+  "type": "land"
+ },
+ {
+  "area_code": "23104",
+  "id": "21082845",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 83980000,
+   "price": 87980000
+  },
+  "pref": "aichi",
+  "seq": 388061,
+  "type": "land"
+ },
+ {
+  "area_code": "23105",
+  "id": "22250657",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "aichi",
+  "seq": 388062,
+  "type": "land"
+ },
+ {
+  "area_code": "23109",
+  "id": "22232846",
+  "kind": "new",
+  "payload": {
+   "price": null
+  },
+  "pref": "aichi",
+  "seq": 388063,
+  "type": "land"
+ },
+ {
+  "area_code": "23110",
+  "id": "21504771",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "aichi",
+  "seq": 388064,
+  "type": "land"
+ },
+ {
+  "area_code": "23110",
+  "id": "21504768",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 388065,
+  "type": "land"
+ },
+ {
+  "area_code": "23111",
+  "id": "21547617",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "aichi",
+  "seq": 388066,
+  "type": "land"
+ },
+ {
+  "area_code": "23111",
+  "id": "21547614",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "aichi",
+  "seq": 388067,
+  "type": "land"
+ },
+ {
+  "area_code": "23113",
+  "id": "21291371",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16650000,
+   "price": 15000000
+  },
+  "pref": "aichi",
+  "seq": 388068,
+  "type": "land"
+ },
+ {
+  "area_code": "23113",
+  "id": "22147089",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "aichi",
+  "seq": 388069,
+  "type": "land"
+ },
+ {
+  "area_code": "23115",
+  "id": "21374336",
+  "kind": "relisted",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 388070,
+  "type": "land"
+ },
+ {
+  "area_code": "23201",
+  "id": "22242468",
+  "kind": "new",
+  "payload": {
+   "price": 22600000
+  },
+  "pref": "aichi",
+  "seq": 388071,
+  "type": "land"
+ },
+ {
+  "area_code": "23202",
+  "id": "20187367",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11120000,
+   "price": 9320000
+  },
+  "pref": "aichi",
+  "seq": 388072,
+  "type": "land"
+ },
+ {
+  "area_code": "23203",
+  "id": "22258163",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "aichi",
+  "seq": 388073,
+  "type": "land"
+ },
+ {
+  "area_code": "23206",
+  "id": "21876195",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18000000,
+   "price": 20000000
+  },
+  "pref": "aichi",
+  "seq": 388074,
+  "type": "land"
+ },
+ {
+  "area_code": "23206",
+  "id": "20465184",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22000000,
+   "price": 20000000
+  },
+  "pref": "aichi",
+  "seq": 388075,
+  "type": "land"
+ },
+ {
+  "area_code": "23211",
+  "id": "20519075",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21500000,
+   "price": 19800000
+  },
+  "pref": "aichi",
+  "seq": 388076,
+  "type": "land"
+ },
+ {
+  "area_code": "23211",
+  "id": "21631021",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23500000
+  },
+  "pref": "aichi",
+  "seq": 388077,
+  "type": "land"
+ },
+ {
+  "area_code": "23211",
+  "id": "21987933",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23800000,
+   "price": 24200000
+  },
+  "pref": "aichi",
+  "seq": 388078,
+  "type": "land"
+ },
+ {
+  "area_code": "23212",
+  "id": "75944917",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23700000,
+   "price": 23900000
+  },
+  "pref": "aichi",
+  "seq": 388079,
+  "type": "land"
+ },
+ {
+  "area_code": "23223",
+  "id": "20168831",
+  "kind": "relisted",
+  "payload": {
+   "price": 19400000
+  },
+  "pref": "aichi",
+  "seq": 388080,
+  "type": "land"
+ },
+ {
+  "area_code": "23224",
+  "id": "22258159",
+  "kind": "new",
+  "payload": {
+   "price": 13820000
+  },
+  "pref": "aichi",
+  "seq": 388081,
+  "type": "land"
+ },
+ {
+  "area_code": "23224",
+  "id": "22254302",
+  "kind": "new",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "aichi",
+  "seq": 388082,
+  "type": "land"
+ },
+ {
+  "area_code": "23225",
+  "id": "22147294",
+  "kind": "relisted",
+  "payload": {
+   "price": 58000000
+  },
+  "pref": "aichi",
+  "seq": 388083,
+  "type": "land"
+ },
+ {
+  "area_code": "23227",
+  "id": "22258636",
+  "kind": "new",
+  "payload": {
+   "price": 15800000
+  },
+  "pref": "aichi",
+  "seq": 388084,
+  "type": "land"
+ },
+ {
+  "area_code": "23238",
+  "id": "22233880",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "aichi",
+  "seq": 388085,
+  "type": "land"
+ }
+]

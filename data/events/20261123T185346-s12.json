@@ -1,0 +1,578 @@
+[
+ {
+  "area_code": "19420",
+  "id": "22249409",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "yamanashi",
+  "seq": 456538,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "19208",
+  "id": "22002140",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "yamanashi",
+  "seq": 456539,
+  "type": "new_house"
+ },
+ {
+  "area_code": "19208",
+  "id": "22249185",
+  "kind": "new",
+  "payload": {
+   "price": 22980000
+  },
+  "pref": "yamanashi",
+  "seq": 456540,
+  "type": "used_house"
+ },
+ {
+  "area_code": "19210",
+  "id": "22249167",
+  "kind": "new",
+  "payload": {
+   "price": 18980000
+  },
+  "pref": "yamanashi",
+  "seq": 456541,
+  "type": "used_house"
+ },
+ {
+  "area_code": "19210",
+  "id": "22249177",
+  "kind": "new",
+  "payload": {
+   "price": 18980000
+  },
+  "pref": "yamanashi",
+  "seq": 456542,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22101",
+  "id": "22248254",
+  "kind": "new",
+  "payload": {
+   "price": 59800000
+  },
+  "pref": "shizuoka",
+  "seq": 456543,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22102",
+  "id": "21794529",
+  "kind": "relisted",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "shizuoka",
+  "seq": 456544,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22138",
+  "id": "22159397",
+  "kind": "relisted",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "shizuoka",
+  "seq": 456545,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22138",
+  "id": "21524137",
+  "kind": "new",
+  "payload": {
+   "price": 41200000
+  },
+  "pref": "shizuoka",
+  "seq": 456546,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22205",
+  "id": "22249843",
+  "kind": "new",
+  "payload": {
+   "price": 7000000
+  },
+  "pref": "shizuoka",
+  "seq": 456547,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22210",
+  "id": "21579642",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 7800000,
+   "price": 6900000
+  },
+  "pref": "shizuoka",
+  "seq": 456548,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22340",
+  "id": "22238024",
+  "kind": "new",
+  "payload": {
+   "price": 53800000
+  },
+  "pref": "shizuoka",
+  "seq": 456549,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "22102",
+  "id": "20664742",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38900000,
+   "price": 37800000
+  },
+  "pref": "shizuoka",
+  "seq": 456550,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22102",
+  "id": "22068995",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 50500000,
+   "price": 49800000
+  },
+  "pref": "shizuoka",
+  "seq": 456551,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22138",
+  "id": "21285698",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35990000,
+   "price": 34990000
+  },
+  "pref": "shizuoka",
+  "seq": 456552,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22138",
+  "id": "22250528",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "shizuoka",
+  "seq": 456553,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22138",
+  "id": "22236961",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 42500000
+  },
+  "pref": "shizuoka",
+  "seq": 456554,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22203",
+  "id": "20653163",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 42800000
+  },
+  "pref": "shizuoka",
+  "seq": 456555,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22210",
+  "id": "21608684",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35980000,
+   "price": 34980000
+  },
+  "pref": "shizuoka",
+  "seq": 456556,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22211",
+  "id": "21149231",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25990000,
+   "price": 24990000
+  },
+  "pref": "shizuoka",
+  "seq": 456557,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22216",
+  "id": "21285699",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28490000,
+   "price": 27490000
+  },
+  "pref": "shizuoka",
+  "seq": 456558,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22420",
+  "id": "21243108",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24990000,
+   "price": 23990000
+  },
+  "pref": "shizuoka",
+  "seq": 456559,
+  "type": "new_house"
+ },
+ {
+  "area_code": "22101",
+  "id": "22250490",
+  "kind": "new",
+  "payload": {
+   "price": 18990000
+  },
+  "pref": "shizuoka",
+  "seq": 456560,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22138",
+  "id": "22250974",
+  "kind": "new",
+  "payload": {
+   "price": 27990000
+  },
+  "pref": "shizuoka",
+  "seq": 456561,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22138",
+  "id": "22250862",
+  "kind": "new",
+  "payload": {
+   "price": 30000000
+  },
+  "pref": "shizuoka",
+  "seq": 456562,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22139",
+  "id": "78713276",
+  "kind": "relisted",
+  "payload": {
+   "price": 38000000
+  },
+  "pref": "shizuoka",
+  "seq": 456563,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22205",
+  "id": "77959659",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 8800000,
+   "price": 7800000
+  },
+  "pref": "shizuoka",
+  "seq": 456564,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22207",
+  "id": "21239892",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9800000,
+   "price": 8800000
+  },
+  "pref": "shizuoka",
+  "seq": 456565,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249884",
+  "kind": "new",
+  "payload": {
+   "price": 18000000
+  },
+  "pref": "shizuoka",
+  "seq": 456566,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249459",
+  "kind": "new",
+  "payload": {
+   "price": 18800000
+  },
+  "pref": "shizuoka",
+  "seq": 456567,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249636",
+  "kind": "new",
+  "payload": {
+   "price": 35000000
+  },
+  "pref": "shizuoka",
+  "seq": 456568,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249501",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "shizuoka",
+  "seq": 456569,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22230598",
+  "kind": "new",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "shizuoka",
+  "seq": 456570,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22230560",
+  "kind": "new",
+  "payload": {
+   "price": 64800000
+  },
+  "pref": "shizuoka",
+  "seq": 456571,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249937",
+  "kind": "new",
+  "payload": {
+   "price": 78000000
+  },
+  "pref": "shizuoka",
+  "seq": 456572,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22210",
+  "id": "78709001",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23800000,
+   "price": 19990000
+  },
+  "pref": "shizuoka",
+  "seq": 456573,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22210",
+  "id": "22250079",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "shizuoka",
+  "seq": 456574,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22300",
+  "id": "22250511",
+  "kind": "new",
+  "payload": {
+   "price": 14800000
+  },
+  "pref": "shizuoka",
+  "seq": 456575,
+  "type": "used_house"
+ },
+ {
+  "area_code": "22101",
+  "id": "22250122",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "shizuoka",
+  "seq": 456576,
+  "type": "land"
+ },
+ {
+  "area_code": "22138",
+  "id": "22248911",
+  "kind": "new",
+  "payload": {
+   "price": 4800000
+  },
+  "pref": "shizuoka",
+  "seq": 456577,
+  "type": "land"
+ },
+ {
+  "area_code": "22138",
+  "id": "22250054",
+  "kind": "new",
+  "payload": {
+   "price": 14000000
+  },
+  "pref": "shizuoka",
+  "seq": 456578,
+  "type": "land"
+ },
+ {
+  "area_code": "22138",
+  "id": "22250057",
+  "kind": "new",
+  "payload": {
+   "price": 14000000
+  },
+  "pref": "shizuoka",
+  "seq": 456579,
+  "type": "land"
+ },
+ {
+  "area_code": "22203",
+  "id": "22082821",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14900000,
+   "price": 12900000
+  },
+  "pref": "shizuoka",
+  "seq": 456580,
+  "type": "land"
+ },
+ {
+  "area_code": "22203",
+  "id": "22249613",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "shizuoka",
+  "seq": 456581,
+  "type": "land"
+ },
+ {
+  "area_code": "22208",
+  "id": "22250020",
+  "kind": "new",
+  "payload": {
+   "price": 10000000
+  },
+  "pref": "shizuoka",
+  "seq": 456582,
+  "type": "land"
+ },
+ {
+  "area_code": "22208",
+  "id": "22249529",
+  "kind": "new",
+  "payload": {
+   "price": 27000000
+  },
+  "pref": "shizuoka",
+  "seq": 456583,
+  "type": "land"
+ },
+ {
+  "area_code": "22221",
+  "id": "21591614",
+  "kind": "relisted",
+  "payload": {
+   "price": 22200000
+  },
+  "pref": "shizuoka",
+  "seq": 456584,
+  "type": "land"
+ },
+ {
+  "area_code": "22225",
+  "id": "22249376",
+  "kind": "new",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "shizuoka",
+  "seq": 456585,
+  "type": "land"
+ },
+ {
+  "area_code": "38201",
+  "id": "78624210",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 58900000,
+   "price": 56900000
+  },
+  "pref": "ehime",
+  "seq": 456586,
+  "type": "new_house"
+ },
+ {
+  "area_code": "38201",
+  "id": "22240654",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "ehime",
+  "seq": 456587,
+  "type": "used_house"
+ },
+ {
+  "area_code": "38201",
+  "id": "22250519",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "ehime",
+  "seq": 456588,
+  "type": "used_house"
+ }
+]

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <title>物件さがし</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233b4cca'/><path d='M8 16l8-7 8 7v8h-5v-5h-6v5H8z' fill='white'/></svg>">
+  <script>
+    // Theme and language before the first paint (no flash): saved settings, else the system's.
+    (() => {
+      let s = {};
+      try { s = JSON.parse(localStorage.getItem("suumo.settings") || "{}"); } catch {}
+      const dark = s.theme === "dark" || (s.theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      if (dark) document.querySelector('meta[name="theme-color"]').content = "#171a21";  // (style.css --surface)
+      if (s.lang) document.documentElement.lang = s.lang;
+      // The listings of the prefectures the search will show (the link's, the last search's, else the first one,
+      // Tokyo) start downloading now rather than after the scripts and data/index.json.
+      let p = "";
+      try { p = new URLSearchParams((location.hash || localStorage.getItem("suumo.last") || "").slice(1)).get("p") || ""; } catch {}
+      if (p === "all") p = "";  // all of Japan: app.js loads them all, Tokyo first among them
+      for (const slug of (p || "tokyo").split(",").filter((x) => /^[a-z_]+$/.test(x))) {
+        document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "fetch", crossOrigin: "anonymous", href: `data/p/${slug}.json` }));
+      }
+    })();
+  </script>
+  <link rel="preload" href="data/index.json" as="fetch" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <script src="i18n.js" defer></script>
+  <script src="fzstd.min.js" defer></script>
+  <script src="filter.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#results" data-t="skip"></a>
+  <a class="skip" href="#filters" data-t="skipFilters"></a>
+  <a class="skip" href="#map" data-t="skipMap"></a>
+  <h1 class="sr" data-t="brand"></h1>
+  <header class="bar">
+    <a class="brand" href="#" data-t="brand"></a>
+    <div class="search-wrap">
+      <label class="search">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input id="q" type="search" role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list"
+          data-t-placeholder="search" data-t-label="searchLabel" autocomplete="off" enterkeyhint="search">
+      </label>
+      <div id="suggest-box" class="suggest-box" hidden>
+        <div id="pending" class="pending" hidden></div>
+        <ul id="suggest" role="listbox" data-t-label="suggestions"></ul>
+      </div>
+      <div id="suggest-live" class="sr" aria-live="polite"></div>
+    </div>
+    <button id="filters-open" class="icon-btn" aria-controls="filters" aria-expanded="false">
+      <svg class="i"><use href="#i-sliders"/></svg><span data-t="filters"></span><span class="badge" id="filters-n" hidden></span>
+    </button>
+    <button id="favs" class="icon-btn" data-t-label="favorites" aria-pressed="false">
+      <svg class="i"><use href="#i-heart"/></svg><span class="badge" id="favs-n" hidden></span>
+    </button>
+    <button id="settings-open" class="icon-btn" data-t-label="settings"><svg class="i"><use href="#i-gear"/></svg></button>
+  </header>
+
+  <div class="layout">
+
+    <main class="panel" id="panel" data-tab="list" data-sheet="half">
+      <div class="panel-head">
+        <button id="sheet-handle" class="sheet-handle" aria-controls="panel"></button>
+        <div id="tabs" class="tabs" role="tablist" hidden></div>
+        <div class="toolbar">
+          <span class="toolbar-start">
+            <button id="pref" class="pref-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="prefs" hidden></button>
+            <h2 id="count" tabindex="-1"></h2>
+            <span id="count-live" class="sr" aria-live="polite"></span>
+            <button id="fit" class="fit-btn" hidden></button>
+          </span>
+          <span class="toolbar-end">
+            <button id="compare" class="btn ghost" data-t="compare" hidden></button>
+            <button id="keep" class="icon-btn" data-t-label="keepSearch" aria-pressed="false"><svg class="i"><use href="#i-star"/></svg></button>
+            <select id="sort" class="select" data-t-label="sort"></select>
+          </span>
+        </div>
+      </div>
+      <div class="results" id="results" role="tabpanel" tabindex="-1">
+        <div id="searches" class="searches" hidden></div>
+        <div class="chip-row"><div id="pref-chips" class="chips"></div><div id="quick" class="chips quick"></div><div id="chips" class="chips"></div></div>
+        <div id="list" class="grid"></div>
+        <div id="sentinel"></div>
+        <details id="unplaced" class="unplaced" hidden><summary></summary><div class="grid"></div></details>
+      </div>
+      <div id="panel-body" class="panel-body" role="tabpanel" tabindex="-1" hidden></div>
+    </main>
+    <div id="split" class="split" role="separator" aria-orientation="vertical" aria-controls="panel" tabindex="0" data-t-label="resizePanel"></div>
+
+    <aside id="filters" class="filters" data-t-label="filters">
+      <div class="sheet-head">
+        <h2 data-t="filters"></h2>
+        <button id="filters-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg><svg class="i rail-hide"><use href="#i-back"/></svg></button>
+      </div>
+      <div id="filters-body" class="sheet-body"></div>
+      <div class="filters-foot">
+        <button id="clear" class="btn ghost" data-t="clear"></button>
+        <button id="apply" class="btn primary"></button>
+      </div>
+    </aside>
+
+    <section id="map" class="map" data-t-label="map" tabindex="-1"></section>
+  </div>
+
+  <div id="settings" class="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="settings-panel">
+      <div class="sheet-head">
+        <h2 id="settings-title" data-t="settings"></h2>
+        <button id="settings-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div id="settings-body" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <div id="prefs" class="prefs" role="dialog" aria-modal="true" aria-labelledby="prefs-title" hidden>
+    <div class="prefs-panel">
+      <div class="sheet-head">
+        <h2 id="prefs-title" data-t="prefPick"></h2>
+        <button id="prefs-close" class="icon-btn" data-t-label="close"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="prefs-search">
+        <input id="prefs-q" class="text-input" type="search" data-t-placeholder="prefFilter" data-t-label="prefFilter" autocomplete="off" enterkeyhint="go">
+        <p id="prefs-note" class="hint" aria-live="polite"></p>
+      </div>
+      <div id="prefs-list" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2-6-2zM9 4v14M15 6v14"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-train" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="13" rx="3"/><path d="M6 10h12M9 20l-2 2M15 20l2 2M9 16v4M15 16v4M9 13h.01M15 13h.01"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2"/></symbol>
+      <symbol id="i-building" viewBox="0 0 24 24"><path d="M5 21V4h10v17M15 9h4v12M3 21h18M8 8h4M8 12h4M8 16h4"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>

@@ -1,0 +1,29 @@
+[
+ {
+  "seq": 1,
+  "kind": "new",
+  "type": "used_condo",
+  "id": "20205670",
+  "pref": "tokyo",
+  "area_code": "13219",
+  "payload": {
+   "area": "狛江市",
+   "price": 12000000,
+   "path": "/ms/chuko/tokyo/sc_komae/nc_20205670/"
+  }
+ },
+ {
+  "seq": 2,
+  "kind": "price_changed",
+  "type": "used_condo",
+  "id": "20635014",
+  "pref": "tokyo",
+  "area_code": "13219",
+  "payload": {
+   "area": "狛江市",
+   "price": 74800000,
+   "old_price": 77800000,
+   "path": "/ms/chuko/tokyo/sc_komae/nc_20635014/"
+  }
+ }
+]

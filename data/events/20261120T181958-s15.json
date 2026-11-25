@@ -1,0 +1,1648 @@
+[
+ {
+  "area_code": "24205",
+  "id": "20120712",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10400000,
+   "price": 9000000
+  },
+  "pref": "mie",
+  "seq": 562397,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "24202",
+  "id": "22155069",
+  "kind": "relisted",
+  "payload": {
+   "price": 20800000
+  },
+  "pref": "mie",
+  "seq": 562398,
+  "type": "new_house"
+ },
+ {
+  "area_code": "24202",
+  "id": "22226473",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "mie",
+  "seq": 562399,
+  "type": "new_house"
+ },
+ {
+  "area_code": "24205",
+  "id": "22224091",
+  "kind": "new",
+  "payload": {
+   "price": 73500000
+  },
+  "pref": "mie",
+  "seq": 562400,
+  "type": "new_house"
+ },
+ {
+  "area_code": "24207",
+  "id": "22212809",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "mie",
+  "seq": 562401,
+  "type": "new_house"
+ },
+ {
+  "area_code": "24214",
+  "id": "21431978",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24900000,
+   "price": 23900000
+  },
+  "pref": "mie",
+  "seq": 562402,
+  "type": "new_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226862",
+  "kind": "new",
+  "payload": {
+   "price": 12900000
+  },
+  "pref": "mie",
+  "seq": 562403,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226871",
+  "kind": "new",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "mie",
+  "seq": 562404,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226866",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "mie",
+  "seq": 562405,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226867",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "mie",
+  "seq": 562406,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226861",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "mie",
+  "seq": 562407,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24201",
+  "id": "22226869",
+  "kind": "new",
+  "payload": {
+   "price": 8800000
+  },
+  "pref": "mie",
+  "seq": 562408,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24202",
+  "id": "21753418",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 3200000,
+   "price": 2200000
+  },
+  "pref": "mie",
+  "seq": 562409,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24207",
+  "id": "22226864",
+  "kind": "new",
+  "payload": {
+   "price": 20800000
+  },
+  "pref": "mie",
+  "seq": 562410,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24207",
+  "id": "21506029",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 69500000,
+   "price": 55000000
+  },
+  "pref": "mie",
+  "seq": 562411,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24340",
+  "id": "22226863",
+  "kind": "new",
+  "payload": {
+   "price": 35000000
+  },
+  "pref": "mie",
+  "seq": 562412,
+  "type": "used_house"
+ },
+ {
+  "area_code": "24202",
+  "id": "22093016",
+  "kind": "relisted",
+  "payload": {
+   "price": 5900000
+  },
+  "pref": "mie",
+  "seq": 562413,
+  "type": "land"
+ },
+ {
+  "area_code": "24204",
+  "id": "22222048",
+  "kind": "new",
+  "payload": {
+   "price": 4000000
+  },
+  "pref": "mie",
+  "seq": 562414,
+  "type": "land"
+ },
+ {
+  "area_code": "24207",
+  "id": "22093816",
+  "kind": "relisted",
+  "payload": {
+   "price": 13500000
+  },
+  "pref": "mie",
+  "seq": 562415,
+  "type": "land"
+ },
+ {
+  "area_code": "24210",
+  "id": "20538620",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 3500000,
+   "price": 2000000
+  },
+  "pref": "mie",
+  "seq": 562416,
+  "type": "land"
+ },
+ {
+  "area_code": "24440",
+  "id": "22226870",
+  "kind": "new",
+  "payload": {
+   "price": 5000000
+  },
+  "pref": "mie",
+  "seq": 562417,
+  "type": "land"
+ },
+ {
+  "area_code": "26101",
+  "id": "22226749",
+  "kind": "new",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "kyoto",
+  "seq": 562418,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26102",
+  "id": "21793744",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40300000,
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562419,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26102",
+  "id": "21646349",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33990000,
+   "price": 32990000
+  },
+  "pref": "kyoto",
+  "seq": 562420,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26102",
+  "id": "22227287",
+  "kind": "new",
+  "payload": {
+   "price": 65000000
+  },
+  "pref": "kyoto",
+  "seq": 562421,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26103",
+  "id": "21885718",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 64800000,
+   "price": 62800000
+  },
+  "pref": "kyoto",
+  "seq": 562422,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26104",
+  "id": "21638638",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45500000,
+   "price": 43500000
+  },
+  "pref": "kyoto",
+  "seq": 562423,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26104",
+  "id": "21715693",
+  "kind": "new",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "kyoto",
+  "seq": 562424,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26104",
+  "id": "22186993",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 71800000,
+   "price": 69800000
+  },
+  "pref": "kyoto",
+  "seq": 562425,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26104",
+  "id": "22225483",
+  "kind": "new",
+  "payload": {
+   "price": 79800000
+  },
+  "pref": "kyoto",
+  "seq": 562426,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26106",
+  "id": "22223999",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "kyoto",
+  "seq": 562427,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26106",
+  "id": "22226462",
+  "kind": "new",
+  "payload": {
+   "price": 74800000
+  },
+  "pref": "kyoto",
+  "seq": 562428,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26106",
+  "id": "76976157",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 57800000,
+   "price": 56800000
+  },
+  "pref": "kyoto",
+  "seq": 562429,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26106",
+  "id": "21904781",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 42800000
+  },
+  "pref": "kyoto",
+  "seq": 562430,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26107",
+  "id": "22225266",
+  "kind": "new",
+  "payload": {
+   "price": 14500000
+  },
+  "pref": "kyoto",
+  "seq": 562431,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26108",
+  "id": "22226979",
+  "kind": "new",
+  "payload": {
+   "price": 15990000
+  },
+  "pref": "kyoto",
+  "seq": 562432,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26108",
+  "id": "21458593",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "kyoto",
+  "seq": 562433,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26108",
+  "id": "22177117",
+  "kind": "relisted",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "kyoto",
+  "seq": 562434,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26109",
+  "id": "22225905",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "kyoto",
+  "seq": 562435,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26109",
+  "id": "22227131",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "kyoto",
+  "seq": 562436,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26109",
+  "id": "22215704",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "kyoto",
+  "seq": 562437,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26109",
+  "id": "21311341",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "kyoto",
+  "seq": 562438,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26109",
+  "id": "22214864",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "kyoto",
+  "seq": 562439,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26111",
+  "id": "21250363",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43990000,
+   "price": 42800000
+  },
+  "pref": "kyoto",
+  "seq": 562440,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26204",
+  "id": "22227119",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "kyoto",
+  "seq": 562441,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26204",
+  "id": "22225802",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "kyoto",
+  "seq": 562442,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26204",
+  "id": "22226791",
+  "kind": "new",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "kyoto",
+  "seq": 562443,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26209",
+  "id": "21955957",
+  "kind": "relisted",
+  "payload": {
+   "price": 6800000
+  },
+  "pref": "kyoto",
+  "seq": 562444,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "26101",
+  "id": "22152919",
+  "kind": "new",
+  "payload": {
+   "price": 17000000
+  },
+  "pref": "kyoto",
+  "seq": 562445,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "21944285",
+  "kind": "new",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "kyoto",
+  "seq": 562446,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26107",
+  "id": "22191811",
+  "kind": "new",
+  "payload": {
+   "price": 73800000
+  },
+  "pref": "kyoto",
+  "seq": 562447,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26107",
+  "id": "22191322",
+  "kind": "new",
+  "payload": {
+   "price": 47500000
+  },
+  "pref": "kyoto",
+  "seq": 562448,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "22226565",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "kyoto",
+  "seq": 562449,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "22224799",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "kyoto",
+  "seq": 562450,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "22218366",
+  "kind": "new",
+  "payload": {
+   "price": 55800000
+  },
+  "pref": "kyoto",
+  "seq": 562451,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "21523340",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29738000,
+   "price": 28697000
+  },
+  "pref": "kyoto",
+  "seq": 562452,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "22224215",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "kyoto",
+  "seq": 562453,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "22224443",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562454,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26110",
+  "id": "20919053",
+  "kind": "relisted",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562455,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22227560",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "kyoto",
+  "seq": 562456,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "21656091",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32300000
+  },
+  "pref": "kyoto",
+  "seq": 562457,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22194751",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32300000
+  },
+  "pref": "kyoto",
+  "seq": 562458,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22225110",
+  "kind": "new",
+  "payload": {
+   "price": 32300000
+  },
+  "pref": "kyoto",
+  "seq": 562459,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26202",
+  "id": "74530385",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9480000,
+   "price": 9690000
+  },
+  "pref": "kyoto",
+  "seq": 562460,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "20509507",
+  "kind": "relisted",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "kyoto",
+  "seq": 562461,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22225761",
+  "kind": "new",
+  "payload": {
+   "price": 28980000
+  },
+  "pref": "kyoto",
+  "seq": 562462,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "21851544",
+  "kind": "new",
+  "payload": {
+   "price": 38990000
+  },
+  "pref": "kyoto",
+  "seq": 562463,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22195331",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562464,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22211054",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562465,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22016549",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562466,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22004069",
+  "kind": "new",
+  "payload": {
+   "price": 39980000
+  },
+  "pref": "kyoto",
+  "seq": 562467,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22112775",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40800000,
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562468,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "22036077",
+  "kind": "relisted",
+  "payload": {
+   "price": 45800000
+  },
+  "pref": "kyoto",
+  "seq": 562469,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26206",
+  "id": "21727173",
+  "kind": "new",
+  "payload": {
+   "price": 36980000
+  },
+  "pref": "kyoto",
+  "seq": 562470,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26207",
+  "id": "78113372",
+  "kind": "relisted",
+  "payload": {
+   "price": 35200000
+  },
+  "pref": "kyoto",
+  "seq": 562471,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26208",
+  "id": "21790646",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "kyoto",
+  "seq": 562472,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26211",
+  "id": "22162910",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29980000,
+   "price": 27980000
+  },
+  "pref": "kyoto",
+  "seq": 562473,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26214",
+  "id": "22225594",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "kyoto",
+  "seq": 562474,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26214",
+  "id": "22224827",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "kyoto",
+  "seq": 562475,
+  "type": "new_house"
+ },
+ {
+  "area_code": "26101",
+  "id": "22227383",
+  "kind": "new",
+  "payload": {
+   "price": 69800000
+  },
+  "pref": "kyoto",
+  "seq": 562476,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26101",
+  "id": "21212593",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9990000,
+   "price": 9000000
+  },
+  "pref": "kyoto",
+  "seq": 562477,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26101",
+  "id": "22227359",
+  "kind": "new",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "kyoto",
+  "seq": 562478,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26101",
+  "id": "20819740",
+  "kind": "relisted",
+  "payload": {
+   "price": 9600000
+  },
+  "pref": "kyoto",
+  "seq": 562479,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26102",
+  "id": "22227197",
+  "kind": "new",
+  "payload": {
+   "price": 48800000
+  },
+  "pref": "kyoto",
+  "seq": 562480,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26102",
+  "id": "20120004",
+  "kind": "relisted",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "kyoto",
+  "seq": 562481,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26102",
+  "id": "22224958",
+  "kind": "new",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "kyoto",
+  "seq": 562482,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22227529",
+  "kind": "new",
+  "payload": {
+   "price": 99800000
+  },
+  "pref": "kyoto",
+  "seq": 562483,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "21402026",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37500000
+  },
+  "pref": "kyoto",
+  "seq": 562484,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22227450",
+  "kind": "new",
+  "payload": {
+   "price": 14800000
+  },
+  "pref": "kyoto",
+  "seq": 562485,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22227115",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "kyoto",
+  "seq": 562486,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22227417",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "kyoto",
+  "seq": 562487,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22227470",
+  "kind": "new",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "kyoto",
+  "seq": 562488,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26103",
+  "id": "22224536",
+  "kind": "new",
+  "payload": {
+   "price": 180000000
+  },
+  "pref": "kyoto",
+  "seq": 562489,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26105",
+  "id": "22224444",
+  "kind": "new",
+  "payload": {
+   "price": 23990000
+  },
+  "pref": "kyoto",
+  "seq": 562490,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26105",
+  "id": "22225737",
+  "kind": "new",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "kyoto",
+  "seq": 562491,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26106",
+  "id": "22224425",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "kyoto",
+  "seq": 562492,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26107",
+  "id": "22125082",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 6800000,
+   "price": 3800000
+  },
+  "pref": "kyoto",
+  "seq": 562493,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26107",
+  "id": "22225610",
+  "kind": "new",
+  "payload": {
+   "price": 99800000
+  },
+  "pref": "kyoto",
+  "seq": 562494,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "20569845",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 3500000,
+   "price": 2800000
+  },
+  "pref": "kyoto",
+  "seq": 562495,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "22226370",
+  "kind": "new",
+  "payload": {
+   "price": 12600000
+  },
+  "pref": "kyoto",
+  "seq": 562496,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26108",
+  "id": "22224000",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "kyoto",
+  "seq": 562497,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "22026335",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12800000,
+   "price": 11800000
+  },
+  "pref": "kyoto",
+  "seq": 562498,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "22227155",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "kyoto",
+  "seq": 562499,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26109",
+  "id": "20910679",
+  "kind": "relisted",
+  "payload": {
+   "price": 7000000
+  },
+  "pref": "kyoto",
+  "seq": 562500,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26110",
+  "id": "22220256",
+  "kind": "new",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "kyoto",
+  "seq": 562501,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22224602",
+  "kind": "new",
+  "payload": {
+   "price": 8800000
+  },
+  "pref": "kyoto",
+  "seq": 562502,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22162146",
+  "kind": "new",
+  "payload": {
+   "price": 16900000
+  },
+  "pref": "kyoto",
+  "seq": 562503,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "78227338",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37000000,
+   "price": 32000000
+  },
+  "pref": "kyoto",
+  "seq": 562504,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22226661",
+  "kind": "new",
+  "payload": {
+   "price": 42800000
+  },
+  "pref": "kyoto",
+  "seq": 562505,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26111",
+  "id": "22226162",
+  "kind": "new",
+  "payload": {
+   "price": 44000000
+  },
+  "pref": "kyoto",
+  "seq": 562506,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "21911095",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18800000,
+   "price": 17800000
+  },
+  "pref": "kyoto",
+  "seq": 562507,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26204",
+  "id": "21109639",
+  "kind": "relisted",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "kyoto",
+  "seq": 562508,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26208",
+  "id": "22067241",
+  "kind": "relisted",
+  "payload": {
+   "price": 13700000
+  },
+  "pref": "kyoto",
+  "seq": 562509,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26208",
+  "id": "78012570",
+  "kind": "relisted",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "kyoto",
+  "seq": 562510,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26210",
+  "id": "22224431",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "kyoto",
+  "seq": 562511,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26210",
+  "id": "22224039",
+  "kind": "new",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "kyoto",
+  "seq": 562512,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26211",
+  "id": "21943802",
+  "kind": "relisted",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "kyoto",
+  "seq": 562513,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26211",
+  "id": "22226944",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "kyoto",
+  "seq": 562514,
+  "type": "used_house"
+ },
+ {
+  "area_code": "26101",
+  "id": "22152919",
+  "kind": "new",
+  "payload": {
+   "price": 17000000
+  },
+  "pref": "kyoto",
+  "seq": 562515,
+  "type": "land"
+ },
+ {
+  "area_code": "26103",
+  "id": "22225001",
+  "kind": "new",
+  "payload": {
+   "price": 42800000
+  },
+  "pref": "kyoto",
+  "seq": 562516,
+  "type": "land"
+ },
+ {
+  "area_code": "26103",
+  "id": "21848730",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9800000,
+   "price": 8500000
+  },
+  "pref": "kyoto",
+  "seq": 562517,
+  "type": "land"
+ },
+ {
+  "area_code": "26103",
+  "id": "20971764",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 77600000,
+   "price": 73800000
+  },
+  "pref": "kyoto",
+  "seq": 562518,
+  "type": "land"
+ },
+ {
+  "area_code": "26107",
+  "id": "22191322",
+  "kind": "new",
+  "payload": {
+   "price": 47500000
+  },
+  "pref": "kyoto",
+  "seq": 562519,
+  "type": "land"
+ },
+ {
+  "area_code": "26108",
+  "id": "22226565",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "kyoto",
+  "seq": 562520,
+  "type": "land"
+ },
+ {
+  "area_code": "26109",
+  "id": "22189953",
+  "kind": "new",
+  "payload": {
+   "price": 21990000
+  },
+  "pref": "kyoto",
+  "seq": 562521,
+  "type": "land"
+ },
+ {
+  "area_code": "26109",
+  "id": "21523340",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29738000,
+   "price": 28697000
+  },
+  "pref": "kyoto",
+  "seq": 562522,
+  "type": "land"
+ },
+ {
+  "area_code": "26111",
+  "id": "22227560",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "kyoto",
+  "seq": 562523,
+  "type": "land"
+ },
+ {
+  "area_code": "26111",
+  "id": "22224383",
+  "kind": "new",
+  "payload": {
+   "price": 45200000
+  },
+  "pref": "kyoto",
+  "seq": 562524,
+  "type": "land"
+ },
+ {
+  "area_code": "26111",
+  "id": "21336070",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "kyoto",
+  "seq": 562525,
+  "type": "land"
+ },
+ {
+  "area_code": "26202",
+  "id": "74530385",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9480000,
+   "price": 9690000
+  },
+  "pref": "kyoto",
+  "seq": 562526,
+  "type": "land"
+ },
+ {
+  "area_code": "26204",
+  "id": "22227501",
+  "kind": "new",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "kyoto",
+  "seq": 562527,
+  "type": "land"
+ },
+ {
+  "area_code": "26204",
+  "id": "22221302",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "kyoto",
+  "seq": 562528,
+  "type": "land"
+ },
+ {
+  "area_code": "26208",
+  "id": "22153464",
+  "kind": "new",
+  "payload": {
+   "price": 13700000
+  },
+  "pref": "kyoto",
+  "seq": 562529,
+  "type": "land"
+ },
+ {
+  "area_code": "26209",
+  "id": "73553962",
+  "kind": "relisted",
+  "payload": {
+   "price": 11900000
+  },
+  "pref": "kyoto",
+  "seq": 562530,
+  "type": "land"
+ },
+ {
+  "area_code": "26211",
+  "id": "21245765",
+  "kind": "new",
+  "payload": {
+   "price": 7800000
+  },
+  "pref": "kyoto",
+  "seq": 562531,
+  "type": "land"
+ },
+ {
+  "area_code": "41201",
+  "id": "20939643",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23980000,
+   "price": 22980000
+  },
+  "pref": "saga",
+  "seq": 562532,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "20762289",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23980000,
+   "price": 22980000
+  },
+  "pref": "saga",
+  "seq": 562533,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "22203273",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23980000,
+   "price": 22980000
+  },
+  "pref": "saga",
+  "seq": 562534,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "22177294",
+  "kind": "relisted",
+  "payload": {
+   "price": 26980000
+  },
+  "pref": "saga",
+  "seq": 562535,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "21414777",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29980000,
+   "price": 28980000
+  },
+  "pref": "saga",
+  "seq": 562536,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "22225675",
+  "kind": "new",
+  "payload": {
+   "price": 31980000
+  },
+  "pref": "saga",
+  "seq": 562537,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41203",
+  "id": "21985708",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29980000,
+   "price": 27980000
+  },
+  "pref": "saga",
+  "seq": 562538,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41203",
+  "id": "21019551",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39980000,
+   "price": 36980000
+  },
+  "pref": "saga",
+  "seq": 562539,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41340",
+  "id": "22199558",
+  "kind": "relisted",
+  "payload": {
+   "price": 33980000
+  },
+  "pref": "saga",
+  "seq": 562540,
+  "type": "new_house"
+ },
+ {
+  "area_code": "41201",
+  "id": "22206309",
+  "kind": "new",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "saga",
+  "seq": 562541,
+  "type": "used_house"
+ },
+ {
+  "area_code": "41340",
+  "id": "22227412",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "saga",
+  "seq": 562542,
+  "type": "used_house"
+ }
+]

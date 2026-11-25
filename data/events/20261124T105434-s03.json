@@ -1,0 +1,6583 @@
+[
+ {
+  "area_code": "04101",
+  "id": "22256774",
+  "kind": "new",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "miyagi",
+  "seq": 631679,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22064392",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631680,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21560187",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631681,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21555919",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631682,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22064476",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631683,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21587632",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631684,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22252247",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631685,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22253157",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 631686,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22253156",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "miyagi",
+  "seq": 631687,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22253003",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "miyagi",
+  "seq": 631688,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22240980",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631689,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22181019",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631690,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21756894",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36900000,
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631691,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "20730367",
+  "kind": "removed",
+  "payload": {
+   "price": 30990000
+  },
+  "pref": "miyagi",
+  "seq": 631692,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21704524",
+  "kind": "removed",
+  "payload": {
+   "price": 14880000
+  },
+  "pref": "miyagi",
+  "seq": 631693,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21404743",
+  "kind": "removed",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 631694,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21550205",
+  "kind": "removed",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "miyagi",
+  "seq": 631695,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21272898",
+  "kind": "removed",
+  "payload": {
+   "price": 36800000
+  },
+  "pref": "miyagi",
+  "seq": 631696,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22005891",
+  "kind": "removed",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "miyagi",
+  "seq": 631697,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22223461",
+  "kind": "removed",
+  "payload": {
+   "price": 17300000
+  },
+  "pref": "miyagi",
+  "seq": 631698,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "78909100",
+  "kind": "removed",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "miyagi",
+  "seq": 631699,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "21590505",
+  "kind": "removed",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631700,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22242054",
+  "kind": "removed",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 631701,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22241893",
+  "kind": "removed",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 631702,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "22242050",
+  "kind": "removed",
+  "payload": {
+   "price": 44980000
+  },
+  "pref": "miyagi",
+  "seq": 631703,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22252705",
+  "kind": "new",
+  "payload": {
+   "price": 13900000
+  },
+  "pref": "miyagi",
+  "seq": 631704,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22255357",
+  "kind": "new",
+  "payload": {
+   "price": 16500000
+  },
+  "pref": "miyagi",
+  "seq": 631705,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22254132",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "miyagi",
+  "seq": 631706,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "21588380",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "miyagi",
+  "seq": 631707,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "20744417",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "miyagi",
+  "seq": 631708,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22253943",
+  "kind": "new",
+  "payload": {
+   "price": 34880000
+  },
+  "pref": "miyagi",
+  "seq": 631709,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "21530548",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631710,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22130012",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18800000,
+   "price": 17800000
+  },
+  "pref": "miyagi",
+  "seq": 631711,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "21409965",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24980000,
+   "price": 24800000
+  },
+  "pref": "miyagi",
+  "seq": 631712,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22254413",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 631713,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22254412",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 631714,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "21104936",
+  "kind": "removed",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631715,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "21518235",
+  "kind": "removed",
+  "payload": {
+   "price": 6900000
+  },
+  "pref": "miyagi",
+  "seq": 631716,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22216670",
+  "kind": "removed",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 631717,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04102",
+  "id": "22241858",
+  "kind": "removed",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "miyagi",
+  "seq": 631718,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04103",
+  "id": "22252034",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "miyagi",
+  "seq": 631719,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04103",
+  "id": "22243377",
+  "kind": "new",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "miyagi",
+  "seq": 631720,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04103",
+  "id": "20561860",
+  "kind": "removed",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "miyagi",
+  "seq": 631721,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04103",
+  "id": "21679566",
+  "kind": "removed",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "miyagi",
+  "seq": 631722,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04103",
+  "id": "21733423",
+  "kind": "removed",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "miyagi",
+  "seq": 631723,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22115724",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631724,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21903594",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631725,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256775",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 631726,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22252576",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 631727,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21612146",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631728,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21989361",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631729,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21989421",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631730,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21989454",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631731,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21952710",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631732,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21857189",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631733,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21900848",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 60900000,
+   "price": 58900000
+  },
+  "pref": "miyagi",
+  "seq": 631734,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21645195",
+  "kind": "relisted",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "miyagi",
+  "seq": 631735,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21743812",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631736,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21872628",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631737,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21963469",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631738,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21868339",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631739,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21871701",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631740,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21831836",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631741,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21935779",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46900000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631742,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22254102",
+  "kind": "new",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "miyagi",
+  "seq": 631743,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21599432",
+  "kind": "removed",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "miyagi",
+  "seq": 631744,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21023803",
+  "kind": "removed",
+  "payload": {
+   "price": 23980000
+  },
+  "pref": "miyagi",
+  "seq": 631745,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21606068",
+  "kind": "removed",
+  "payload": {
+   "price": 49900000
+  },
+  "pref": "miyagi",
+  "seq": 631746,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "21058677",
+  "kind": "removed",
+  "payload": {
+   "price": 2800000
+  },
+  "pref": "miyagi",
+  "seq": 631747,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22167064",
+  "kind": "removed",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 631748,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04104",
+  "id": "22223554",
+  "kind": "removed",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 631749,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22190195",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "miyagi",
+  "seq": 631750,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22253143",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631751,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "21065968",
+  "kind": "removed",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "miyagi",
+  "seq": 631752,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22051109",
+  "kind": "removed",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "miyagi",
+  "seq": 631753,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22072548",
+  "kind": "removed",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "miyagi",
+  "seq": 631754,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22242055",
+  "kind": "removed",
+  "payload": {
+   "price": 38700000
+  },
+  "pref": "miyagi",
+  "seq": 631755,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22242049",
+  "kind": "removed",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "miyagi",
+  "seq": 631756,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04105",
+  "id": "22064647",
+  "kind": "removed",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 631757,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04203",
+  "id": "21759865",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11800000,
+   "price": 11000000
+  },
+  "pref": "miyagi",
+  "seq": 631758,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "04101",
+  "id": "20529859",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631759,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21076380",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631760,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21665134",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631761,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21458443",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631762,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22179881",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631763,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22234175",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631764,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22234201",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631765,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22242014",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631766,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21984690",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631767,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21697821",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631768,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22237032",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631769,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "20727935",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631770,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "20682990",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631771,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21697924",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631772,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894028",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631773,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21296478",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631774,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22090677",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631775,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894472",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631776,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21800396",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631777,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21847746",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631778,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894216",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631779,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22250138",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 631780,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894027",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631781,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21748365",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631782,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21847745",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631783,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894215",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631784,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894471",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631785,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22253317",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631786,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22186535",
+  "kind": "relisted",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631787,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22186535",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631788,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22081582",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 51990000,
+   "price": 58990000
+  },
+  "pref": "miyagi",
+  "seq": 631789,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22182967",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631790,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22195285",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 631791,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21995019",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631792,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22192181",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631793,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21240677",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631794,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22192244",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631795,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22152768",
+  "kind": "relisted",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631796,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22186534",
+  "kind": "relisted",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631797,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22186534",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631798,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21775467",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631799,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22197959",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 51990000,
+   "price": 58990000
+  },
+  "pref": "miyagi",
+  "seq": 631800,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21750764",
+  "kind": "removed",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631801,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "79013466",
+  "kind": "removed",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "miyagi",
+  "seq": 631802,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22026169",
+  "kind": "removed",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "miyagi",
+  "seq": 631803,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22076049",
+  "kind": "removed",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "miyagi",
+  "seq": 631804,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22091068",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631805,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22090975",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631806,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22090696",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631807,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22097466",
+  "kind": "removed",
+  "payload": {
+   "price": 51990000
+  },
+  "pref": "miyagi",
+  "seq": 631808,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22130664",
+  "kind": "removed",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "miyagi",
+  "seq": 631809,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22141352",
+  "kind": "removed",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "miyagi",
+  "seq": 631810,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21473313",
+  "kind": "removed",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 631811,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "21894136",
+  "kind": "removed",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "miyagi",
+  "seq": 631812,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22193762",
+  "kind": "removed",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "miyagi",
+  "seq": 631813,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22234229",
+  "kind": "removed",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 631814,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22112875",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36900000,
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 631815,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22246812",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631816,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21824839",
+  "kind": "new",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631817,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256633",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631818,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256632",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631819,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256631",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631820,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22031110",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 42800000,
+   "price": 40800000
+  },
+  "pref": "miyagi",
+  "seq": 631821,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256680",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631822,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256786",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631823,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256544",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631824,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256608",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631825,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256455",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631826,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256698",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 631827,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256457",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631828,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256788",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631829,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256546",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631830,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256700",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631831,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256682",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631832,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256615",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "miyagi",
+  "seq": 631833,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22253001",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631834,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256616",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631835,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256681",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631836,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256699",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631837,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256456",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631838,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256545",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631839,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256787",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631840,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256649",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631841,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256648",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631842,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256696",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631843,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256537",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631844,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256732",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631845,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256538",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631846,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256731",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631847,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256695",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631848,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256727",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631849,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256646",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631850,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22239021",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631851,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256452",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631852,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256647",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631853,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256728",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631854,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22256453",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631855,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22238717",
+  "kind": "new",
+  "payload": {
+   "price": 40800000
+  },
+  "pref": "miyagi",
+  "seq": 631856,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21999264",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49900000,
+   "price": 47900000
+  },
+  "pref": "miyagi",
+  "seq": 631857,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21930862",
+  "kind": "removed",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 631858,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21163240",
+  "kind": "removed",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "miyagi",
+  "seq": 631859,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21974784",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631860,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21217001",
+  "kind": "removed",
+  "payload": {
+   "price": 39950000
+  },
+  "pref": "miyagi",
+  "seq": 631861,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22026306",
+  "kind": "removed",
+  "payload": {
+   "price": 40800000
+  },
+  "pref": "miyagi",
+  "seq": 631862,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22072499",
+  "kind": "removed",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "miyagi",
+  "seq": 631863,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21907554",
+  "kind": "removed",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 631864,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22126870",
+  "kind": "removed",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631865,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "21165222",
+  "kind": "removed",
+  "payload": {
+   "price": 37990000
+  },
+  "pref": "miyagi",
+  "seq": 631866,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22234204",
+  "kind": "removed",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631867,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22234230",
+  "kind": "removed",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631868,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22234111",
+  "kind": "removed",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631869,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22234112",
+  "kind": "removed",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631870,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22241969",
+  "kind": "removed",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "miyagi",
+  "seq": 631871,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22251710",
+  "kind": "new",
+  "payload": {
+   "price": 49990000
+  },
+  "pref": "miyagi",
+  "seq": 631872,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "20253697",
+  "kind": "new",
+  "payload": {
+   "price": 57900000
+  },
+  "pref": "miyagi",
+  "seq": 631873,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22252279",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 631874,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21867358",
+  "kind": "new",
+  "payload": {
+   "price": 36800000
+  },
+  "pref": "miyagi",
+  "seq": 631875,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256581",
+  "kind": "new",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "miyagi",
+  "seq": 631876,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21129853",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "miyagi",
+  "seq": 631877,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22251207",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "miyagi",
+  "seq": 631878,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256582",
+  "kind": "new",
+  "payload": {
+   "price": 49990000
+  },
+  "pref": "miyagi",
+  "seq": 631879,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256584",
+  "kind": "new",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631880,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256583",
+  "kind": "new",
+  "payload": {
+   "price": 53990000
+  },
+  "pref": "miyagi",
+  "seq": 631881,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22251484",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 631882,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22251610",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "miyagi",
+  "seq": 631883,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22137518",
+  "kind": "relisted",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "miyagi",
+  "seq": 631884,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256644",
+  "kind": "new",
+  "payload": {
+   "price": 49990000
+  },
+  "pref": "miyagi",
+  "seq": 631885,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256694",
+  "kind": "new",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631886,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256781",
+  "kind": "new",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631887,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256609",
+  "kind": "new",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631888,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256729",
+  "kind": "new",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631889,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256645",
+  "kind": "new",
+  "payload": {
+   "price": 53990000
+  },
+  "pref": "miyagi",
+  "seq": 631890,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256778",
+  "kind": "new",
+  "payload": {
+   "price": 53990000
+  },
+  "pref": "miyagi",
+  "seq": 631891,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22256726",
+  "kind": "new",
+  "payload": {
+   "price": 53990000
+  },
+  "pref": "miyagi",
+  "seq": 631892,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21610093",
+  "kind": "removed",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 631893,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21320447",
+  "kind": "removed",
+  "payload": {
+   "price": 49900000
+  },
+  "pref": "miyagi",
+  "seq": 631894,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21591898",
+  "kind": "removed",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631895,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "21328359",
+  "kind": "removed",
+  "payload": {
+   "price": 49900000
+  },
+  "pref": "miyagi",
+  "seq": 631896,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22080239",
+  "kind": "removed",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "miyagi",
+  "seq": 631897,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22080232",
+  "kind": "removed",
+  "payload": {
+   "price": 55900000
+  },
+  "pref": "miyagi",
+  "seq": 631898,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22080238",
+  "kind": "removed",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 631899,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22098562",
+  "kind": "removed",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 631900,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22126941",
+  "kind": "removed",
+  "payload": {
+   "price": 34990000
+  },
+  "pref": "miyagi",
+  "seq": 631901,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22211505",
+  "kind": "removed",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "miyagi",
+  "seq": 631902,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22015061",
+  "kind": "removed",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631903,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22241972",
+  "kind": "removed",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 631904,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22242019",
+  "kind": "removed",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 631905,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22242056",
+  "kind": "removed",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631906,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22242020",
+  "kind": "removed",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 631907,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22241873",
+  "kind": "removed",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 631908,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22241971",
+  "kind": "removed",
+  "payload": {
+   "price": 50990000
+  },
+  "pref": "miyagi",
+  "seq": 631909,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22187942",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631910,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256627",
+  "kind": "new",
+  "payload": {
+   "price": 34990000
+  },
+  "pref": "miyagi",
+  "seq": 631911,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256628",
+  "kind": "new",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631912,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "20057700",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631913,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22190449",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631914,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22251886",
+  "kind": "new",
+  "payload": {
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 631915,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21717554",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 631916,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256630",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631917,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256651",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631918,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256738",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631919,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256784",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631920,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256783",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "miyagi",
+  "seq": 631921,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256650",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "miyagi",
+  "seq": 631922,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256737",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "miyagi",
+  "seq": 631923,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22252070",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "miyagi",
+  "seq": 631924,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "79022379",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631925,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22149741",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631926,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22198333",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631927,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256782",
+  "kind": "new",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631928,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256589",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "miyagi",
+  "seq": 631929,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256785",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "miyagi",
+  "seq": 631930,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256697",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "miyagi",
+  "seq": 631931,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256652",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "miyagi",
+  "seq": 631932,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256739",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "miyagi",
+  "seq": 631933,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "20717922",
+  "kind": "removed",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "miyagi",
+  "seq": 631934,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21807875",
+  "kind": "removed",
+  "payload": {
+   "price": 41980000
+  },
+  "pref": "miyagi",
+  "seq": 631935,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "20880538",
+  "kind": "removed",
+  "payload": {
+   "price": 29990000
+  },
+  "pref": "miyagi",
+  "seq": 631936,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21129845",
+  "kind": "removed",
+  "payload": {
+   "price": 29990000
+  },
+  "pref": "miyagi",
+  "seq": 631937,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21026205",
+  "kind": "removed",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631938,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "20880668",
+  "kind": "removed",
+  "payload": {
+   "price": 29990000
+  },
+  "pref": "miyagi",
+  "seq": 631939,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21772612",
+  "kind": "removed",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 631940,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22102296",
+  "kind": "removed",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 631941,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22102414",
+  "kind": "removed",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 631942,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22127137",
+  "kind": "removed",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "miyagi",
+  "seq": 631943,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22127021",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 631944,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22127108",
+  "kind": "removed",
+  "payload": {
+   "price": 36990000
+  },
+  "pref": "miyagi",
+  "seq": 631945,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22126971",
+  "kind": "removed",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "miyagi",
+  "seq": 631946,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22203572",
+  "kind": "removed",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 631947,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22242052",
+  "kind": "removed",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "miyagi",
+  "seq": 631948,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21635364",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631949,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22040607",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631950,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21719253",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631951,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22250570",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 631952,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22251747",
+  "kind": "new",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "miyagi",
+  "seq": 631953,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21884996",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631954,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21873548",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631955,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21784566",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631956,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21884979",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631957,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21996020",
+  "kind": "relisted",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "miyagi",
+  "seq": 631958,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22251553",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "miyagi",
+  "seq": 631959,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22225016",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631960,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21944762",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631961,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22234184",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631962,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22234114",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631963,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21620268",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631964,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21801394",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 27900000
+  },
+  "pref": "miyagi",
+  "seq": 631965,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22253866",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 631966,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22244513",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631967,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21656508",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34900000,
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 631968,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21796754",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631969,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21885007",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631970,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22075064",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631971,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22193059",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631972,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21466892",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631973,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22254821",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631974,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22234090",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631975,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22038985",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631976,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22195718",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 631977,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21590556",
+  "kind": "new",
+  "payload": {
+   "price": 45980000
+  },
+  "pref": "miyagi",
+  "seq": 631978,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20673902",
+  "kind": "removed",
+  "payload": {
+   "price": 40990000
+  },
+  "pref": "miyagi",
+  "seq": 631979,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606545",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631980,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606542",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631981,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606928",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631982,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606929",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631983,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606927",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631984,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606686",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631985,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606543",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631986,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606544",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631987,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606687",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631988,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21498593",
+  "kind": "removed",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 631989,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21223267",
+  "kind": "removed",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631990,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21223432",
+  "kind": "removed",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631991,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21223247",
+  "kind": "removed",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 631992,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20726700",
+  "kind": "removed",
+  "payload": {
+   "price": 41990000
+  },
+  "pref": "miyagi",
+  "seq": 631993,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20668296",
+  "kind": "removed",
+  "payload": {
+   "price": 41990000
+  },
+  "pref": "miyagi",
+  "seq": 631994,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20726762",
+  "kind": "removed",
+  "payload": {
+   "price": 40990000
+  },
+  "pref": "miyagi",
+  "seq": 631995,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20726699",
+  "kind": "removed",
+  "payload": {
+   "price": 40990000
+  },
+  "pref": "miyagi",
+  "seq": 631996,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20726763",
+  "kind": "removed",
+  "payload": {
+   "price": 41990000
+  },
+  "pref": "miyagi",
+  "seq": 631997,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21606926",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 631998,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21281059",
+  "kind": "removed",
+  "payload": {
+   "price": 36000000
+  },
+  "pref": "miyagi",
+  "seq": 631999,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22102881",
+  "kind": "removed",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "miyagi",
+  "seq": 632000,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22155137",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 632001,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22186274",
+  "kind": "removed",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632002,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22186277",
+  "kind": "removed",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 632003,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21596948",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 632004,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21596951",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 632005,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21596950",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 632006,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21873603",
+  "kind": "removed",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 632007,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22234088",
+  "kind": "removed",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "miyagi",
+  "seq": 632008,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22242060",
+  "kind": "removed",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 632009,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "21721224",
+  "kind": "relisted",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "miyagi",
+  "seq": 632010,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256693",
+  "kind": "new",
+  "payload": {
+   "price": 22500000
+  },
+  "pref": "miyagi",
+  "seq": 632011,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "21721223",
+  "kind": "relisted",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632012,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22064652",
+  "kind": "relisted",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 632013,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256770",
+  "kind": "new",
+  "payload": {
+   "price": 25500000
+  },
+  "pref": "miyagi",
+  "seq": 632014,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256776",
+  "kind": "new",
+  "payload": {
+   "price": 20800000
+  },
+  "pref": "miyagi",
+  "seq": 632015,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256772",
+  "kind": "new",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "miyagi",
+  "seq": 632016,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256771",
+  "kind": "new",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "miyagi",
+  "seq": 632017,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256777",
+  "kind": "new",
+  "payload": {
+   "price": 21500000
+  },
+  "pref": "miyagi",
+  "seq": 632018,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "21494836",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 632019,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "78215733",
+  "kind": "removed",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632020,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04203",
+  "id": "22193783",
+  "kind": "relisted",
+  "payload": {
+   "price": 25990000
+  },
+  "pref": "miyagi",
+  "seq": 632021,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22253294",
+  "kind": "new",
+  "payload": {
+   "price": 42990000
+  },
+  "pref": "miyagi",
+  "seq": 632022,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "21011289",
+  "kind": "relisted",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "miyagi",
+  "seq": 632023,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "21411029",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632024,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256585",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632025,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22067623",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632026,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "21889707",
+  "kind": "relisted",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "miyagi",
+  "seq": 632027,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256536",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632028,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256730",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632029,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256610",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632030,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22193421",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 35900000
+  },
+  "pref": "miyagi",
+  "seq": 632031,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256613",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632032,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256542",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632033,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256587",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632034,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256735",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632035,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256543",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632036,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256586",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632037,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256540",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632038,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256736",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632039,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256734",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632040,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256611",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632041,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256539",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632042,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256733",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632043,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256614",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632044,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256612",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632045,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256588",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyagi",
+  "seq": 632046,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22253138",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 632047,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22253137",
+  "kind": "new",
+  "payload": {
+   "price": 40990000
+  },
+  "pref": "miyagi",
+  "seq": 632048,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22253140",
+  "kind": "new",
+  "payload": {
+   "price": 41990000
+  },
+  "pref": "miyagi",
+  "seq": 632049,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "20923591",
+  "kind": "removed",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "miyagi",
+  "seq": 632050,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22127219",
+  "kind": "removed",
+  "payload": {
+   "price": 42990000
+  },
+  "pref": "miyagi",
+  "seq": 632051,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22127242",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 632052,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22127265",
+  "kind": "removed",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "miyagi",
+  "seq": 632053,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "20962131",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632054,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21205081",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632055,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "20763747",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "miyagi",
+  "seq": 632056,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21438984",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 18900000
+  },
+  "pref": "miyagi",
+  "seq": 632057,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21438951",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 18900000
+  },
+  "pref": "miyagi",
+  "seq": 632058,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21439093",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 18900000
+  },
+  "pref": "miyagi",
+  "seq": 632059,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21439090",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 20900000
+  },
+  "pref": "miyagi",
+  "seq": 632060,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21856171",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632061,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22191176",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632062,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21921713",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632063,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21863666",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632064,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21648428",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632065,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21202944",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632066,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21233798",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632067,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21856172",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 632068,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21641511",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 632069,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22252594",
+  "kind": "new",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "miyagi",
+  "seq": 632070,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21439014",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 18900000
+  },
+  "pref": "miyagi",
+  "seq": 632071,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21903854",
+  "kind": "relisted",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632072,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21903854",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632073,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21202213",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632074,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21234131",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632075,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21730008",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632076,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22193209",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632077,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21940217",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 632078,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21906078",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 632079,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22256692",
+  "kind": "new",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "miyagi",
+  "seq": 632080,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21914265",
+  "kind": "removed",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "miyagi",
+  "seq": 632081,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21824822",
+  "kind": "removed",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "miyagi",
+  "seq": 632082,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21379410",
+  "kind": "removed",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "miyagi",
+  "seq": 632083,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21379413",
+  "kind": "removed",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "miyagi",
+  "seq": 632084,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22064601",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "miyagi",
+  "seq": 632085,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21586037",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 632086,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21824821",
+  "kind": "removed",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "miyagi",
+  "seq": 632087,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "21824836",
+  "kind": "removed",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "miyagi",
+  "seq": 632088,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22178732",
+  "kind": "removed",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "miyagi",
+  "seq": 632089,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22134017",
+  "kind": "removed",
+  "payload": {
+   "price": 44990000
+  },
+  "pref": "miyagi",
+  "seq": 632090,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "20739783",
+  "kind": "removed",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "miyagi",
+  "seq": 632091,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22049770",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21500000,
+   "price": 20900000
+  },
+  "pref": "miyagi",
+  "seq": 632092,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22254119",
+  "kind": "new",
+  "payload": {
+   "price": 30990000
+  },
+  "pref": "miyagi",
+  "seq": 632093,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "21721289",
+  "kind": "removed",
+  "payload": {
+   "price": 31990000
+  },
+  "pref": "miyagi",
+  "seq": 632094,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "21704741",
+  "kind": "removed",
+  "payload": {
+   "price": 31990000
+  },
+  "pref": "miyagi",
+  "seq": 632095,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22015062",
+  "kind": "removed",
+  "payload": {
+   "price": 40900000
+  },
+  "pref": "miyagi",
+  "seq": 632096,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "21218457",
+  "kind": "removed",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "miyagi",
+  "seq": 632097,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22060381",
+  "kind": "removed",
+  "payload": {
+   "price": 49800000
+  },
+  "pref": "miyagi",
+  "seq": 632098,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22127327",
+  "kind": "removed",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 632099,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04216",
+  "id": "21016088",
+  "kind": "removed",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "miyagi",
+  "seq": 632100,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22118605",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22800000,
+   "price": 21900000
+  },
+  "pref": "miyagi",
+  "seq": 632101,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22205511",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632102,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22127439",
+  "kind": "removed",
+  "payload": {
+   "price": 17900000
+  },
+  "pref": "miyagi",
+  "seq": 632103,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22127419",
+  "kind": "removed",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632104,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22127403",
+  "kind": "removed",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632105,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22127381",
+  "kind": "removed",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "miyagi",
+  "seq": 632106,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04360",
+  "id": "22207384",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "miyagi",
+  "seq": 632107,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22162987",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 632108,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22251997",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "miyagi",
+  "seq": 632109,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22186837",
+  "kind": "relisted",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632110,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22188720",
+  "kind": "relisted",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "miyagi",
+  "seq": 632111,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22256629",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "miyagi",
+  "seq": 632112,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22255410",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 632113,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22251359",
+  "kind": "new",
+  "payload": {
+   "price": 42900000
+  },
+  "pref": "miyagi",
+  "seq": 632114,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "21853618",
+  "kind": "removed",
+  "payload": {
+   "price": 45700000
+  },
+  "pref": "miyagi",
+  "seq": 632115,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22127473",
+  "kind": "removed",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "miyagi",
+  "seq": 632116,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22151873",
+  "kind": "removed",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "miyagi",
+  "seq": 632117,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "22151764",
+  "kind": "removed",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632118,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "78482218",
+  "kind": "removed",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "miyagi",
+  "seq": 632119,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340413",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49000000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 632120,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340470",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49000000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 632121,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340495",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49000000,
+   "price": 44900000
+  },
+  "pref": "miyagi",
+  "seq": 632122,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340412",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44900000,
+   "price": 47800000
+  },
+  "pref": "miyagi",
+  "seq": 632123,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340469",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44900000,
+   "price": 47800000
+  },
+  "pref": "miyagi",
+  "seq": 632124,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21340494",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44900000,
+   "price": 47800000
+  },
+  "pref": "miyagi",
+  "seq": 632125,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "20442058",
+  "kind": "removed",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "miyagi",
+  "seq": 632126,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "21814085",
+  "kind": "removed",
+  "payload": {
+   "price": 14700000
+  },
+  "pref": "miyagi",
+  "seq": 632127,
+  "type": "new_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "79149730",
+  "kind": "removed",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "miyagi",
+  "seq": 632128,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "22126802",
+  "kind": "removed",
+  "payload": {
+   "price": 22990000
+  },
+  "pref": "miyagi",
+  "seq": 632129,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "78465919",
+  "kind": "removed",
+  "payload": {
+   "price": 14800000
+  },
+  "pref": "miyagi",
+  "seq": 632130,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "78464169",
+  "kind": "removed",
+  "payload": {
+   "price": 25980000
+  },
+  "pref": "miyagi",
+  "seq": 632131,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04102",
+  "id": "22251542",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "miyagi",
+  "seq": 632132,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04103",
+  "id": "22254411",
+  "kind": "new",
+  "payload": {
+   "price": 46800000
+  },
+  "pref": "miyagi",
+  "seq": 632133,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "78613325",
+  "kind": "relisted",
+  "payload": {
+   "price": 15800000
+  },
+  "pref": "miyagi",
+  "seq": 632134,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22253572",
+  "kind": "new",
+  "payload": {
+   "price": 39000000
+  },
+  "pref": "miyagi",
+  "seq": 632135,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22256679",
+  "kind": "new",
+  "payload": {
+   "price": 6800000
+  },
+  "pref": "miyagi",
+  "seq": 632136,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22253141",
+  "kind": "new",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "miyagi",
+  "seq": 632137,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "21661851",
+  "kind": "removed",
+  "payload": {
+   "price": 27500000
+  },
+  "pref": "miyagi",
+  "seq": 632138,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "78677170",
+  "kind": "removed",
+  "payload": {
+   "price": 16500000
+  },
+  "pref": "miyagi",
+  "seq": 632139,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22034008",
+  "kind": "removed",
+  "payload": {
+   "price": 2990000
+  },
+  "pref": "miyagi",
+  "seq": 632140,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04104",
+  "id": "22165166",
+  "kind": "removed",
+  "payload": {
+   "price": 26990000
+  },
+  "pref": "miyagi",
+  "seq": 632141,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22256451",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632142,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "21553943",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25000000,
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 632143,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22178231",
+  "kind": "new",
+  "payload": {
+   "price": 11500000
+  },
+  "pref": "miyagi",
+  "seq": 632144,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22254400",
+  "kind": "new",
+  "payload": {
+   "price": 14900000
+  },
+  "pref": "miyagi",
+  "seq": 632145,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22256773",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 632146,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22249525",
+  "kind": "new",
+  "payload": {
+   "price": 24990000
+  },
+  "pref": "miyagi",
+  "seq": 632147,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22253145",
+  "kind": "new",
+  "payload": {
+   "price": 26980000
+  },
+  "pref": "miyagi",
+  "seq": 632148,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20424895",
+  "kind": "removed",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "miyagi",
+  "seq": 632149,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "20847359",
+  "kind": "removed",
+  "payload": {
+   "price": 13490000
+  },
+  "pref": "miyagi",
+  "seq": 632150,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "22034147",
+  "kind": "removed",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "miyagi",
+  "seq": 632151,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "78909093",
+  "kind": "removed",
+  "payload": {
+   "price": 25980000
+  },
+  "pref": "miyagi",
+  "seq": 632152,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04105",
+  "id": "79149729",
+  "kind": "removed",
+  "payload": {
+   "price": 13000000
+  },
+  "pref": "miyagi",
+  "seq": 632153,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256442",
+  "kind": "new",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "miyagi",
+  "seq": 632154,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04206",
+  "id": "22254148",
+  "kind": "new",
+  "payload": {
+   "price": 11990000
+  },
+  "pref": "miyagi",
+  "seq": 632155,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22050689",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14800000,
+   "price": 13500000
+  },
+  "pref": "miyagi",
+  "seq": 632156,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22256677",
+  "kind": "new",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "miyagi",
+  "seq": 632157,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "21370951",
+  "kind": "removed",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632158,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04207",
+  "id": "22137698",
+  "kind": "removed",
+  "payload": {
+   "price": 13980000
+  },
+  "pref": "miyagi",
+  "seq": 632159,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04208",
+  "id": "22256180",
+  "kind": "new",
+  "payload": {
+   "price": 6800000
+  },
+  "pref": "miyagi",
+  "seq": 632160,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04209",
+  "id": "22254401",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "miyagi",
+  "seq": 632161,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22256780",
+  "kind": "new",
+  "payload": {
+   "price": 9900000
+  },
+  "pref": "miyagi",
+  "seq": 632162,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04211",
+  "id": "22168966",
+  "kind": "removed",
+  "payload": {
+   "price": 30990000
+  },
+  "pref": "miyagi",
+  "seq": 632163,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04213",
+  "id": "20872392",
+  "kind": "removed",
+  "payload": {
+   "price": 4500000
+  },
+  "pref": "miyagi",
+  "seq": 632164,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04213",
+  "id": "77746941",
+  "kind": "removed",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "miyagi",
+  "seq": 632165,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04215",
+  "id": "22254914",
+  "kind": "new",
+  "payload": {
+   "price": 20490000
+  },
+  "pref": "miyagi",
+  "seq": 632166,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04215",
+  "id": "21331308",
+  "kind": "removed",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "miyagi",
+  "seq": 632167,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04216",
+  "id": "22256535",
+  "kind": "new",
+  "payload": {
+   "price": 27400000
+  },
+  "pref": "miyagi",
+  "seq": 632168,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04216",
+  "id": "22256454",
+  "kind": "new",
+  "payload": {
+   "price": 11000000
+  },
+  "pref": "miyagi",
+  "seq": 632169,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04216",
+  "id": "22204829",
+  "kind": "removed",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "miyagi",
+  "seq": 632170,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "22252685",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "miyagi",
+  "seq": 632171,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04320",
+  "id": "21647979",
+  "kind": "removed",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "miyagi",
+  "seq": 632172,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04400",
+  "id": "78465913",
+  "kind": "removed",
+  "payload": {
+   "price": 13400000
+  },
+  "pref": "miyagi",
+  "seq": 632173,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04420",
+  "id": "22253146",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "miyagi",
+  "seq": 632174,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04500",
+  "id": "21066023",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 22800000
+  },
+  "pref": "miyagi",
+  "seq": 632175,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04500",
+  "id": "20085285",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 1500000,
+   "price": 1300000
+  },
+  "pref": "miyagi",
+  "seq": 632176,
+  "type": "used_house"
+ },
+ {
+  "area_code": "04101",
+  "id": "20843470",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 59800000,
+   "price": 48000000
+  },
+  "pref": "miyagi",
+  "seq": 632177,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "22254416",
+  "kind": "new",
+  "payload": {
+   "price": 12700000
+  },
+  "pref": "miyagi",
+  "seq": 632178,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "22223514",
+  "kind": "relisted",
+  "payload": {
+   "price": 20800000
+  },
+  "pref": "miyagi",
+  "seq": 632179,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "22254407",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "miyagi",
+  "seq": 632180,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "22254406",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "miyagi",
+  "seq": 632181,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "22250115",
+  "kind": "new",
+  "payload": {
+   "price": 48000000
+  },
+  "pref": "miyagi",
+  "seq": 632182,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "20898488",
+  "kind": "removed",
+  "payload": {
+   "price": 13900000
+  },
+  "pref": "miyagi",
+  "seq": 632183,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "21478682",
+  "kind": "removed",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "miyagi",
+  "seq": 632184,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "21883865",
+  "kind": "removed",
+  "payload": {
+   "price": 64800000
+  },
+  "pref": "miyagi",
+  "seq": 632185,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "21884015",
+  "kind": "removed",
+  "payload": {
+   "price": 143000000
+  },
+  "pref": "miyagi",
+  "seq": 632186,
+  "type": "land"
+ },
+ {
+  "area_code": "04101",
+  "id": "78832736",
+  "kind": "removed",
+  "payload": {
+   "price": 6980000
+  },
+  "pref": "miyagi",
+  "seq": 632187,
+  "type": "land"
+ },
+ {
+  "area_code": "04102",
+  "id": "21922465",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36990000,
+   "price": 34990000
+  },
+  "pref": "miyagi",
+  "seq": 632188,
+  "type": "land"
+ },
+ {
+  "area_code": "04103",
+  "id": "78497609",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 71140000,
+   "price": 65000000
+  },
+  "pref": "miyagi",
+  "seq": 632189,
+  "type": "land"
+ },
+ {
+  "area_code": "04103",
+  "id": "21610093",
+  "kind": "removed",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632190,
+  "type": "land"
+ },
+ {
+  "area_code": "04103",
+  "id": "72685435",
+  "kind": "removed",
+  "payload": {
+   "price": 20000000
+  },
+  "pref": "miyagi",
+  "seq": 632191,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "77886113",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22600000,
+   "price": 21500000
+  },
+  "pref": "miyagi",
+  "seq": 632192,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "20925815",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19800000,
+   "price": 18800000
+  },
+  "pref": "miyagi",
+  "seq": 632193,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "22254402",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "miyagi",
+  "seq": 632194,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "21819161",
+  "kind": "removed",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "miyagi",
+  "seq": 632195,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "22061039",
+  "kind": "removed",
+  "payload": {
+   "price": 94800000
+  },
+  "pref": "miyagi",
+  "seq": 632196,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "78466466",
+  "kind": "removed",
+  "payload": {
+   "price": 38000000
+  },
+  "pref": "miyagi",
+  "seq": 632197,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "78465938",
+  "kind": "removed",
+  "payload": {
+   "price": 16000000
+  },
+  "pref": "miyagi",
+  "seq": 632198,
+  "type": "land"
+ },
+ {
+  "area_code": "04104",
+  "id": "22241874",
+  "kind": "removed",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "miyagi",
+  "seq": 632199,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "22255641",
+  "kind": "new",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632200,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "22253171",
+  "kind": "new",
+  "payload": {
+   "price": 23500000
+  },
+  "pref": "miyagi",
+  "seq": 632201,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "21544952",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25000000,
+   "price": 23800000
+  },
+  "pref": "miyagi",
+  "seq": 632202,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "79149733",
+  "kind": "removed",
+  "payload": {
+   "price": 13000000
+  },
+  "pref": "miyagi",
+  "seq": 632203,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "22127187",
+  "kind": "removed",
+  "payload": {
+   "price": 16800000
+  },
+  "pref": "miyagi",
+  "seq": 632204,
+  "type": "land"
+ },
+ {
+  "area_code": "04105",
+  "id": "78901443",
+  "kind": "removed",
+  "payload": {
+   "price": 1500000
+  },
+  "pref": "miyagi",
+  "seq": 632205,
+  "type": "land"
+ },
+ {
+  "area_code": "04202",
+  "id": "22253618",
+  "kind": "new",
+  "payload": {
+   "price": 3000000
+  },
+  "pref": "miyagi",
+  "seq": 632206,
+  "type": "land"
+ },
+ {
+  "area_code": "04202",
+  "id": "22256724",
+  "kind": "new",
+  "payload": {
+   "price": 5000000
+  },
+  "pref": "miyagi",
+  "seq": 632207,
+  "type": "land"
+ },
+ {
+  "area_code": "04202",
+  "id": "94772206",
+  "kind": "removed",
+  "payload": {
+   "price": 3900000
+  },
+  "pref": "miyagi",
+  "seq": 632208,
+  "type": "land"
+ },
+ {
+  "area_code": "04202",
+  "id": "78465427",
+  "kind": "removed",
+  "payload": {
+   "price": 2500000
+  },
+  "pref": "miyagi",
+  "seq": 632209,
+  "type": "land"
+ },
+ {
+  "area_code": "04202",
+  "id": "78781159",
+  "kind": "removed",
+  "payload": {
+   "price": 18000000
+  },
+  "pref": "miyagi",
+  "seq": 632210,
+  "type": "land"
+ },
+ {
+  "area_code": "04203",
+  "id": "75530198",
+  "kind": "removed",
+  "payload": {
+   "price": 9980000
+  },
+  "pref": "miyagi",
+  "seq": 632211,
+  "type": "land"
+ },
+ {
+  "area_code": "04203",
+  "id": "22155147",
+  "kind": "removed",
+  "payload": {
+   "price": 16200000
+  },
+  "pref": "miyagi",
+  "seq": 632212,
+  "type": "land"
+ },
+ {
+  "area_code": "04203",
+  "id": "20478913",
+  "kind": "removed",
+  "payload": {
+   "price": 7900000
+  },
+  "pref": "miyagi",
+  "seq": 632213,
+  "type": "land"
+ },
+ {
+  "area_code": "04205",
+  "id": "22253601",
+  "kind": "new",
+  "payload": {
+   "price": 16000000
+  },
+  "pref": "miyagi",
+  "seq": 632214,
+  "type": "land"
+ },
+ {
+  "area_code": "04207",
+  "id": "22067050",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632215,
+  "type": "land"
+ },
+ {
+  "area_code": "04207",
+  "id": "20972584",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 24900000
+  },
+  "pref": "miyagi",
+  "seq": 632216,
+  "type": "land"
+ },
+ {
+  "area_code": "04207",
+  "id": "20894636",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28000000,
+   "price": 25000000
+  },
+  "pref": "miyagi",
+  "seq": 632217,
+  "type": "land"
+ },
+ {
+  "area_code": "04207",
+  "id": "20075191",
+  "kind": "removed",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "miyagi",
+  "seq": 632218,
+  "type": "land"
+ },
+ {
+  "area_code": "04207",
+  "id": "79153870",
+  "kind": "removed",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "miyagi",
+  "seq": 632219,
+  "type": "land"
+ },
+ {
+  "area_code": "04209",
+  "id": "22127292",
+  "kind": "removed",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "miyagi",
+  "seq": 632220,
+  "type": "land"
+ },
+ {
+  "area_code": "04211",
+  "id": "22256779",
+  "kind": "new",
+  "payload": {
+   "price": 9900000
+  },
+  "pref": "miyagi",
+  "seq": 632221,
+  "type": "land"
+ },
+ {
+  "area_code": "04214",
+  "id": "78465449",
+  "kind": "removed",
+  "payload": {
+   "price": 11910000
+  },
+  "pref": "miyagi",
+  "seq": 632222,
+  "type": "land"
+ },
+ {
+  "area_code": "04215",
+  "id": "20716773",
+  "kind": "removed",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "miyagi",
+  "seq": 632223,
+  "type": "land"
+ },
+ {
+  "area_code": "04216",
+  "id": "22253144",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "miyagi",
+  "seq": 632224,
+  "type": "land"
+ },
+ {
+  "area_code": "04320",
+  "id": "22253170",
+  "kind": "new",
+  "payload": {
+   "price": 8900000
+  },
+  "pref": "miyagi",
+  "seq": 632225,
+  "type": "land"
+ },
+ {
+  "area_code": "04320",
+  "id": "20401619",
+  "kind": "removed",
+  "payload": {
+   "price": 7990000
+  },
+  "pref": "miyagi",
+  "seq": 632226,
+  "type": "land"
+ },
+ {
+  "area_code": "04320",
+  "id": "20275362",
+  "kind": "removed",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "miyagi",
+  "seq": 632227,
+  "type": "land"
+ },
+ {
+  "area_code": "04320",
+  "id": "78467729",
+  "kind": "removed",
+  "payload": {
+   "price": 11000000
+  },
+  "pref": "miyagi",
+  "seq": 632228,
+  "type": "land"
+ },
+ {
+  "area_code": "04400",
+  "id": "20685975",
+  "kind": "removed",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "miyagi",
+  "seq": 632229,
+  "type": "land"
+ },
+ {
+  "area_code": "04400",
+  "id": "20666361",
+  "kind": "removed",
+  "payload": {
+   "price": 3500000
+  },
+  "pref": "miyagi",
+  "seq": 632230,
+  "type": "land"
+ },
+ {
+  "area_code": "04400",
+  "id": "21128524",
+  "kind": "removed",
+  "payload": {
+   "price": 17950000
+  },
+  "pref": "miyagi",
+  "seq": 632231,
+  "type": "land"
+ },
+ {
+  "area_code": "04420",
+  "id": "21418133",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 1480000,
+   "price": 830000
+  },
+  "pref": "miyagi",
+  "seq": 632232,
+  "type": "land"
+ },
+ {
+  "area_code": "04420",
+  "id": "21814085",
+  "kind": "removed",
+  "payload": {
+   "price": 14700000
+  },
+  "pref": "miyagi",
+  "seq": 632233,
+  "type": "land"
+ },
+ {
+  "area_code": "06201",
+  "id": "22100727",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "yamagata",
+  "seq": 632234,
+  "type": "new_house"
+ },
+ {
+  "area_code": "06205",
+  "id": "22092083",
+  "kind": "relisted",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "yamagata",
+  "seq": 632235,
+  "type": "new_house"
+ },
+ {
+  "area_code": "06300",
+  "id": "21092921",
+  "kind": "removed",
+  "payload": {
+   "price": 23500000
+  },
+  "pref": "yamagata",
+  "seq": 632236,
+  "type": "new_house"
+ },
+ {
+  "area_code": "06201",
+  "id": "22194435",
+  "kind": "relisted",
+  "payload": {
+   "price": 7950000
+  },
+  "pref": "yamagata",
+  "seq": 632237,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06201",
+  "id": "21932681",
+  "kind": "removed",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "yamagata",
+  "seq": 632238,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06204",
+  "id": "21843645",
+  "kind": "removed",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "yamagata",
+  "seq": 632239,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06204",
+  "id": "20506112",
+  "kind": "removed",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "yamagata",
+  "seq": 632240,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06204",
+  "id": "22140674",
+  "kind": "removed",
+  "payload": {
+   "price": 5900000
+  },
+  "pref": "yamagata",
+  "seq": 632241,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06210",
+  "id": "21876432",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27500000,
+   "price": 25800000
+  },
+  "pref": "yamagata",
+  "seq": 632242,
+  "type": "used_house"
+ },
+ {
+  "area_code": "06201",
+  "id": "22255669",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "yamagata",
+  "seq": 632243,
+  "type": "land"
+ },
+ {
+  "area_code": "06201",
+  "id": "21158296",
+  "kind": "removed",
+  "payload": {
+   "price": 11500000
+  },
+  "pref": "yamagata",
+  "seq": 632244,
+  "type": "land"
+ },
+ {
+  "area_code": "06201",
+  "id": "21239558",
+  "kind": "removed",
+  "payload": {
+   "price": 7700000
+  },
+  "pref": "yamagata",
+  "seq": 632245,
+  "type": "land"
+ },
+ {
+  "area_code": "06201",
+  "id": "21451635",
+  "kind": "removed",
+  "payload": {
+   "price": 8700000
+  },
+  "pref": "yamagata",
+  "seq": 632246,
+  "type": "land"
+ },
+ {
+  "area_code": "06204",
+  "id": "75203471",
+  "kind": "removed",
+  "payload": {
+   "price": 35000000
+  },
+  "pref": "yamagata",
+  "seq": 632247,
+  "type": "land"
+ },
+ {
+  "area_code": "06204",
+  "id": "22133088",
+  "kind": "removed",
+  "payload": {
+   "price": 7000000
+  },
+  "pref": "yamagata",
+  "seq": 632248,
+  "type": "land"
+ },
+ {
+  "area_code": "06320",
+  "id": "22252266",
+  "kind": "new",
+  "payload": {
+   "price": 5790000
+  },
+  "pref": "yamagata",
+  "seq": 632249,
+  "type": "land"
+ },
+ {
+  "area_code": "36204",
+  "id": "21948451",
+  "kind": "removed",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "tokushima",
+  "seq": 632250,
+  "type": "new_house"
+ },
+ {
+  "area_code": "36400",
+  "id": "20664390",
+  "kind": "removed",
+  "payload": {
+   "price": 28500000
+  },
+  "pref": "tokushima",
+  "seq": 632251,
+  "type": "new_house"
+ },
+ {
+  "area_code": "36201",
+  "id": "21924595",
+  "kind": "removed",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "tokushima",
+  "seq": 632252,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21917683",
+  "kind": "removed",
+  "payload": {
+   "price": 9300000
+  },
+  "pref": "tokushima",
+  "seq": 632253,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21649037",
+  "kind": "removed",
+  "payload": {
+   "price": 3000000
+  },
+  "pref": "tokushima",
+  "seq": 632254,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21459796",
+  "kind": "removed",
+  "payload": {
+   "price": 7760000
+  },
+  "pref": "tokushima",
+  "seq": 632255,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21313745",
+  "kind": "removed",
+  "payload": {
+   "price": 13500000
+  },
+  "pref": "tokushima",
+  "seq": 632256,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21650212",
+  "kind": "removed",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "tokushima",
+  "seq": 632257,
+  "type": "land"
+ },
+ {
+  "area_code": "36201",
+  "id": "21777546",
+  "kind": "removed",
+  "payload": {
+   "price": 10420000
+  },
+  "pref": "tokushima",
+  "seq": 632258,
+  "type": "land"
+ },
+ {
+  "area_code": "36203",
+  "id": "21170731",
+  "kind": "removed",
+  "payload": {
+   "price": 5550000
+  },
+  "pref": "tokushima",
+  "seq": 632259,
+  "type": "land"
+ },
+ {
+  "area_code": "36340",
+  "id": "21180590",
+  "kind": "removed",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "tokushima",
+  "seq": 632260,
+  "type": "land"
+ },
+ {
+  "area_code": "36340",
+  "id": "21457925",
+  "kind": "removed",
+  "payload": {
+   "price": 8680000
+  },
+  "pref": "tokushima",
+  "seq": 632261,
+  "type": "land"
+ },
+ {
+  "area_code": "36340",
+  "id": "22013155",
+  "kind": "removed",
+  "payload": {
+   "price": 11460000
+  },
+  "pref": "tokushima",
+  "seq": 632262,
+  "type": "land"
+ },
+ {
+  "area_code": "36400",
+  "id": "22257085",
+  "kind": "new",
+  "payload": {
+   "price": 1000000
+  },
+  "pref": "tokushima",
+  "seq": 632263,
+  "type": "land"
+ }
+]

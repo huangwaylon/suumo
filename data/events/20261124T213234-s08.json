@@ -1,0 +1,3438 @@
+[
+ {
+  "area_code": "11101",
+  "id": "20081827",
+  "kind": "relisted",
+  "payload": {
+   "price": 3500000
+  },
+  "pref": "saitama",
+  "seq": 468057,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11102",
+  "id": "21664953",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35800000,
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468058,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11102",
+  "id": "78672836",
+  "kind": "relisted",
+  "payload": {
+   "price": 42900000
+  },
+  "pref": "saitama",
+  "seq": 468059,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11103",
+  "id": "22140663",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36900000,
+   "price": 34990000
+  },
+  "pref": "saitama",
+  "seq": 468060,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11105",
+  "id": "22257353",
+  "kind": "new",
+  "payload": {
+   "price": 75800000
+  },
+  "pref": "saitama",
+  "seq": 468061,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11106",
+  "id": "22141163",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468062,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11106",
+  "id": "78890550",
+  "kind": "relisted",
+  "payload": {
+   "price": 10300000
+  },
+  "pref": "saitama",
+  "seq": 468063,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11106",
+  "id": "22258833",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "saitama",
+  "seq": 468064,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11107",
+  "id": "22258765",
+  "kind": "new",
+  "payload": {
+   "price": 129800000
+  },
+  "pref": "saitama",
+  "seq": 468065,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11108",
+  "id": "21405899",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "saitama",
+  "seq": 468066,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11108",
+  "id": "21788303",
+  "kind": "relisted",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468067,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11201",
+  "id": "21874536",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "saitama",
+  "seq": 468068,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11201",
+  "id": "22213278",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "saitama",
+  "seq": 468069,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11201",
+  "id": "22213405",
+  "kind": "relisted",
+  "payload": {
+   "price": 45800000
+  },
+  "pref": "saitama",
+  "seq": 468070,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "22169986",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 35800000
+  },
+  "pref": "saitama",
+  "seq": 468071,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "78446539",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10990000,
+   "price": 10800000
+  },
+  "pref": "saitama",
+  "seq": 468072,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "22258099",
+  "kind": "new",
+  "payload": {
+   "price": 15800000
+  },
+  "pref": "saitama",
+  "seq": 468073,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "21915536",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18800000,
+   "price": 17800000
+  },
+  "pref": "saitama",
+  "seq": 468074,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "22224027",
+  "kind": "new",
+  "payload": {
+   "price": 18800000
+  },
+  "pref": "saitama",
+  "seq": 468075,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "22041253",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "saitama",
+  "seq": 468076,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "21833872",
+  "kind": "new",
+  "payload": {
+   "price": 23980000
+  },
+  "pref": "saitama",
+  "seq": 468077,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "21727308",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "saitama",
+  "seq": 468078,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "21593781",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 33990000
+  },
+  "pref": "saitama",
+  "seq": 468079,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11203",
+  "id": "21572900",
+  "kind": "new",
+  "payload": {
+   "price": 47900000
+  },
+  "pref": "saitama",
+  "seq": 468080,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11208",
+  "id": "21485969",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 17800000,
+   "price": 16800000
+  },
+  "pref": "saitama",
+  "seq": 468081,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11208",
+  "id": "21300972",
+  "kind": "relisted",
+  "payload": {
+   "price": 26900000
+  },
+  "pref": "saitama",
+  "seq": 468082,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11221",
+  "id": "21691959",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20800000,
+   "price": 19800000
+  },
+  "pref": "saitama",
+  "seq": 468083,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11221",
+  "id": "22150029",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468084,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11221",
+  "id": "22258229",
+  "kind": "new",
+  "payload": {
+   "price": 51990000
+  },
+  "pref": "saitama",
+  "seq": 468085,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11222",
+  "id": "21870281",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40900000,
+   "price": 39900000
+  },
+  "pref": "saitama",
+  "seq": 468086,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11223",
+  "id": "21188088",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18900000,
+   "price": 17900000
+  },
+  "pref": "saitama",
+  "seq": 468087,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11223",
+  "id": "20879091",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468088,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11224",
+  "id": "21734278",
+  "kind": "new",
+  "payload": {
+   "price": 31980000
+  },
+  "pref": "saitama",
+  "seq": 468089,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11224",
+  "id": "21137167",
+  "kind": "relisted",
+  "payload": {
+   "price": 37480000
+  },
+  "pref": "saitama",
+  "seq": 468090,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11224",
+  "id": "21137167",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37980000,
+   "price": 37480000
+  },
+  "pref": "saitama",
+  "seq": 468091,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11224",
+  "id": "21634400",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37980000,
+   "price": 37480000
+  },
+  "pref": "saitama",
+  "seq": 468092,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11225",
+  "id": "22257908",
+  "kind": "new",
+  "payload": {
+   "price": 12900000
+  },
+  "pref": "saitama",
+  "seq": 468093,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11227",
+  "id": "22257364",
+  "kind": "new",
+  "payload": {
+   "price": 51800000
+  },
+  "pref": "saitama",
+  "seq": 468094,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11227",
+  "id": "21817261",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18800000
+  },
+  "pref": "saitama",
+  "seq": 468095,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11228",
+  "id": "22000031",
+  "kind": "relisted",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "saitama",
+  "seq": 468096,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11230",
+  "id": "22258282",
+  "kind": "new",
+  "payload": {
+   "price": 25500000
+  },
+  "pref": "saitama",
+  "seq": 468097,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11237",
+  "id": "21907622",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19980000,
+   "price": 20980000
+  },
+  "pref": "saitama",
+  "seq": 468098,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11320",
+  "id": "22224032",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "saitama",
+  "seq": 468099,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "11102",
+  "id": "22259063",
+  "kind": "new",
+  "payload": {
+   "price": 42800000
+  },
+  "pref": "saitama",
+  "seq": 468100,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11102",
+  "id": "21799242",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 57980000,
+   "price": 56990000
+  },
+  "pref": "saitama",
+  "seq": 468101,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11102",
+  "id": "22257915",
+  "kind": "new",
+  "payload": {
+   "price": 33990000
+  },
+  "pref": "saitama",
+  "seq": 468102,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "20348629",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 53990000
+  },
+  "pref": "saitama",
+  "seq": 468103,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "22089613",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 53990000
+  },
+  "pref": "saitama",
+  "seq": 468104,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "22236048",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 53990000
+  },
+  "pref": "saitama",
+  "seq": 468105,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "22259036",
+  "kind": "new",
+  "payload": {
+   "price": 61980000
+  },
+  "pref": "saitama",
+  "seq": 468106,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "22084262",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54990000,
+   "price": 53990000
+  },
+  "pref": "saitama",
+  "seq": 468107,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "21436385",
+  "kind": "relisted",
+  "payload": {
+   "price": 55980000
+  },
+  "pref": "saitama",
+  "seq": 468108,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "21436385",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 56980000,
+   "price": 55980000
+  },
+  "pref": "saitama",
+  "seq": 468109,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "21524308",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 56980000,
+   "price": 55980000
+  },
+  "pref": "saitama",
+  "seq": 468110,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "22258658",
+  "kind": "new",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "saitama",
+  "seq": 468111,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21890668",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 44800000
+  },
+  "pref": "saitama",
+  "seq": 468112,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "22128138",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 50980000,
+   "price": 49980000
+  },
+  "pref": "saitama",
+  "seq": 468113,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "22244568",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 36800000
+  },
+  "pref": "saitama",
+  "seq": 468114,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21242254",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39980000,
+   "price": 38990000
+  },
+  "pref": "saitama",
+  "seq": 468115,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "21125943",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28990000,
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468116,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "22258064",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "saitama",
+  "seq": 468117,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "22250620",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28990000,
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468118,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "21296730",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468119,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "21631996",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28990000,
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468120,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "22250752",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468121,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "21524298",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44980000,
+   "price": 42980000
+  },
+  "pref": "saitama",
+  "seq": 468122,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "22258906",
+  "kind": "new",
+  "payload": {
+   "price": 46990000
+  },
+  "pref": "saitama",
+  "seq": 468123,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11107",
+  "id": "22253816",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "saitama",
+  "seq": 468124,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11107",
+  "id": "20893955",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "saitama",
+  "seq": 468125,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11107",
+  "id": "22168269",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 35900000
+  },
+  "pref": "saitama",
+  "seq": 468126,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11107",
+  "id": "79191335",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49980000,
+   "price": 47990000
+  },
+  "pref": "saitama",
+  "seq": 468127,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11108",
+  "id": "20359404",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 79900000,
+   "price": 84800000
+  },
+  "pref": "saitama",
+  "seq": 468128,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11108",
+  "id": "22258976",
+  "kind": "new",
+  "payload": {
+   "price": 59990000
+  },
+  "pref": "saitama",
+  "seq": 468129,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11109",
+  "id": "21098774",
+  "kind": "new",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "saitama",
+  "seq": 468130,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11109",
+  "id": "21866535",
+  "kind": "relisted",
+  "payload": {
+   "price": 34980000
+  },
+  "pref": "saitama",
+  "seq": 468131,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11109",
+  "id": "21866535",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32980000,
+   "price": 34980000
+  },
+  "pref": "saitama",
+  "seq": 468132,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11109",
+  "id": "20191615",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32980000,
+   "price": 34980000
+  },
+  "pref": "saitama",
+  "seq": 468133,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11110",
+  "id": "21180658",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468134,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11110",
+  "id": "21793685",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468135,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11110",
+  "id": "21246832",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468136,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11110",
+  "id": "21381799",
+  "kind": "relisted",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468137,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21294564",
+  "kind": "relisted",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "saitama",
+  "seq": 468138,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21244044",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "saitama",
+  "seq": 468139,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21572942",
+  "kind": "new",
+  "payload": {
+   "price": 31980000
+  },
+  "pref": "saitama",
+  "seq": 468140,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21572955",
+  "kind": "relisted",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "saitama",
+  "seq": 468141,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21572955",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34990000,
+   "price": 32990000
+  },
+  "pref": "saitama",
+  "seq": 468142,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21396619",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37980000,
+   "price": 36980000
+  },
+  "pref": "saitama",
+  "seq": 468143,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21251840",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39980000,
+   "price": 38980000
+  },
+  "pref": "saitama",
+  "seq": 468144,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11202",
+  "id": "21767456",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468145,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11202",
+  "id": "21358044",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468146,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11202",
+  "id": "21379814",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468147,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22248061",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 49980000,
+   "price": 47980000
+  },
+  "pref": "saitama",
+  "seq": 468148,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "79196782",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 53800000,
+   "price": 51800000
+  },
+  "pref": "saitama",
+  "seq": 468149,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22226641",
+  "kind": "new",
+  "payload": {
+   "price": 42980000
+  },
+  "pref": "saitama",
+  "seq": 468150,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22069063",
+  "kind": "new",
+  "payload": {
+   "price": 44980000
+  },
+  "pref": "saitama",
+  "seq": 468151,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22214972",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 29900000
+  },
+  "pref": "saitama",
+  "seq": 468152,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22185607",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "saitama",
+  "seq": 468153,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22244092",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468154,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22100447",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468155,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "20455108",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 45800000,
+   "price": 43800000
+  },
+  "pref": "saitama",
+  "seq": 468156,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "20187987",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46800000,
+   "price": 45800000
+  },
+  "pref": "saitama",
+  "seq": 468157,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "21589982",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 48900000,
+   "price": 47900000
+  },
+  "pref": "saitama",
+  "seq": 468158,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "21382083",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 57800000,
+   "price": 55800000
+  },
+  "pref": "saitama",
+  "seq": 468159,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11206",
+  "id": "22110545",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "saitama",
+  "seq": 468160,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11206",
+  "id": "22194288",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 27900000
+  },
+  "pref": "saitama",
+  "seq": 468161,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11206",
+  "id": "21662355",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "saitama",
+  "seq": 468162,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11208",
+  "id": "22244976",
+  "kind": "new",
+  "payload": {
+   "price": 52800000
+  },
+  "pref": "saitama",
+  "seq": 468163,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11208",
+  "id": "22142173",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468164,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11209",
+  "id": "21325287",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 30800000
+  },
+  "pref": "saitama",
+  "seq": 468165,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11210",
+  "id": "21549687",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25800000,
+   "price": 24800000
+  },
+  "pref": "saitama",
+  "seq": 468166,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11210",
+  "id": "21932979",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22800000,
+   "price": 21800000
+  },
+  "pref": "saitama",
+  "seq": 468167,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11210",
+  "id": "21942413",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25800000,
+   "price": 24800000
+  },
+  "pref": "saitama",
+  "seq": 468168,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11210",
+  "id": "21932509",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468169,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11211",
+  "id": "21116174",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28900000,
+   "price": 27900000
+  },
+  "pref": "saitama",
+  "seq": 468170,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21325878",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468171,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21246843",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "saitama",
+  "seq": 468172,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21524309",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29990000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468173,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21409579",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468174,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21550106",
+  "kind": "relisted",
+  "payload": {
+   "price": 35800000
+  },
+  "pref": "saitama",
+  "seq": 468175,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21817078",
+  "kind": "relisted",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "saitama",
+  "seq": 468176,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11215",
+  "id": "21702257",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23800000
+  },
+  "pref": "saitama",
+  "seq": 468177,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11215",
+  "id": "22196082",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "saitama",
+  "seq": 468178,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11215",
+  "id": "22194882",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468179,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21718334",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27900000,
+   "price": 26900000
+  },
+  "pref": "saitama",
+  "seq": 468180,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21431986",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30900000,
+   "price": 29900000
+  },
+  "pref": "saitama",
+  "seq": 468181,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21761430",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468182,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21719086",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35900000,
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468183,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21700928",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35990000,
+   "price": 34990000
+  },
+  "pref": "saitama",
+  "seq": 468184,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11218",
+  "id": "21740510",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37900000,
+   "price": 36900000
+  },
+  "pref": "saitama",
+  "seq": 468185,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21302093",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468186,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21887538",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37800000,
+   "price": 33790000
+  },
+  "pref": "saitama",
+  "seq": 468187,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "20748597",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468188,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "20662977",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468189,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21843984",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 52980000,
+   "price": 51980000
+  },
+  "pref": "saitama",
+  "seq": 468190,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22257882",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "saitama",
+  "seq": 468191,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "20943608",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26990000,
+   "price": 25990000
+  },
+  "pref": "saitama",
+  "seq": 468192,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22100620",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 28800000
+  },
+  "pref": "saitama",
+  "seq": 468193,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21565377",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468194,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21716729",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468195,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22175625",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468196,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21526477",
+  "kind": "relisted",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468197,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21526477",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468198,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22053461",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "saitama",
+  "seq": 468199,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22257956",
+  "kind": "new",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "saitama",
+  "seq": 468200,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "22258703",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "saitama",
+  "seq": 468201,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21523328",
+  "kind": "relisted",
+  "payload": {
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468202,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21523328",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41800000,
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468203,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21799135",
+  "kind": "new",
+  "payload": {
+   "price": 40800000
+  },
+  "pref": "saitama",
+  "seq": 468204,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21719946",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46980000,
+   "price": 45980000
+  },
+  "pref": "saitama",
+  "seq": 468205,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "21627653",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 36800000
+  },
+  "pref": "saitama",
+  "seq": 468206,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "21747701",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 35800000
+  },
+  "pref": "saitama",
+  "seq": 468207,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22127264",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468208,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22038929",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468209,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22206281",
+  "kind": "new",
+  "payload": {
+   "price": 42900000
+  },
+  "pref": "saitama",
+  "seq": 468210,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22199438",
+  "kind": "new",
+  "payload": {
+   "price": 44800000
+  },
+  "pref": "saitama",
+  "seq": 468211,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22200496",
+  "kind": "new",
+  "payload": {
+   "price": 47800000
+  },
+  "pref": "saitama",
+  "seq": 468212,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22199868",
+  "kind": "new",
+  "payload": {
+   "price": 53770000
+  },
+  "pref": "saitama",
+  "seq": 468213,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22205622",
+  "kind": "new",
+  "payload": {
+   "price": 59800000
+  },
+  "pref": "saitama",
+  "seq": 468214,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22068531",
+  "kind": "new",
+  "payload": {
+   "price": 59900000
+  },
+  "pref": "saitama",
+  "seq": 468215,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22126128",
+  "kind": "new",
+  "payload": {
+   "price": 61900000
+  },
+  "pref": "saitama",
+  "seq": 468216,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22226433",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468217,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22002993",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468218,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22172631",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44990000,
+   "price": 43990000
+  },
+  "pref": "saitama",
+  "seq": 468219,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22258704",
+  "kind": "new",
+  "payload": {
+   "price": 44900000
+  },
+  "pref": "saitama",
+  "seq": 468220,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22257931",
+  "kind": "new",
+  "payload": {
+   "price": 47800000
+  },
+  "pref": "saitama",
+  "seq": 468221,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22258596",
+  "kind": "new",
+  "payload": {
+   "price": 47900000
+  },
+  "pref": "saitama",
+  "seq": 468222,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22179446",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 30800000
+  },
+  "pref": "saitama",
+  "seq": 468223,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "21565419",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44980000,
+   "price": 43980000
+  },
+  "pref": "saitama",
+  "seq": 468224,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22235547",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36800000,
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468225,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22258288",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468226,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22235437",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 42800000,
+   "price": 39800000
+  },
+  "pref": "saitama",
+  "seq": 468227,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22225683",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43980000,
+   "price": 41980000
+  },
+  "pref": "saitama",
+  "seq": 468228,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22225274",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 42990000,
+   "price": 41990000
+  },
+  "pref": "saitama",
+  "seq": 468229,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22225811",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44990000,
+   "price": 42990000
+  },
+  "pref": "saitama",
+  "seq": 468230,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22225187",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44990000,
+   "price": 42990000
+  },
+  "pref": "saitama",
+  "seq": 468231,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22172307",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44980000,
+   "price": 43980000
+  },
+  "pref": "saitama",
+  "seq": 468232,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22055566",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 57900000,
+   "price": 56900000
+  },
+  "pref": "saitama",
+  "seq": 468233,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11224",
+  "id": "20959939",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 51800000,
+   "price": 50800000
+  },
+  "pref": "saitama",
+  "seq": 468234,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11224",
+  "id": "22201539",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 50900000,
+   "price": 49900000
+  },
+  "pref": "saitama",
+  "seq": 468235,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11224",
+  "id": "21923627",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 52800000,
+   "price": 51800000
+  },
+  "pref": "saitama",
+  "seq": 468236,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11224",
+  "id": "21532426",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 54800000,
+   "price": 53800000
+  },
+  "pref": "saitama",
+  "seq": 468237,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11225",
+  "id": "22074843",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 24900000
+  },
+  "pref": "saitama",
+  "seq": 468238,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11225",
+  "id": "21980597",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "saitama",
+  "seq": 468239,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11225",
+  "id": "22258294",
+  "kind": "new",
+  "payload": {
+   "price": 36980000
+  },
+  "pref": "saitama",
+  "seq": 468240,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11225",
+  "id": "22258270",
+  "kind": "new",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "saitama",
+  "seq": 468241,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11227",
+  "id": "21544974",
+  "kind": "new",
+  "payload": {
+   "price": 47900000
+  },
+  "pref": "saitama",
+  "seq": 468242,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11227",
+  "id": "22257365",
+  "kind": "new",
+  "payload": {
+   "price": 59990000
+  },
+  "pref": "saitama",
+  "seq": 468243,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11228",
+  "id": "21212392",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 38800000
+  },
+  "pref": "saitama",
+  "seq": 468244,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11230",
+  "id": "20958121",
+  "kind": "relisted",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "saitama",
+  "seq": 468245,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11230",
+  "id": "20606130",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 46980000,
+   "price": 45980000
+  },
+  "pref": "saitama",
+  "seq": 468246,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11231",
+  "id": "21874546",
+  "kind": "new",
+  "payload": {
+   "price": 38980000
+  },
+  "pref": "saitama",
+  "seq": 468247,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11231",
+  "id": "21786596",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39980000,
+   "price": 38980000
+  },
+  "pref": "saitama",
+  "seq": 468248,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11233",
+  "id": "21791165",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468249,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11233",
+  "id": "21791166",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468250,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11233",
+  "id": "21679436",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468251,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11233",
+  "id": "21679438",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34800000,
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468252,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11233",
+  "id": "22246502",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "saitama",
+  "seq": 468253,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22219754",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31800000,
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468254,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22258081",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468255,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22257889",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468256,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22252748",
+  "kind": "new",
+  "payload": {
+   "price": 39980000
+  },
+  "pref": "saitama",
+  "seq": 468257,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "22257830",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468258,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "21962428",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32800000,
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468259,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "22257866",
+  "kind": "new",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "saitama",
+  "seq": 468260,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "22257840",
+  "kind": "new",
+  "payload": {
+   "price": 37990000
+  },
+  "pref": "saitama",
+  "seq": 468261,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "22258061",
+  "kind": "new",
+  "payload": {
+   "price": 59900000
+  },
+  "pref": "saitama",
+  "seq": 468262,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11238",
+  "id": "21526140",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32900000,
+   "price": 31900000
+  },
+  "pref": "saitama",
+  "seq": 468263,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11238",
+  "id": "21539265",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43900000,
+   "price": 43800000
+  },
+  "pref": "saitama",
+  "seq": 468264,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11238",
+  "id": "22100673",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 44800000,
+   "price": 43800000
+  },
+  "pref": "saitama",
+  "seq": 468265,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11239",
+  "id": "21493094",
+  "kind": "new",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "saitama",
+  "seq": 468266,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11240",
+  "id": "20405148",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21800000,
+   "price": 20800000
+  },
+  "pref": "saitama",
+  "seq": 468267,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11240",
+  "id": "21609049",
+  "kind": "relisted",
+  "payload": {
+   "price": 24990000
+  },
+  "pref": "saitama",
+  "seq": 468268,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11241",
+  "id": "22251622",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "saitama",
+  "seq": 468269,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11241",
+  "id": "22213966",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 27800000
+  },
+  "pref": "saitama",
+  "seq": 468270,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11241",
+  "id": "22252208",
+  "kind": "new",
+  "payload": {
+   "price": 44990000
+  },
+  "pref": "saitama",
+  "seq": 468271,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11242",
+  "id": "21483149",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "saitama",
+  "seq": 468272,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11243",
+  "id": "22227790",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 47900000,
+   "price": 46900000
+  },
+  "pref": "saitama",
+  "seq": 468273,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11243",
+  "id": "22257900",
+  "kind": "new",
+  "payload": {
+   "price": 52990000
+  },
+  "pref": "saitama",
+  "seq": 468274,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "21251304",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "saitama",
+  "seq": 468275,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "20832731",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "saitama",
+  "seq": 468276,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "21396602",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "saitama",
+  "seq": 468277,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "20581027",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "saitama",
+  "seq": 468278,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "22199264",
+  "kind": "new",
+  "payload": {
+   "price": 37900000
+  },
+  "pref": "saitama",
+  "seq": 468279,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11246",
+  "id": "21867675",
+  "kind": "new",
+  "payload": {
+   "price": 41900000
+  },
+  "pref": "saitama",
+  "seq": 468280,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "21734330",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38980000,
+   "price": 37980000
+  },
+  "pref": "saitama",
+  "seq": 468281,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "20897759",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 25900000
+  },
+  "pref": "saitama",
+  "seq": 468282,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "22258017",
+  "kind": "new",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "saitama",
+  "seq": 468283,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "78806272",
+  "kind": "relisted",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "saitama",
+  "seq": 468284,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "22224129",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "saitama",
+  "seq": 468285,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "21578353",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38980000,
+   "price": 37980000
+  },
+  "pref": "saitama",
+  "seq": 468286,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11320",
+  "id": "21573121",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39900000,
+   "price": 38900000
+  },
+  "pref": "saitama",
+  "seq": 468287,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11340",
+  "id": "22243917",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 30900000
+  },
+  "pref": "saitama",
+  "seq": 468288,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11460",
+  "id": "21875394",
+  "kind": "relisted",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468289,
+  "type": "new_house"
+ },
+ {
+  "area_code": "11103",
+  "id": "22257867",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "saitama",
+  "seq": 468290,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21249120",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27990000,
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468291,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21604239",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21980000,
+   "price": 20980000
+  },
+  "pref": "saitama",
+  "seq": 468292,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21895118",
+  "kind": "new",
+  "payload": {
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468293,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11104",
+  "id": "21300884",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27990000,
+   "price": 26990000
+  },
+  "pref": "saitama",
+  "seq": 468294,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11106",
+  "id": "21908192",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23800000
+  },
+  "pref": "saitama",
+  "seq": 468295,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21603059",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31980000,
+   "price": 29980000
+  },
+  "pref": "saitama",
+  "seq": 468296,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "22053439",
+  "kind": "relisted",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "saitama",
+  "seq": 468297,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "22053439",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30980000,
+   "price": 29980000
+  },
+  "pref": "saitama",
+  "seq": 468298,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11201",
+  "id": "21202319",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32500000,
+   "price": 31500000
+  },
+  "pref": "saitama",
+  "seq": 468299,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11202",
+  "id": "21268480",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26990000,
+   "price": 25990000
+  },
+  "pref": "saitama",
+  "seq": 468300,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "21850976",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "saitama",
+  "seq": 468301,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "21851706",
+  "kind": "new",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "saitama",
+  "seq": 468302,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22138659",
+  "kind": "new",
+  "payload": {
+   "price": 42990000
+  },
+  "pref": "saitama",
+  "seq": 468303,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11203",
+  "id": "22177900",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 31800000
+  },
+  "pref": "saitama",
+  "seq": 468304,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11208",
+  "id": "22257999",
+  "kind": "new",
+  "payload": {
+   "price": 4500000
+  },
+  "pref": "saitama",
+  "seq": 468305,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11211",
+  "id": "21056066",
+  "kind": "new",
+  "payload": {
+   "price": 53500000
+  },
+  "pref": "saitama",
+  "seq": 468306,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21684415",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23990000,
+   "price": 23490000
+  },
+  "pref": "saitama",
+  "seq": 468307,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "21932884",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25990000,
+   "price": 25490000
+  },
+  "pref": "saitama",
+  "seq": 468308,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11214",
+  "id": "78905103",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 25800000
+  },
+  "pref": "saitama",
+  "seq": 468309,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11219",
+  "id": "21577125",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 80000000,
+   "price": 77000000
+  },
+  "pref": "saitama",
+  "seq": 468310,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "21857154",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "saitama",
+  "seq": 468311,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "21851478",
+  "kind": "new",
+  "payload": {
+   "price": 26500000
+  },
+  "pref": "saitama",
+  "seq": 468312,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11221",
+  "id": "22138955",
+  "kind": "new",
+  "payload": {
+   "price": 37990000
+  },
+  "pref": "saitama",
+  "seq": 468313,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11222",
+  "id": "22258228",
+  "kind": "new",
+  "payload": {
+   "price": 19990000
+  },
+  "pref": "saitama",
+  "seq": 468314,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11223",
+  "id": "21595922",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43990000,
+   "price": 42990000
+  },
+  "pref": "saitama",
+  "seq": 468315,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11223",
+  "id": "22253817",
+  "kind": "new",
+  "payload": {
+   "price": 58800000
+  },
+  "pref": "saitama",
+  "seq": 468316,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11230",
+  "id": "22053430",
+  "kind": "new",
+  "payload": {
+   "price": 32990000
+  },
+  "pref": "saitama",
+  "seq": 468317,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22258413",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468318,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "21851327",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468319,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "21930677",
+  "kind": "new",
+  "payload": {
+   "price": 41800000
+  },
+  "pref": "saitama",
+  "seq": 468320,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22258402",
+  "kind": "new",
+  "payload": {
+   "price": 46800000
+  },
+  "pref": "saitama",
+  "seq": 468321,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11234",
+  "id": "22257547",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "saitama",
+  "seq": 468322,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11237",
+  "id": "22257873",
+  "kind": "new",
+  "payload": {
+   "price": 55000000
+  },
+  "pref": "saitama",
+  "seq": 468323,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11240",
+  "id": "22111965",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19800000,
+   "price": 17800000
+  },
+  "pref": "saitama",
+  "seq": 468324,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11241",
+  "id": "22259127",
+  "kind": "new",
+  "payload": {
+   "price": 28990000
+  },
+  "pref": "saitama",
+  "seq": 468325,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11300",
+  "id": "22258425",
+  "kind": "new",
+  "payload": {
+   "price": 11800000
+  },
+  "pref": "saitama",
+  "seq": 468326,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11340",
+  "id": "22199092",
+  "kind": "new",
+  "payload": {
+   "price": 8000000
+  },
+  "pref": "saitama",
+  "seq": 468327,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11400",
+  "id": "22163743",
+  "kind": "relisted",
+  "payload": {
+   "price": 6500000
+  },
+  "pref": "saitama",
+  "seq": 468328,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11460",
+  "id": "22258908",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "saitama",
+  "seq": 468329,
+  "type": "used_house"
+ },
+ {
+  "area_code": "11102",
+  "id": "21984947",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33980000,
+   "price": 30990000
+  },
+  "pref": "saitama",
+  "seq": 468330,
+  "type": "land"
+ },
+ {
+  "area_code": "11110",
+  "id": "21958052",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25980000,
+   "price": 23990000
+  },
+  "pref": "saitama",
+  "seq": 468331,
+  "type": "land"
+ },
+ {
+  "area_code": "11203",
+  "id": "20112481",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "saitama",
+  "seq": 468332,
+  "type": "land"
+ },
+ {
+  "area_code": "11208",
+  "id": "21830183",
+  "kind": "relisted",
+  "payload": {
+   "price": 27900000
+  },
+  "pref": "saitama",
+  "seq": 468333,
+  "type": "land"
+ },
+ {
+  "area_code": "11208",
+  "id": "20405434",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 22800000
+  },
+  "pref": "saitama",
+  "seq": 468334,
+  "type": "land"
+ },
+ {
+  "area_code": "11208",
+  "id": "20405753",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26800000,
+   "price": 21800000
+  },
+  "pref": "saitama",
+  "seq": 468335,
+  "type": "land"
+ },
+ {
+  "area_code": "11208",
+  "id": "22210325",
+  "kind": "new",
+  "payload": {
+   "price": 36200000
+  },
+  "pref": "saitama",
+  "seq": 468336,
+  "type": "land"
+ },
+ {
+  "area_code": "11211",
+  "id": "76502181",
+  "kind": "new",
+  "payload": {
+   "price": 5000000
+  },
+  "pref": "saitama",
+  "seq": 468337,
+  "type": "land"
+ },
+ {
+  "area_code": "11211",
+  "id": "22161686",
+  "kind": "new",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "saitama",
+  "seq": 468338,
+  "type": "land"
+ },
+ {
+  "area_code": "11211",
+  "id": "22237608",
+  "kind": "new",
+  "payload": {
+   "price": 16000000
+  },
+  "pref": "saitama",
+  "seq": 468339,
+  "type": "land"
+ },
+ {
+  "area_code": "11214",
+  "id": "21996025",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19900000,
+   "price": 18900000
+  },
+  "pref": "saitama",
+  "seq": 468340,
+  "type": "land"
+ },
+ {
+  "area_code": "11218",
+  "id": "76491553",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "saitama",
+  "seq": 468341,
+  "type": "land"
+ },
+ {
+  "area_code": "11219",
+  "id": "22257781",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "saitama",
+  "seq": 468342,
+  "type": "land"
+ },
+ {
+  "area_code": "11219",
+  "id": "22257751",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "saitama",
+  "seq": 468343,
+  "type": "land"
+ },
+ {
+  "area_code": "11221",
+  "id": "21929707",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22800000,
+   "price": 21800000
+  },
+  "pref": "saitama",
+  "seq": 468344,
+  "type": "land"
+ },
+ {
+  "area_code": "11221",
+  "id": "22257804",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "saitama",
+  "seq": 468345,
+  "type": "land"
+ },
+ {
+  "area_code": "11222",
+  "id": "21325949",
+  "kind": "new",
+  "payload": {
+   "price": 39400000
+  },
+  "pref": "saitama",
+  "seq": 468346,
+  "type": "land"
+ },
+ {
+  "area_code": "11225",
+  "id": "22215959",
+  "kind": "new",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "saitama",
+  "seq": 468347,
+  "type": "land"
+ },
+ {
+  "area_code": "11231",
+  "id": "78004645",
+  "kind": "new",
+  "payload": {
+   "price": 21680000
+  },
+  "pref": "saitama",
+  "seq": 468348,
+  "type": "land"
+ },
+ {
+  "area_code": "11232",
+  "id": "22258392",
+  "kind": "new",
+  "payload": {
+   "price": 9100000
+  },
+  "pref": "saitama",
+  "seq": 468349,
+  "type": "land"
+ },
+ {
+  "area_code": "11238",
+  "id": "22225589",
+  "kind": "new",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "saitama",
+  "seq": 468350,
+  "type": "land"
+ },
+ {
+  "area_code": "11300",
+  "id": "22083994",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "saitama",
+  "seq": 468351,
+  "type": "land"
+ },
+ {
+  "area_code": "11320",
+  "id": "22258470",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "saitama",
+  "seq": 468352,
+  "type": "land"
+ },
+ {
+  "area_code": "11380",
+  "id": "78543351",
+  "kind": "relisted",
+  "payload": {
+   "price": 6300000
+  },
+  "pref": "saitama",
+  "seq": 468353,
+  "type": "land"
+ },
+ {
+  "area_code": "11400",
+  "id": "78933850",
+  "kind": "new",
+  "payload": {
+   "price": 2900000
+  },
+  "pref": "saitama",
+  "seq": 468354,
+  "type": "land"
+ }
+]

@@ -1,0 +1,27 @@
+# data/<pref>/ travels as a release asset (data/snapshot.json names it: README "How it runs"); git keeps the rest
+/data/*
+!/data/events/
+!/data/fx.json
+!/data/snapshot.json
+!/data/canary/
+
+# local state and output (see README "Files")
+state.db*
+state-*.db*
+/state-shards/
+archive/
+archive-*/
+scope-*.toml
+logs/
+geo/*.lock
+_site/
+.env
+uv.lock
+
+# tooling
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.claude/
+.DS_Store

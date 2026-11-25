@@ -1,0 +1,733 @@
+[
+ {
+  "area_code": "40106",
+  "id": "22212830",
+  "kind": "new",
+  "payload": {
+   "price": 14800000
+  },
+  "pref": "fukuoka",
+  "seq": 502780,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40106",
+  "id": "21699280",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 4500000,
+   "price": 3800000
+  },
+  "pref": "fukuoka",
+  "seq": 502781,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40106",
+  "id": "21081810",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 7100000,
+   "price": 6600000
+  },
+  "pref": "fukuoka",
+  "seq": 502782,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40106",
+  "id": "21010053",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 7900000,
+   "price": 7800000
+  },
+  "pref": "fukuoka",
+  "seq": 502783,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40109",
+  "id": "21796179",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 2500000,
+   "price": 1980000
+  },
+  "pref": "fukuoka",
+  "seq": 502784,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40109",
+  "id": "22212842",
+  "kind": "new",
+  "payload": {
+   "price": 6800000
+  },
+  "pref": "fukuoka",
+  "seq": 502785,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40109",
+  "id": "21739713",
+  "kind": "relisted",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "fukuoka",
+  "seq": 502786,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40109",
+  "id": "21739713",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14500000,
+   "price": 13800000
+  },
+  "pref": "fukuoka",
+  "seq": 502787,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40109",
+  "id": "22212934",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "fukuoka",
+  "seq": 502788,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40132",
+  "id": "22140555",
+  "kind": "new",
+  "payload": {
+   "price": 41000000
+  },
+  "pref": "fukuoka",
+  "seq": 502789,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40133",
+  "id": "22213012",
+  "kind": "new",
+  "payload": {
+   "price": 34700000
+  },
+  "pref": "fukuoka",
+  "seq": 502790,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40133",
+  "id": "20673715",
+  "kind": "relisted",
+  "payload": {
+   "price": 210000000
+  },
+  "pref": "fukuoka",
+  "seq": 502791,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40134",
+  "id": "20276930",
+  "kind": "relisted",
+  "payload": {
+   "price": 5900000
+  },
+  "pref": "fukuoka",
+  "seq": 502792,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40135",
+  "id": "21590190",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32800000
+  },
+  "pref": "fukuoka",
+  "seq": 502793,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40137",
+  "id": "22206383",
+  "kind": "new",
+  "payload": {
+   "price": 43900000
+  },
+  "pref": "fukuoka",
+  "seq": 502794,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40203",
+  "id": "22212275",
+  "kind": "new",
+  "payload": {
+   "price": 33800000
+  },
+  "pref": "fukuoka",
+  "seq": 502795,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40216",
+  "id": "21514944",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19800000,
+   "price": 18800000
+  },
+  "pref": "fukuoka",
+  "seq": 502796,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40219",
+  "id": "21932267",
+  "kind": "relisted",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "fukuoka",
+  "seq": 502797,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "40101",
+  "id": "21269530",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32990000,
+   "price": 29990000
+  },
+  "pref": "fukuoka",
+  "seq": 502798,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40101",
+  "id": "21656248",
+  "kind": "relisted",
+  "payload": {
+   "price": 35990000
+  },
+  "pref": "fukuoka",
+  "seq": 502799,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40101",
+  "id": "21656248",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33990000,
+   "price": 35990000
+  },
+  "pref": "fukuoka",
+  "seq": 502800,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40101",
+  "id": "21801020",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 40990000,
+   "price": 39900000
+  },
+  "pref": "fukuoka",
+  "seq": 502801,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40106",
+  "id": "21550187",
+  "kind": "relisted",
+  "payload": {
+   "price": 36980000
+  },
+  "pref": "fukuoka",
+  "seq": 502802,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40106",
+  "id": "21550187",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37980000,
+   "price": 36980000
+  },
+  "pref": "fukuoka",
+  "seq": 502803,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40106",
+  "id": "21892111",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38980000,
+   "price": 37980000
+  },
+  "pref": "fukuoka",
+  "seq": 502804,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40107",
+  "id": "22212940",
+  "kind": "new",
+  "payload": {
+   "price": 40980000
+  },
+  "pref": "fukuoka",
+  "seq": 502805,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40131",
+  "id": "21397507",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27880000,
+   "price": 30880000
+  },
+  "pref": "fukuoka",
+  "seq": 502806,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40134",
+  "id": "21800442",
+  "kind": "relisted",
+  "payload": {
+   "price": 50880000
+  },
+  "pref": "fukuoka",
+  "seq": 502807,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40134",
+  "id": "21800358",
+  "kind": "relisted",
+  "payload": {
+   "price": 53880000
+  },
+  "pref": "fukuoka",
+  "seq": 502808,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40136",
+  "id": "22169432",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41980000,
+   "price": 47980000
+  },
+  "pref": "fukuoka",
+  "seq": 502809,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40137",
+  "id": "20193034",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 26900000,
+   "price": 32800000
+  },
+  "pref": "fukuoka",
+  "seq": 502810,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40203",
+  "id": "21437827",
+  "kind": "relisted",
+  "payload": {
+   "price": 28600000
+  },
+  "pref": "fukuoka",
+  "seq": 502811,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40203",
+  "id": "21260617",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32500000,
+   "price": 32000000
+  },
+  "pref": "fukuoka",
+  "seq": 502812,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40203",
+  "id": "21794535",
+  "kind": "relisted",
+  "payload": {
+   "price": 38700000
+  },
+  "pref": "fukuoka",
+  "seq": 502813,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40203",
+  "id": "21369704",
+  "kind": "relisted",
+  "payload": {
+   "price": 7700000
+  },
+  "pref": "fukuoka",
+  "seq": 502814,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40204",
+  "id": "21938328",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21880000,
+   "price": 20880000
+  },
+  "pref": "fukuoka",
+  "seq": 502815,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40204",
+  "id": "22037238",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21880000,
+   "price": 20880000
+  },
+  "pref": "fukuoka",
+  "seq": 502816,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40205",
+  "id": "20424687",
+  "kind": "relisted",
+  "payload": {
+   "price": 25980000
+  },
+  "pref": "fukuoka",
+  "seq": 502817,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40206",
+  "id": "79033345",
+  "kind": "relisted",
+  "payload": {
+   "price": 22980000
+  },
+  "pref": "fukuoka",
+  "seq": 502818,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40217",
+  "id": "22211259",
+  "kind": "new",
+  "payload": {
+   "price": 58510000
+  },
+  "pref": "fukuoka",
+  "seq": 502819,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40219",
+  "id": "22212783",
+  "kind": "new",
+  "payload": {
+   "price": 46900000
+  },
+  "pref": "fukuoka",
+  "seq": 502820,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40220",
+  "id": "77981520",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31900000,
+   "price": 30900000
+  },
+  "pref": "fukuoka",
+  "seq": 502821,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40224",
+  "id": "20749409",
+  "kind": "new",
+  "payload": {
+   "price": 35980000
+  },
+  "pref": "fukuoka",
+  "seq": 502822,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40345",
+  "id": "22213143",
+  "kind": "new",
+  "payload": {
+   "price": 48980000
+  },
+  "pref": "fukuoka",
+  "seq": 502823,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40343",
+  "id": "22209936",
+  "kind": "new",
+  "payload": {
+   "price": 42980000
+  },
+  "pref": "fukuoka",
+  "seq": 502824,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40342",
+  "id": "22161271",
+  "kind": "new",
+  "payload": {
+   "price": 23500000
+  },
+  "pref": "fukuoka",
+  "seq": 502825,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40382",
+  "id": "21984893",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25880000,
+   "price": 26880000
+  },
+  "pref": "fukuoka",
+  "seq": 502826,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40382",
+  "id": "21996745",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25880000,
+   "price": 26880000
+  },
+  "pref": "fukuoka",
+  "seq": 502827,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40382",
+  "id": "21962378",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25880000,
+   "price": 26880000
+  },
+  "pref": "fukuoka",
+  "seq": 502828,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40440",
+  "id": "21045378",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25980000,
+   "price": 26980000
+  },
+  "pref": "fukuoka",
+  "seq": 502829,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40620",
+  "id": "21615494",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37980000,
+   "price": 35980000
+  },
+  "pref": "fukuoka",
+  "seq": 502830,
+  "type": "new_house"
+ },
+ {
+  "area_code": "40101",
+  "id": "22039504",
+  "kind": "new",
+  "payload": {
+   "price": 5980000
+  },
+  "pref": "fukuoka",
+  "seq": 502831,
+  "type": "used_house"
+ },
+ {
+  "area_code": "40106",
+  "id": "22212939",
+  "kind": "new",
+  "payload": {
+   "price": 53500000
+  },
+  "pref": "fukuoka",
+  "seq": 502832,
+  "type": "used_house"
+ },
+ {
+  "area_code": "40134",
+  "id": "22101194",
+  "kind": "relisted",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukuoka",
+  "seq": 502833,
+  "type": "used_house"
+ },
+ {
+  "area_code": "40205",
+  "id": "22212730",
+  "kind": "new",
+  "payload": {
+   "price": 2700000
+  },
+  "pref": "fukuoka",
+  "seq": 502834,
+  "type": "used_house"
+ },
+ {
+  "area_code": "40220",
+  "id": "79028805",
+  "kind": "relisted",
+  "payload": {
+   "price": 35000000
+  },
+  "pref": "fukuoka",
+  "seq": 502835,
+  "type": "used_house"
+ },
+ {
+  "area_code": "40106",
+  "id": "77590780",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 8000000,
+   "price": 7000000
+  },
+  "pref": "fukuoka",
+  "seq": 502836,
+  "type": "land"
+ },
+ {
+  "area_code": "40109",
+  "id": "22212703",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "fukuoka",
+  "seq": 502837,
+  "type": "land"
+ },
+ {
+  "area_code": "40109",
+  "id": "22212980",
+  "kind": "new",
+  "payload": {
+   "price": 29500000
+  },
+  "pref": "fukuoka",
+  "seq": 502838,
+  "type": "land"
+ },
+ {
+  "area_code": "40131",
+  "id": "21725197",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25500000,
+   "price": 24500000
+  },
+  "pref": "fukuoka",
+  "seq": 502839,
+  "type": "land"
+ },
+ {
+  "area_code": "40203",
+  "id": "21369704",
+  "kind": "relisted",
+  "payload": {
+   "price": 7700000
+  },
+  "pref": "fukuoka",
+  "seq": 502840,
+  "type": "land"
+ },
+ {
+  "area_code": "40218",
+  "id": "21088489",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 139000000,
+   "price": 135000000
+  },
+  "pref": "fukuoka",
+  "seq": 502841,
+  "type": "land"
+ },
+ {
+  "area_code": "40231",
+  "id": "21868420",
+  "kind": "relisted",
+  "payload": {
+   "price": 20000000
+  },
+  "pref": "fukuoka",
+  "seq": 502842,
+  "type": "land"
+ },
+ {
+  "area_code": "40342",
+  "id": "22161271",
+  "kind": "new",
+  "payload": {
+   "price": 23500000
+  },
+  "pref": "fukuoka",
+  "seq": 502843,
+  "type": "land"
+ }
+]

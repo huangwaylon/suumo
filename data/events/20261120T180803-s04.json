@@ -1,0 +1,1946 @@
+[
+ {
+  "area_code": "05204",
+  "id": "22226138",
+  "kind": "new",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "akita",
+  "seq": 555132,
+  "type": "new_house"
+ },
+ {
+  "area_code": "05204",
+  "id": "22226139",
+  "kind": "new",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "akita",
+  "seq": 555133,
+  "type": "new_house"
+ },
+ {
+  "area_code": "05201",
+  "id": "22173280",
+  "kind": "new",
+  "payload": {
+   "price": 35900000
+  },
+  "pref": "akita",
+  "seq": 555134,
+  "type": "used_house"
+ },
+ {
+  "area_code": "05204",
+  "id": "22062320",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12490000,
+   "price": 11490000
+  },
+  "pref": "akita",
+  "seq": 555135,
+  "type": "used_house"
+ },
+ {
+  "area_code": "05209",
+  "id": "22227392",
+  "kind": "new",
+  "payload": {
+   "price": 13990000
+  },
+  "pref": "akita",
+  "seq": 555136,
+  "type": "used_house"
+ },
+ {
+  "area_code": "05420",
+  "id": "22225989",
+  "kind": "new",
+  "payload": {
+   "price": 11990000
+  },
+  "pref": "akita",
+  "seq": 555137,
+  "type": "used_house"
+ },
+ {
+  "area_code": "05201",
+  "id": "22225145",
+  "kind": "new",
+  "payload": {
+   "price": 44000000
+  },
+  "pref": "akita",
+  "seq": 555138,
+  "type": "land"
+ },
+ {
+  "area_code": "05204",
+  "id": "22226138",
+  "kind": "new",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "akita",
+  "seq": 555139,
+  "type": "land"
+ },
+ {
+  "area_code": "05204",
+  "id": "22226139",
+  "kind": "new",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "akita",
+  "seq": 555140,
+  "type": "land"
+ },
+ {
+  "area_code": "07202",
+  "id": "22014759",
+  "kind": "new",
+  "payload": {
+   "price": 27000000
+  },
+  "pref": "fukushima",
+  "seq": 555141,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "07203",
+  "id": "22031945",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9500000,
+   "price": 8900000
+  },
+  "pref": "fukushima",
+  "seq": 555142,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225819",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "fukushima",
+  "seq": 555143,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225028",
+  "kind": "new",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "fukushima",
+  "seq": 555144,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22224905",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "fukushima",
+  "seq": 555145,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22224840",
+  "kind": "new",
+  "payload": {
+   "price": 21900000
+  },
+  "pref": "fukushima",
+  "seq": 555146,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22224745",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "fukushima",
+  "seq": 555147,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225199",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "fukushima",
+  "seq": 555148,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22226251",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "fukushima",
+  "seq": 555149,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225119",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "fukushima",
+  "seq": 555150,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225741",
+  "kind": "new",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "fukushima",
+  "seq": 555151,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22226334",
+  "kind": "new",
+  "payload": {
+   "price": 33400000
+  },
+  "pref": "fukushima",
+  "seq": 555152,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22226091",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "fukushima",
+  "seq": 555153,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225954",
+  "kind": "new",
+  "payload": {
+   "price": 34980000
+  },
+  "pref": "fukushima",
+  "seq": 555154,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22226408",
+  "kind": "new",
+  "payload": {
+   "price": 31650000
+  },
+  "pref": "fukushima",
+  "seq": 555155,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225895",
+  "kind": "new",
+  "payload": {
+   "price": 35980000
+  },
+  "pref": "fukushima",
+  "seq": 555156,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "21997465",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "fukushima",
+  "seq": 555157,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22213226",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "fukushima",
+  "seq": 555158,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22225792",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "fukushima",
+  "seq": 555159,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "22226611",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "fukushima",
+  "seq": 555160,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "22226682",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "fukushima",
+  "seq": 555161,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "22226838",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukushima",
+  "seq": 555162,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "22226931",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukushima",
+  "seq": 555163,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "22226747",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukushima",
+  "seq": 555164,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07202",
+  "id": "21917105",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 38500000,
+   "price": 35800000
+  },
+  "pref": "fukushima",
+  "seq": 555165,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225725",
+  "kind": "new",
+  "payload": {
+   "price": 18800000
+  },
+  "pref": "fukushima",
+  "seq": 555166,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225448",
+  "kind": "new",
+  "payload": {
+   "price": 18900000
+  },
+  "pref": "fukushima",
+  "seq": 555167,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225220",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "fukushima",
+  "seq": 555168,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225388",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "fukushima",
+  "seq": 555169,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225273",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "fukushima",
+  "seq": 555170,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227153",
+  "kind": "new",
+  "payload": {
+   "price": 24850000
+  },
+  "pref": "fukushima",
+  "seq": 555171,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226969",
+  "kind": "new",
+  "payload": {
+   "price": 24850000
+  },
+  "pref": "fukushima",
+  "seq": 555172,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "20769506",
+  "kind": "relisted",
+  "payload": {
+   "price": 24850000
+  },
+  "pref": "fukushima",
+  "seq": 555173,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225496",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukushima",
+  "seq": 555174,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225572",
+  "kind": "new",
+  "payload": {
+   "price": 25800000
+  },
+  "pref": "fukushima",
+  "seq": 555175,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226346",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "fukushima",
+  "seq": 555176,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227084",
+  "kind": "new",
+  "payload": {
+   "price": 27850000
+  },
+  "pref": "fukushima",
+  "seq": 555177,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226824",
+  "kind": "new",
+  "payload": {
+   "price": 28850000
+  },
+  "pref": "fukushima",
+  "seq": 555178,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "21208216",
+  "kind": "relisted",
+  "payload": {
+   "price": 28850000
+  },
+  "pref": "fukushima",
+  "seq": 555179,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227253",
+  "kind": "new",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "fukushima",
+  "seq": 555180,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227281",
+  "kind": "new",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "fukushima",
+  "seq": 555181,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226276",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "fukushima",
+  "seq": 555182,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225331",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "fukushima",
+  "seq": 555183,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227326",
+  "kind": "new",
+  "payload": {
+   "price": 30980000
+  },
+  "pref": "fukushima",
+  "seq": 555184,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227506",
+  "kind": "new",
+  "payload": {
+   "price": 30990000
+  },
+  "pref": "fukushima",
+  "seq": 555185,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225810",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "fukushima",
+  "seq": 555186,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226151",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "fukushima",
+  "seq": 555187,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227349",
+  "kind": "new",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "fukushima",
+  "seq": 555188,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "21603559",
+  "kind": "relisted",
+  "payload": {
+   "price": 33850000
+  },
+  "pref": "fukushima",
+  "seq": 555189,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "21864321",
+  "kind": "relisted",
+  "payload": {
+   "price": 33850000
+  },
+  "pref": "fukushima",
+  "seq": 555190,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227391",
+  "kind": "new",
+  "payload": {
+   "price": 33980000
+  },
+  "pref": "fukushima",
+  "seq": 555191,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226655",
+  "kind": "new",
+  "payload": {
+   "price": 35350000
+  },
+  "pref": "fukushima",
+  "seq": 555192,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226046",
+  "kind": "new",
+  "payload": {
+   "price": 35480000
+  },
+  "pref": "fukushima",
+  "seq": 555193,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227462",
+  "kind": "new",
+  "payload": {
+   "price": 35980000
+  },
+  "pref": "fukushima",
+  "seq": 555194,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227530",
+  "kind": "new",
+  "payload": {
+   "price": 39990000
+  },
+  "pref": "fukushima",
+  "seq": 555195,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225964",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "fukushima",
+  "seq": 555196,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22225672",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "fukushima",
+  "seq": 555197,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226506",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "fukushima",
+  "seq": 555198,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226213",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "fukushima",
+  "seq": 555199,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227027",
+  "kind": "new",
+  "payload": {
+   "price": 33850000
+  },
+  "pref": "fukushima",
+  "seq": 555200,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22227486",
+  "kind": "new",
+  "payload": {
+   "price": 34980000
+  },
+  "pref": "fukushima",
+  "seq": 555201,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22140439",
+  "kind": "relisted",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "fukushima",
+  "seq": 555202,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226463",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "fukushima",
+  "seq": 555203,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226620",
+  "kind": "new",
+  "payload": {
+   "price": 29850000
+  },
+  "pref": "fukushima",
+  "seq": 555204,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226564",
+  "kind": "new",
+  "payload": {
+   "price": 32850000
+  },
+  "pref": "fukushima",
+  "seq": 555205,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "22226788",
+  "kind": "new",
+  "payload": {
+   "price": 33850000
+  },
+  "pref": "fukushima",
+  "seq": 555206,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22227508",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "fukushima",
+  "seq": 555207,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22074940",
+  "kind": "relisted",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "fukushima",
+  "seq": 555208,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22227301",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "fukushima",
+  "seq": 555209,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22227445",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "fukushima",
+  "seq": 555210,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22227480",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "fukushima",
+  "seq": 555211,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22224823",
+  "kind": "new",
+  "payload": {
+   "price": 29300000
+  },
+  "pref": "fukushima",
+  "seq": 555212,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225866",
+  "kind": "new",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "fukushima",
+  "seq": 555213,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225867",
+  "kind": "new",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "fukushima",
+  "seq": 555214,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225871",
+  "kind": "new",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "fukushima",
+  "seq": 555215,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225857",
+  "kind": "new",
+  "payload": {
+   "price": 22900000
+  },
+  "pref": "fukushima",
+  "seq": 555216,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225846",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "fukushima",
+  "seq": 555217,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225874",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "fukushima",
+  "seq": 555218,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225883",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "fukushima",
+  "seq": 555219,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225850",
+  "kind": "new",
+  "payload": {
+   "price": 23900000
+  },
+  "pref": "fukushima",
+  "seq": 555220,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225868",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "fukushima",
+  "seq": 555221,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225860",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "fukushima",
+  "seq": 555222,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225862",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "fukushima",
+  "seq": 555223,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225872",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "fukushima",
+  "seq": 555224,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225879",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "fukushima",
+  "seq": 555225,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225853",
+  "kind": "new",
+  "payload": {
+   "price": 25900000
+  },
+  "pref": "fukushima",
+  "seq": 555226,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225849",
+  "kind": "new",
+  "payload": {
+   "price": 26700000
+  },
+  "pref": "fukushima",
+  "seq": 555227,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225881",
+  "kind": "new",
+  "payload": {
+   "price": 26800000
+  },
+  "pref": "fukushima",
+  "seq": 555228,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225877",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "fukushima",
+  "seq": 555229,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225856",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "fukushima",
+  "seq": 555230,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225864",
+  "kind": "new",
+  "payload": {
+   "price": 28500000
+  },
+  "pref": "fukushima",
+  "seq": 555231,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225861",
+  "kind": "new",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "fukushima",
+  "seq": 555232,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225851",
+  "kind": "new",
+  "payload": {
+   "price": 28900000
+  },
+  "pref": "fukushima",
+  "seq": 555233,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225869",
+  "kind": "new",
+  "payload": {
+   "price": 29300000
+  },
+  "pref": "fukushima",
+  "seq": 555234,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225876",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "fukushima",
+  "seq": 555235,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225873",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "fukushima",
+  "seq": 555236,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225865",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "fukushima",
+  "seq": 555237,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225863",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "fukushima",
+  "seq": 555238,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225855",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "fukushima",
+  "seq": 555239,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225882",
+  "kind": "new",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "fukushima",
+  "seq": 555240,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225848",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "fukushima",
+  "seq": 555241,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225875",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "fukushima",
+  "seq": 555242,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225852",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "fukushima",
+  "seq": 555243,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225885",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "fukushima",
+  "seq": 555244,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225884",
+  "kind": "new",
+  "payload": {
+   "price": 36900000
+  },
+  "pref": "fukushima",
+  "seq": 555245,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07208",
+  "id": "22227002",
+  "kind": "new",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "fukushima",
+  "seq": 555246,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07213",
+  "id": "22225301",
+  "kind": "new",
+  "payload": {
+   "price": 22400000
+  },
+  "pref": "fukushima",
+  "seq": 555247,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07213",
+  "id": "22226154",
+  "kind": "new",
+  "payload": {
+   "price": 24990000
+  },
+  "pref": "fukushima",
+  "seq": 555248,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07213",
+  "id": "22213042",
+  "kind": "new",
+  "payload": {
+   "price": 22400000
+  },
+  "pref": "fukushima",
+  "seq": 555249,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07213",
+  "id": "22226668",
+  "kind": "new",
+  "payload": {
+   "price": 24990000
+  },
+  "pref": "fukushima",
+  "seq": 555250,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07320",
+  "id": "21285708",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23980000,
+   "price": 24980000
+  },
+  "pref": "fukushima",
+  "seq": 555251,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07460",
+  "id": "21802114",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 19800000,
+   "price": 20800000
+  },
+  "pref": "fukushima",
+  "seq": 555252,
+  "type": "new_house"
+ },
+ {
+  "area_code": "07201",
+  "id": "22099031",
+  "kind": "relisted",
+  "payload": {
+   "price": 10800000
+  },
+  "pref": "fukushima",
+  "seq": 555253,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "75995594",
+  "kind": "relisted",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "fukushima",
+  "seq": 555254,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "21345489",
+  "kind": "relisted",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "fukushima",
+  "seq": 555255,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "21474159",
+  "kind": "relisted",
+  "payload": {
+   "price": 15000000
+  },
+  "pref": "fukushima",
+  "seq": 555256,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "21474159",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16000000,
+   "price": 15000000
+  },
+  "pref": "fukushima",
+  "seq": 555257,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "21748499",
+  "kind": "relisted",
+  "payload": {
+   "price": 22000000
+  },
+  "pref": "fukushima",
+  "seq": 555258,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "20380377",
+  "kind": "relisted",
+  "payload": {
+   "price": 32000000
+  },
+  "pref": "fukushima",
+  "seq": 555259,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "22227543",
+  "kind": "new",
+  "payload": {
+   "price": 35000000
+  },
+  "pref": "fukushima",
+  "seq": 555260,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07204",
+  "id": "74433987",
+  "kind": "relisted",
+  "payload": {
+   "price": 122000000
+  },
+  "pref": "fukushima",
+  "seq": 555261,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07207",
+  "id": "22224271",
+  "kind": "new",
+  "payload": {
+   "price": 23800000
+  },
+  "pref": "fukushima",
+  "seq": 555262,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07480",
+  "id": "22224266",
+  "kind": "new",
+  "payload": {
+   "price": 17200000
+  },
+  "pref": "fukushima",
+  "seq": 555263,
+  "type": "used_house"
+ },
+ {
+  "area_code": "07203",
+  "id": "20185199",
+  "kind": "relisted",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "fukushima",
+  "seq": 555264,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "72764536",
+  "kind": "relisted",
+  "payload": {
+   "price": 4000000
+  },
+  "pref": "fukushima",
+  "seq": 555265,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "75772762",
+  "kind": "relisted",
+  "payload": {
+   "price": 5000000
+  },
+  "pref": "fukushima",
+  "seq": 555266,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "22225932",
+  "kind": "new",
+  "payload": {
+   "price": 6710000
+  },
+  "pref": "fukushima",
+  "seq": 555267,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "75518359",
+  "kind": "relisted",
+  "payload": {
+   "price": 10500000
+  },
+  "pref": "fukushima",
+  "seq": 555268,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "22224416",
+  "kind": "new",
+  "payload": {
+   "price": 11000000
+  },
+  "pref": "fukushima",
+  "seq": 555269,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "77563411",
+  "kind": "relisted",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "fukushima",
+  "seq": 555270,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "78507569",
+  "kind": "relisted",
+  "payload": {
+   "price": 17500000
+  },
+  "pref": "fukushima",
+  "seq": 555271,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "20875430",
+  "kind": "relisted",
+  "payload": {
+   "price": 20000000
+  },
+  "pref": "fukushima",
+  "seq": 555272,
+  "type": "land"
+ },
+ {
+  "area_code": "07204",
+  "id": "21345299",
+  "kind": "relisted",
+  "payload": {
+   "price": 30000000
+  },
+  "pref": "fukushima",
+  "seq": 555273,
+  "type": "land"
+ },
+ {
+  "area_code": "07205",
+  "id": "21222212",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10800000,
+   "price": 9800000
+  },
+  "pref": "fukushima",
+  "seq": 555274,
+  "type": "land"
+ },
+ {
+  "area_code": "16201",
+  "id": "77439368",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29120000,
+   "price": 28720000
+  },
+  "pref": "toyama",
+  "seq": 555275,
+  "type": "new_house"
+ },
+ {
+  "area_code": "16201",
+  "id": "22224960",
+  "kind": "new",
+  "payload": {
+   "price": 34800000
+  },
+  "pref": "toyama",
+  "seq": 555276,
+  "type": "new_house"
+ },
+ {
+  "area_code": "16201",
+  "id": "22224254",
+  "kind": "new",
+  "payload": {
+   "price": 38000000
+  },
+  "pref": "toyama",
+  "seq": 555277,
+  "type": "used_house"
+ },
+ {
+  "area_code": "16202",
+  "id": "22224250",
+  "kind": "new",
+  "payload": {
+   "price": 13300000
+  },
+  "pref": "toyama",
+  "seq": 555278,
+  "type": "land"
+ },
+ {
+  "area_code": "16340",
+  "id": "22225482",
+  "kind": "new",
+  "payload": {
+   "price": 950000
+  },
+  "pref": "toyama",
+  "seq": 555279,
+  "type": "land"
+ },
+ {
+  "area_code": "43101",
+  "id": "21988034",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21900000,
+   "price": 20900000
+  },
+  "pref": "kumamoto",
+  "seq": 555280,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43101",
+  "id": "22026795",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18900000,
+   "price": 17900000
+  },
+  "pref": "kumamoto",
+  "seq": 555281,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43101",
+  "id": "21934387",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "kumamoto",
+  "seq": 555282,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43102",
+  "id": "21968837",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25900000,
+   "price": 24900000
+  },
+  "pref": "kumamoto",
+  "seq": 555283,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43102",
+  "id": "21964472",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 20900000,
+   "price": 19900000
+  },
+  "pref": "kumamoto",
+  "seq": 555284,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43102",
+  "id": "22165750",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33900000,
+   "price": 32900000
+  },
+  "pref": "kumamoto",
+  "seq": 555285,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43103",
+  "id": "20756149",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13500000,
+   "price": 12000000
+  },
+  "pref": "kumamoto",
+  "seq": 555286,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43103",
+  "id": "21679142",
+  "kind": "new",
+  "payload": {
+   "price": 27980000
+  },
+  "pref": "kumamoto",
+  "seq": 555287,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43103",
+  "id": "22224723",
+  "kind": "new",
+  "payload": {
+   "price": 52980000
+  },
+  "pref": "kumamoto",
+  "seq": 555288,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43105",
+  "id": "21973862",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29900000,
+   "price": 28900000
+  },
+  "pref": "kumamoto",
+  "seq": 555289,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "43101",
+  "id": "22056580",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 36980000,
+   "price": 35980000
+  },
+  "pref": "kumamoto",
+  "seq": 555290,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43102",
+  "id": "21967965",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 34980000,
+   "price": 35980000
+  },
+  "pref": "kumamoto",
+  "seq": 555291,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43103",
+  "id": "22226059",
+  "kind": "new",
+  "payload": {
+   "price": 39980000
+  },
+  "pref": "kumamoto",
+  "seq": 555292,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43104",
+  "id": "21608537",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 42280000,
+   "price": 39400000
+  },
+  "pref": "kumamoto",
+  "seq": 555293,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43216",
+  "id": "21537210",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33980000,
+   "price": 30990000
+  },
+  "pref": "kumamoto",
+  "seq": 555294,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43216",
+  "id": "21508713",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37480000,
+   "price": 34990000
+  },
+  "pref": "kumamoto",
+  "seq": 555295,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43400",
+  "id": "20908285",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 32980000,
+   "price": 31980000
+  },
+  "pref": "kumamoto",
+  "seq": 555296,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43440",
+  "id": "21764877",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 30800000
+  },
+  "pref": "kumamoto",
+  "seq": 555297,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43440",
+  "id": "22225904",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "kumamoto",
+  "seq": 555298,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43440",
+  "id": "21132223",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31980000,
+   "price": 29980000
+  },
+  "pref": "kumamoto",
+  "seq": 555299,
+  "type": "new_house"
+ },
+ {
+  "area_code": "43104",
+  "id": "21622760",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "kumamoto",
+  "seq": 555300,
+  "type": "used_house"
+ },
+ {
+  "area_code": "43104",
+  "id": "21676827",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "kumamoto",
+  "seq": 555301,
+  "type": "used_house"
+ },
+ {
+  "area_code": "43104",
+  "id": "21603411",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27800000,
+   "price": 26800000
+  },
+  "pref": "kumamoto",
+  "seq": 555302,
+  "type": "used_house"
+ },
+ {
+  "area_code": "43212",
+  "id": "21915667",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 37000000,
+   "price": 39000000
+  },
+  "pref": "kumamoto",
+  "seq": 555303,
+  "type": "used_house"
+ },
+ {
+  "area_code": "43216",
+  "id": "20848290",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33980000,
+   "price": 32980000
+  },
+  "pref": "kumamoto",
+  "seq": 555304,
+  "type": "used_house"
+ },
+ {
+  "area_code": "43104",
+  "id": "22153287",
+  "kind": "new",
+  "payload": {
+   "price": 18000000
+  },
+  "pref": "kumamoto",
+  "seq": 555305,
+  "type": "land"
+ }
+]

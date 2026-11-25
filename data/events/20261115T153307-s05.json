@@ -1,0 +1,492 @@
+[
+ {
+  "area_code": "08201",
+  "id": "21350588",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27500000
+  },
+  "pref": "ibaraki",
+  "seq": 664334,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08201",
+  "id": "22187878",
+  "kind": "new",
+  "payload": {
+   "price": 30900000
+  },
+  "pref": "ibaraki",
+  "seq": 664335,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08203",
+  "id": "20873530",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23990000,
+   "price": 21990000
+  },
+  "pref": "ibaraki",
+  "seq": 664336,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08203",
+  "id": "21536978",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21900000,
+   "price": 20900000
+  },
+  "pref": "ibaraki",
+  "seq": 664337,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08208",
+  "id": "21475644",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30990000,
+   "price": 28990000
+  },
+  "pref": "ibaraki",
+  "seq": 664338,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08220",
+  "id": "21302566",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "ibaraki",
+  "seq": 664339,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08224",
+  "id": "21203746",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41900000,
+   "price": 39900000
+  },
+  "pref": "ibaraki",
+  "seq": 664340,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08227",
+  "id": "22075568",
+  "kind": "new",
+  "payload": {
+   "price": 3000000
+  },
+  "pref": "ibaraki",
+  "seq": 664341,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08235",
+  "id": "22188226",
+  "kind": "new",
+  "payload": {
+   "price": 46900000
+  },
+  "pref": "ibaraki",
+  "seq": 664342,
+  "type": "new_house"
+ },
+ {
+  "area_code": "08201",
+  "id": "21777181",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15490000,
+   "price": 14990000
+  },
+  "pref": "ibaraki",
+  "seq": 664343,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08202",
+  "id": "22187982",
+  "kind": "new",
+  "payload": {
+   "price": 5800000
+  },
+  "pref": "ibaraki",
+  "seq": 664344,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08203",
+  "id": "22188445",
+  "kind": "new",
+  "payload": {
+   "price": 24900000
+  },
+  "pref": "ibaraki",
+  "seq": 664345,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08204",
+  "id": "22187944",
+  "kind": "new",
+  "payload": {
+   "price": 15290000
+  },
+  "pref": "ibaraki",
+  "seq": 664346,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08210",
+  "id": "22187603",
+  "kind": "new",
+  "payload": {
+   "price": 19990000
+  },
+  "pref": "ibaraki",
+  "seq": 664347,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08216",
+  "id": "21753812",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13490000,
+   "price": 13290000
+  },
+  "pref": "ibaraki",
+  "seq": 664348,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08216",
+  "id": "22188661",
+  "kind": "new",
+  "payload": {
+   "price": 34900000
+  },
+  "pref": "ibaraki",
+  "seq": 664349,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08221",
+  "id": "21716488",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "ibaraki",
+  "seq": 664350,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08221",
+  "id": "21321234",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13490000,
+   "price": 12990000
+  },
+  "pref": "ibaraki",
+  "seq": 664351,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08221",
+  "id": "21587814",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23990000,
+   "price": 23490000
+  },
+  "pref": "ibaraki",
+  "seq": 664352,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08226",
+  "id": "21855571",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11490000,
+   "price": 11290000
+  },
+  "pref": "ibaraki",
+  "seq": 664353,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08226",
+  "id": "22103631",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11490000,
+   "price": 11290000
+  },
+  "pref": "ibaraki",
+  "seq": 664354,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08340",
+  "id": "22188664",
+  "kind": "new",
+  "payload": {
+   "price": 27000000
+  },
+  "pref": "ibaraki",
+  "seq": 664355,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08440",
+  "id": "21908592",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 21490000,
+   "price": 20990000
+  },
+  "pref": "ibaraki",
+  "seq": 664356,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08560",
+  "id": "22187437",
+  "kind": "new",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "ibaraki",
+  "seq": 664357,
+  "type": "used_house"
+ },
+ {
+  "area_code": "08201",
+  "id": "77897520",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10800000,
+   "price": 11500000
+  },
+  "pref": "ibaraki",
+  "seq": 664358,
+  "type": "land"
+ },
+ {
+  "area_code": "08202",
+  "id": "71493018",
+  "kind": "new",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "ibaraki",
+  "seq": 664359,
+  "type": "land"
+ },
+ {
+  "area_code": "08202",
+  "id": "77846735",
+  "kind": "new",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "ibaraki",
+  "seq": 664360,
+  "type": "land"
+ },
+ {
+  "area_code": "08214",
+  "id": "22188683",
+  "kind": "new",
+  "payload": {
+   "price": 8290000
+  },
+  "pref": "ibaraki",
+  "seq": 664361,
+  "type": "land"
+ },
+ {
+  "area_code": "08220",
+  "id": "21302566",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "ibaraki",
+  "seq": 664362,
+  "type": "land"
+ },
+ {
+  "area_code": "08221",
+  "id": "20855862",
+  "kind": "new",
+  "payload": {
+   "price": 2500000
+  },
+  "pref": "ibaraki",
+  "seq": 664363,
+  "type": "land"
+ },
+ {
+  "area_code": "08221",
+  "id": "20374789",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "ibaraki",
+  "seq": 664364,
+  "type": "land"
+ },
+ {
+  "area_code": "08221",
+  "id": "21715850",
+  "kind": "new",
+  "payload": {
+   "price": 7600000
+  },
+  "pref": "ibaraki",
+  "seq": 664365,
+  "type": "land"
+ },
+ {
+  "area_code": "08221",
+  "id": "79141722",
+  "kind": "new",
+  "payload": {
+   "price": 11300000
+  },
+  "pref": "ibaraki",
+  "seq": 664366,
+  "type": "land"
+ },
+ {
+  "area_code": "08227",
+  "id": "22075568",
+  "kind": "new",
+  "payload": {
+   "price": 3000000
+  },
+  "pref": "ibaraki",
+  "seq": 664367,
+  "type": "land"
+ },
+ {
+  "area_code": "08300",
+  "id": "22187466",
+  "kind": "new",
+  "payload": {
+   "price": 3000000
+  },
+  "pref": "ibaraki",
+  "seq": 664368,
+  "type": "land"
+ },
+ {
+  "area_code": "08340",
+  "id": "22187614",
+  "kind": "new",
+  "payload": {
+   "price": 8500000
+  },
+  "pref": "ibaraki",
+  "seq": 664369,
+  "type": "land"
+ },
+ {
+  "area_code": "44201",
+  "id": "22187567",
+  "kind": "new",
+  "payload": {
+   "price": 19900000
+  },
+  "pref": "oita",
+  "seq": 664370,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "44201",
+  "id": "21244831",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "oita",
+  "seq": 664371,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "44201",
+  "id": "21246594",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 22900000,
+   "price": 21900000
+  },
+  "pref": "oita",
+  "seq": 664372,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "44201",
+  "id": "20683218",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23900000,
+   "price": 22900000
+  },
+  "pref": "oita",
+  "seq": 664373,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "44201",
+  "id": "21268212",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 18800000,
+   "price": 16800000
+  },
+  "pref": "oita",
+  "seq": 664374,
+  "type": "used_house"
+ },
+ {
+  "area_code": "44201",
+  "id": "22187935",
+  "kind": "new",
+  "payload": {
+   "price": 5000000
+  },
+  "pref": "oita",
+  "seq": 664375,
+  "type": "land"
+ },
+ {
+  "area_code": "44202",
+  "id": "22178632",
+  "kind": "new",
+  "payload": {
+   "price": 12000000
+  },
+  "pref": "oita",
+  "seq": 664376,
+  "type": "land"
+ }
+]

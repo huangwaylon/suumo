@@ -1,0 +1,679 @@
+[
+ {
+  "area_code": "10201",
+  "id": "22235873",
+  "kind": "new",
+  "payload": {
+   "price": 32000000
+  },
+  "pref": "gumma",
+  "seq": 498103,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "10202",
+  "id": "22192885",
+  "kind": "new",
+  "payload": {
+   "price": 9000000
+  },
+  "pref": "gumma",
+  "seq": 498104,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "10204",
+  "id": "21527244",
+  "kind": "relisted",
+  "payload": {
+   "price": 7500000
+  },
+  "pref": "gumma",
+  "seq": 498105,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "10201",
+  "id": "21020212",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 30980000,
+   "price": 29980000
+  },
+  "pref": "gumma",
+  "seq": 498106,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10201",
+  "id": "22234399",
+  "kind": "new",
+  "payload": {
+   "price": 29900000
+  },
+  "pref": "gumma",
+  "seq": 498107,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10201",
+  "id": "22236259",
+  "kind": "new",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "gumma",
+  "seq": 498108,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10202",
+  "id": "22235294",
+  "kind": "new",
+  "payload": {
+   "price": 31980000
+  },
+  "pref": "gumma",
+  "seq": 498109,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10203",
+  "id": "20160519",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16490000,
+   "price": 15990000
+  },
+  "pref": "gumma",
+  "seq": 498110,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "21420445",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25990000,
+   "price": 25490000
+  },
+  "pref": "gumma",
+  "seq": 498111,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "21864184",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24290000,
+   "price": 22990000
+  },
+  "pref": "gumma",
+  "seq": 498112,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "21802653",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24290000,
+   "price": 22990000
+  },
+  "pref": "gumma",
+  "seq": 498113,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "22236281",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "gumma",
+  "seq": 498114,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "22235153",
+  "kind": "new",
+  "payload": {
+   "price": 24980000
+  },
+  "pref": "gumma",
+  "seq": 498115,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "21181829",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23990000,
+   "price": 22990000
+  },
+  "pref": "gumma",
+  "seq": 498116,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "20971320",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 23990000,
+   "price": 22990000
+  },
+  "pref": "gumma",
+  "seq": 498117,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "22139445",
+  "kind": "new",
+  "payload": {
+   "price": 18800000
+  },
+  "pref": "gumma",
+  "seq": 498118,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10460",
+  "id": "22235866",
+  "kind": "new",
+  "payload": {
+   "price": 26300000
+  },
+  "pref": "gumma",
+  "seq": 498119,
+  "type": "new_house"
+ },
+ {
+  "area_code": "10201",
+  "id": "21634509",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9800000,
+   "price": 8900000
+  },
+  "pref": "gumma",
+  "seq": 498120,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10203",
+  "id": "22236184",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "gumma",
+  "seq": 498121,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "22234400",
+  "kind": "new",
+  "payload": {
+   "price": 21000000
+  },
+  "pref": "gumma",
+  "seq": 498122,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10204",
+  "id": "22235695",
+  "kind": "new",
+  "payload": {
+   "price": 21500000
+  },
+  "pref": "gumma",
+  "seq": 498123,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "21274921",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 6800000,
+   "price": 7800000
+  },
+  "pref": "gumma",
+  "seq": 498124,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "20559138",
+  "kind": "new",
+  "payload": {
+   "price": 17990000
+  },
+  "pref": "gumma",
+  "seq": 498125,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "22235520",
+  "kind": "new",
+  "payload": {
+   "price": 17990000
+  },
+  "pref": "gumma",
+  "seq": 498126,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10205",
+  "id": "22235112",
+  "kind": "new",
+  "payload": {
+   "price": 18500000
+  },
+  "pref": "gumma",
+  "seq": 498127,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10207",
+  "id": "22158853",
+  "kind": "new",
+  "payload": {
+   "price": 9990000
+  },
+  "pref": "gumma",
+  "seq": 498128,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10520",
+  "id": "21064559",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "gumma",
+  "seq": 498129,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10520",
+  "id": "22235428",
+  "kind": "new",
+  "payload": {
+   "price": 19800000
+  },
+  "pref": "gumma",
+  "seq": 498130,
+  "type": "used_house"
+ },
+ {
+  "area_code": "10201",
+  "id": "21883547",
+  "kind": "new",
+  "payload": {
+   "price": 7800000
+  },
+  "pref": "gumma",
+  "seq": 498131,
+  "type": "land"
+ },
+ {
+  "area_code": "10201",
+  "id": "21722445",
+  "kind": "new",
+  "payload": {
+   "price": 9300000
+  },
+  "pref": "gumma",
+  "seq": 498132,
+  "type": "land"
+ },
+ {
+  "area_code": "10201",
+  "id": "21551123",
+  "kind": "new",
+  "payload": {
+   "price": 9500000
+  },
+  "pref": "gumma",
+  "seq": 498133,
+  "type": "land"
+ },
+ {
+  "area_code": "10202",
+  "id": "22236771",
+  "kind": "new",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "gumma",
+  "seq": 498134,
+  "type": "land"
+ },
+ {
+  "area_code": "10203",
+  "id": "98371097",
+  "kind": "relisted",
+  "payload": {
+   "price": 1800000
+  },
+  "pref": "gumma",
+  "seq": 498135,
+  "type": "land"
+ },
+ {
+  "area_code": "10203",
+  "id": "78693385",
+  "kind": "relisted",
+  "payload": {
+   "price": 7500000
+  },
+  "pref": "gumma",
+  "seq": 498136,
+  "type": "land"
+ },
+ {
+  "area_code": "10204",
+  "id": "72646467",
+  "kind": "new",
+  "payload": {
+   "price": 4500000
+  },
+  "pref": "gumma",
+  "seq": 498137,
+  "type": "land"
+ },
+ {
+  "area_code": "20201",
+  "id": "21496192",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": null,
+   "price": 48800000
+  },
+  "pref": "nagano",
+  "seq": 498138,
+  "type": "new_house"
+ },
+ {
+  "area_code": "20201",
+  "id": "22020603",
+  "kind": "relisted",
+  "payload": {
+   "price": 31800000
+  },
+  "pref": "nagano",
+  "seq": 498139,
+  "type": "new_house"
+ },
+ {
+  "area_code": "20203",
+  "id": "22232195",
+  "kind": "new",
+  "payload": {
+   "price": 32400000
+  },
+  "pref": "nagano",
+  "seq": 498140,
+  "type": "new_house"
+ },
+ {
+  "area_code": "20320",
+  "id": "79209399",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 250000000,
+   "price": 225000000
+  },
+  "pref": "nagano",
+  "seq": 498141,
+  "type": "new_house"
+ },
+ {
+  "area_code": "20201",
+  "id": "20049152",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12990000,
+   "price": 11990000
+  },
+  "pref": "nagano",
+  "seq": 498142,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20201",
+  "id": "20012837",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12990000,
+   "price": 11990000
+  },
+  "pref": "nagano",
+  "seq": 498143,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20201",
+  "id": "22208000",
+  "kind": "new",
+  "payload": {
+   "price": 27990000
+  },
+  "pref": "nagano",
+  "seq": 498144,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20201",
+  "id": "20131691",
+  "kind": "new",
+  "payload": {
+   "price": 32980000
+  },
+  "pref": "nagano",
+  "seq": 498145,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20203",
+  "id": "21636791",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 41500000,
+   "price": 39000000
+  },
+  "pref": "nagano",
+  "seq": 498146,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20205",
+  "id": "79222908",
+  "kind": "new",
+  "payload": {
+   "price": 6500000
+  },
+  "pref": "nagano",
+  "seq": 498147,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20206",
+  "id": "20399438",
+  "kind": "relisted",
+  "payload": {
+   "price": 10500000
+  },
+  "pref": "nagano",
+  "seq": 498148,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20211",
+  "id": "22235444",
+  "kind": "new",
+  "payload": {
+   "price": 21990000
+  },
+  "pref": "nagano",
+  "seq": 498149,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20219",
+  "id": "21345382",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13800000,
+   "price": 11000000
+  },
+  "pref": "nagano",
+  "seq": 498150,
+  "type": "used_house"
+ },
+ {
+  "area_code": "20206",
+  "id": "22236400",
+  "kind": "new",
+  "payload": {
+   "price": 9080000
+  },
+  "pref": "nagano",
+  "seq": 498151,
+  "type": "land"
+ },
+ {
+  "area_code": "20206",
+  "id": "22236438",
+  "kind": "new",
+  "payload": {
+   "price": 9080000
+  },
+  "pref": "nagano",
+  "seq": 498152,
+  "type": "land"
+ },
+ {
+  "area_code": "20207",
+  "id": "22216811",
+  "kind": "new",
+  "payload": {
+   "price": 10600000
+  },
+  "pref": "nagano",
+  "seq": 498153,
+  "type": "land"
+ },
+ {
+  "area_code": "31202",
+  "id": "20592641",
+  "kind": "new",
+  "payload": {
+   "price": 3800000
+  },
+  "pref": "tottori",
+  "seq": 498154,
+  "type": "used_house"
+ },
+ {
+  "area_code": "31202",
+  "id": "77976170",
+  "kind": "new",
+  "payload": {
+   "price": 2005000
+  },
+  "pref": "tottori",
+  "seq": 498155,
+  "type": "land"
+ },
+ {
+  "area_code": "35207",
+  "id": "22236237",
+  "kind": "new",
+  "payload": {
+   "price": 31900000
+  },
+  "pref": "yamaguchi",
+  "seq": 498156,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "35208",
+  "id": "22071506",
+  "kind": "relisted",
+  "payload": {
+   "price": 21980000
+  },
+  "pref": "yamaguchi",
+  "seq": 498157,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "35201",
+  "id": "76561338",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11800000,
+   "price": 10800000
+  },
+  "pref": "yamaguchi",
+  "seq": 498158,
+  "type": "used_house"
+ },
+ {
+  "area_code": "35203",
+  "id": "22071486",
+  "kind": "relisted",
+  "payload": {
+   "price": 17800000
+  },
+  "pref": "yamaguchi",
+  "seq": 498159,
+  "type": "used_house"
+ },
+ {
+  "area_code": "35206",
+  "id": "78520767",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12980000,
+   "price": 9980000
+  },
+  "pref": "yamaguchi",
+  "seq": 498160,
+  "type": "used_house"
+ },
+ {
+  "area_code": "35206",
+  "id": "22234891",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "yamaguchi",
+  "seq": 498161,
+  "type": "used_house"
+ },
+ {
+  "area_code": "35207",
+  "id": "22235668",
+  "kind": "new",
+  "payload": {
+   "price": 19000000
+  },
+  "pref": "yamaguchi",
+  "seq": 498162,
+  "type": "land"
+ }
+]
