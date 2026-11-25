@@ -40,6 +40,15 @@
     return v;
   }
 
+  // A button's action by its data attribute (data-tab-close="all" -> ACTIONS.tabClose("all", button)), caught once on
+  // the document (runAction), so buttons drawn anywhere (cards, chips, popups, the listing) need no listener of their
+  // own; each part of the page registers its own. (The filter panel, the picker and settings have their own listeners.)
+  const ACTIONS = {};
+  function runAction(b) {
+    for (const k in ACTIONS) if (b.dataset[k] != null) { ACTIONS[k](b.dataset[k], b); return true; }
+    return false;
+  }
+
   // ---------- settings: language and theme ----------
 
   // localStorage, never throwing: blocked storage (its getter throws SecurityError), a full quota, a corrupt value
@@ -53,6 +62,7 @@
   const saveSettings = () => keep("suumo.settings", settings);
   if (!I18N[settings.lang]) settings.lang = "ja";
   let S = I18N[settings.lang];
+  const useLanguage = () => { S = I18N[settings.lang]; };  // (settings.lang changed)
   const lookup = (strings, key) => key.split(".").reduce((o, k) => o?.[k], strings);
   const t = (key, ...args) => { const v = lookup(S, key) ?? lookup(I18N.ja, key); return typeof v === "function" ? v(...args) : v; };
   // fixed SUUMO values (land rights, zoning, utilities...) in English: whole, else part by part ("商業、１種住居")
@@ -76,7 +86,7 @@
   }
 
   function applyLanguage() {
-    S = I18N[settings.lang];
+    useLanguage();
     document.documentElement.lang = S.lang;
     document.title = t("title");
     for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
@@ -87,6 +97,24 @@
     $("sort").value = q.sort;
     sheetSemantics();  // its labels depend on the rail's state
     credits();
+  }
+
+  function wireSettings() {
+    $("settings-open").addEventListener("click", () => openSettings(true));
+    $("settings-close").addEventListener("click", () => openSettings(false));
+    $("settings").addEventListener("click", (e) => {
+      if (e.target === $("settings")) return openSettings(false);
+      const b = e.target.closest("[data-setting]");
+      if (!b) return;
+      settings[b.dataset.setting] = b.dataset.value;
+      saveSettings();
+      if (b.dataset.setting === "theme") applyTheme();
+      else if (b.dataset.setting === "usd") { render(); rerenderTab(); }
+      else { applyLanguage(); render(); rerenderTab(); }
+      renderSettings();
+      $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
+    });
+    DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
   }
 
   function renderSettings() {
@@ -595,6 +623,45 @@
     keep.setAttribute("aria-label", t(saved ? "unkeepSearch" : "keepSearch"));
   }
 
+  // the list's buttons: conditions, saved searches, quick chips
+  Object.assign(ACTIONS, {
+    remove(i) {  // a condition's ×
+      activeConditions()[+i][1](q);
+      update();
+      ($("chips").querySelector(".chip-x") || $("count")).focus();
+    },
+    clear: () => clearAll(),
+    edit: (section) => openFilters(true, section),  // a condition's label
+    savedSearch(i) {  // open a saved search: what's new in it, if anything; then seen
+      const s = searches[+i];
+      if (savedAway(s)) {  // another prefecture's: there (route loads it), newest first
+        const p = new URLSearchParams(s.c);
+        p.set("p", s.p);
+        s.seen = dataHour;
+        saveSearches();
+        history.replaceState(history.state, "", "#" + p.toString());
+        prefsUrl = location.href;
+        fitNext = "results";
+        route();
+        return;
+      }
+      const query = queryFrom(new URLSearchParams(s.c));
+      const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
+      q = { ...query, sort: "new", since: fresh ? s.seen : null };
+      s.seen = dataHour;
+      saveSearches();
+      fitNext = "results";
+      update();
+    },
+    unsaveSearch: (i) => unkeepSearch(+i),
+    quick(f) {  // 新着 / 値下げ / since the last visit
+      q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
+      if (f === "dropsOnly") q.sort = q[f] ? "drop_desc" : "new";  // price cuts: biggest first
+      else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
+      update();
+    },
+  });
+
   // 新着 / 値下げ / since the last visit, one tap each, with what they'd show under the current conditions.
   function renderQuick() {
     const box = $("quick");
@@ -693,6 +760,18 @@
     if (!open) $("q").removeAttribute("aria-activedescendant");
   }
   function closeSuggest() { clearTimeout(sgTimer); options = []; activeOption = -1; openSuggest(false); }
+  // the readings of the last search
+  Object.assign(ACTIONS, {
+    alt(i) {  // 目黒区 ⇄ 目黒駅
+      const a = altSwaps[+i];
+      q[a.field] = q[a.field].filter((v) => v !== a.value);
+      q[a.alt.field] = [...new Set([...q[a.alt.field], a.alt.value])];
+      altSwaps[+i] = { ...a.alt, alt: { field: a.field, value: a.value, label: a.label } };
+      update(false);
+    },
+    ignoredX() { ignoredNote = []; render(); },
+  });
+
   function moveOption(d) {
     if (!options.length) return;
     activeOption = Math.max(-1, Math.min(options.length - 1, activeOption + d));
@@ -886,6 +965,43 @@
   const areaChips = (i) => areaGroupList[i].map(([code, label]) => many("areas", code, label, facets.areas[code] || 0)).join("");
   const openGroups = new Set();  // the area groups the user opened (they stay open as the filters are redrawn)
 
+  function wireFilters() {
+    $("filters-open").addEventListener("click", () => openFilters(!railOn()));
+    $("filters-close").addEventListener("click", () => openFilters(false));
+    $("apply").addEventListener("click", () => openFilters(false));
+    $("clear").addEventListener("click", clearAll);
+    $("filters-body").addEventListener("click", onFilterClick);
+    $("filters-body").addEventListener("change", (e) => {
+      const f = e.target.dataset.num;
+      if (f) {
+        q[f] = e.target.value === "" ? null : +e.target.value;
+        update(false);
+        $("filters-body").querySelector(`select[data-num="${f}"]`)?.focus();  // redrawn: keep the keyboard there
+      }
+    });
+    $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
+    $("filters-body").addEventListener("toggle", (e) => {  // (toggle doesn't bubble: caught on the way down)
+      const el = e.target, k = el.dataset?.fold, g = el.dataset?.group;
+      if (k) {
+        if (el.open) openFolds.add(k); else openFolds.delete(k);
+        if (el.open && !el.querySelector(".fold-body").dataset.drawn) {  // drawn now (the keyboard stays on it)
+          const focused = el.contains(document.activeElement);
+          renderFilters();
+          if (focused) $("filters-body").querySelector(`[data-fold="${k}"] > summary`)?.focus();
+        }
+      } else if (g != null) {
+        if (el.open) openGroups.add(el.dataset.name); else openGroups.delete(el.dataset.name);
+        const box = el.querySelector(".opts");
+        if (el.open && !box.firstChild) box.innerHTML = areaChips(+g);
+      }
+    }, true);
+    $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
+      if (e.target.id !== "station-q" || e.key !== "Enter") return;
+      e.preventDefault();  // (else Enter also activates the chip that gets the focus, undoing it)
+      $("station-list").querySelector('button[aria-pressed="false"]')?.click();
+    });
+  }
+
   function onFilterClick(e) {
     const b = e.target.closest("button[data-many], button[data-one], button[data-flag], button[data-cleartext]");
     if (!b) return;
@@ -996,6 +1112,20 @@
     if (now) route();
   }
 
+  // the prefectures' chips
+  Object.assign(ACTIONS, {
+    prefOpen: () => openPrefs(true),
+    prefRemove: (slug) => setPrefs(prefsFromHash().filter((s) => s !== slug)),
+  });
+
+  function wirePrefs() {
+    $("pref").addEventListener("click", () => openPrefs(true));
+    $("prefs-close").addEventListener("click", () => openPrefs(false));
+    $("prefs").addEventListener("click", onPrefsClick);
+    $("prefs-q").addEventListener("input", renderPrefs);
+    $("prefs-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("prefs-list").querySelector(".pref-go")?.click(); });
+  }
+
   function onPrefsClick(e) {
     if (e.target === $("prefs")) return openPrefs(false);  // outside the panel
     const go = e.target.closest("[data-pref-go]"), add = e.target.closest("[data-pref-add]");
@@ -1043,7 +1173,7 @@
     view = [se.lat, nw.lng, nw.lat, se.lng];
     mapAt = `${c.lat.toFixed(5)},${c.lng.toFixed(5)},${map.getZoom()}`;
     waiting = false;
-    if (!railAsked) { railAsked = true; (window.requestIdleCallback || setTimeout)(drawRail); }  // the lines: once listed
+    askRail();  // the lines: once listed
     history.replaceState(history.state, "", hashFor());
     if (history.state?.prefs) prefsUrl = location.href;  // (the picker's choice moved the map: back keeps where it is)
     saveLast();
@@ -1322,6 +1452,23 @@
       }
     }
   }
+  // the map: show all the results, a listing on it, a station's homes
+  Object.assign(ACTIONS, {
+    fit() { fitNext = "results"; placeMap(); },
+    onMap(key) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
+      fitNext = { id: key };
+      map.closePopup();
+      placeMap();
+      if (!SPLIT.matches) setSheet("half", false);
+    },
+    stationPick(name) {  // from a station on the map
+      q.stations = [name];
+      lastPlaces.push(name);  // it's in sight already: the map stays
+      map?.closePopup();
+      update(false);
+    },
+  });
+
   // A town's homes in the results' order (the layer may have been drawn for another sort).
   function inOrder(list) {
     if (layerOrder === drawn.search || list.length < 2) return list;
@@ -1405,6 +1552,13 @@
     for (const el of [open, panel]) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); $("map").append(el); }
     map.on("zoomend", showRail);
     showRail();
+  }
+
+  // The lines and stations, drawn while idle the first time the map has a view (askRail)
+  function askRail() {
+    if (railAsked) return;
+    railAsked = true;
+    (window.requestIdleCallback || setTimeout)(drawRail);
   }
 
   // The map moved: the lines panel lists the operators in view, the lines and stations in view are drawn.
@@ -1780,6 +1934,25 @@
     },
   };
   let gallerySwiped = false;  // a swipe on the listing's photo just stepped it (its click is ignored)
+  // A click in the listing's gallery (the document's click handler asks first): a thumbnail or chip shows its photo,
+  // the photo opens the viewer. True when it was the gallery's.
+  function galleryClick(e) {
+    const photoBox = e.target.closest("[data-gallery]") && $("panel-body");
+    if (!photoBox) return false;
+    const ph = e.target.closest("[data-photo]");
+    if (ph) showPhoto(photoBox, +ph.dataset.photo);
+    else if (gallerySwiped) gallerySwiped = false;  // the click that ends a swipe doesn't open the viewer
+    else if (e.target.closest("[data-view]")) openViewer(photoBox);
+    return true;
+  }
+  // the listing's photo swiped sideways: the next or previous one (as in the viewer)
+  function wireGallery() {
+    onSwipe(document, (d) => {
+      const box = $("panel-body");
+      if (box.photos?.length > 1) { gallerySwiped = true; showPhoto(box, (box.photoAt || 0) + d); }
+    }, (e) => e.target.closest?.("#panel-body .g-main"));
+  }
+
   function openViewer(box) {
     if (viewer || !box.photos?.length) return;
     viewer = { box, at: box.photoAt || 0, el: document.createElement("div"), swiped: false };
@@ -2002,6 +2175,13 @@
       });
     }
   }
+
+  // the panel's tabs
+  Object.assign(ACTIONS, {
+    retry: () => rerenderTab(),  // a listing that couldn't be loaded: try again
+    tabShow: (key) => openTab(key),
+    tabClose: (key) => closeTab(key),
+  });
 
   // The tab strip, shown once a listing is open: the list, each listing (×), 比較 with two or more, すべて閉じる.
   // The cards are drawn marked (card()): marked again only when the tabs change, and the strip rewritten only when
@@ -2339,138 +2519,16 @@
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
-  // ---------- click actions ----------
-  // A button's action by its data attribute (data-tab-close="all" -> ACTIONS.tabClose("all", button)), caught once on
-  // the document, so buttons drawn anywhere (cards, chips, popups, the listing) need no listener of their own. The
-  // first of ACTIONS' keys the button has wins. (The filter panel, the picker and settings have their own.)
-  const ACTIONS = {
-    remove(i) {  // a condition's ×
-      activeConditions()[+i][1](q);
-      update();
-      ($("chips").querySelector(".chip-x") || $("count")).focus();
-    },
-    clear: () => clearAll(),
-    edit: (section) => openFilters(true, section),  // a condition's label
-    alt(i) {  // 目黒区 ⇄ 目黒駅
-      const a = altSwaps[+i];
-      q[a.field] = q[a.field].filter((v) => v !== a.value);
-      q[a.alt.field] = [...new Set([...q[a.alt.field], a.alt.value])];
-      altSwaps[+i] = { ...a.alt, alt: { field: a.field, value: a.value, label: a.label } };
-      update(false);
-    },
-    ignoredX() { ignoredNote = []; render(); },
-    prefOpen: () => openPrefs(true),
-    prefRemove: (slug) => setPrefs(prefsFromHash().filter((s) => s !== slug)),
-    unsaveSearch: (i) => unkeepSearch(+i),
-    fit() { fitNext = "results"; placeMap(); },
-    onMap(key) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
-      fitNext = { id: key };
-      map.closePopup();
-      placeMap();
-      if (!SPLIT.matches) setSheet("half", false);
-    },
-    savedSearch(i) {  // open a saved search: what's new in it, if anything; then seen
-      const s = searches[+i];
-      if (savedAway(s)) {  // another prefecture's: there (route loads it), newest first
-        const p = new URLSearchParams(s.c);
-        p.set("p", s.p);
-        s.seen = dataHour;
-        saveSearches();
-        history.replaceState(history.state, "", "#" + p.toString());
-        prefsUrl = location.href;
-        fitNext = "results";
-        route();
-        return;
-      }
-      const query = queryFrom(new URLSearchParams(s.c));
-      const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
-      q = { ...query, sort: "new", since: fresh ? s.seen : null };
-      s.seen = dataHour;
-      saveSearches();
-      fitNext = "results";
-      update();
-    },
-    quick(f) {  // 新着 / 値下げ / since the last visit
-      q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
-      if (f === "dropsOnly") q.sort = q[f] ? "drop_desc" : "new";  // price cuts: biggest first
-      else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
-      update();
-    },
-    retry: () => rerenderTab(),  // a listing that couldn't be loaded: try again
-    tabShow: (key) => openTab(key),
-    tabClose: (key) => closeTab(key),
-    stationPick(name) {  // from a station on the map
-      q.stations = [name];
-      lastPlaces.push(name);  // it's in sight already: the map stays
-      map?.closePopup();
-      update(false);
-    },
-  };
-  function runAction(b) {
-    for (const k in ACTIONS) if (b.dataset[k] != null) { ACTIONS[k](b.dataset[k], b); return true; }
-    return false;
-  }
-
   function wire() {
     wireSearch();
     wireSplit();
     wireSheet();
-    $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
-    $("filters-open").addEventListener("click", () => openFilters(!railOn()));
-    $("filters-close").addEventListener("click", () => openFilters(false));
-    $("apply").addEventListener("click", () => openFilters(false));
-    $("clear").addEventListener("click", clearAll);
-    $("filters-body").addEventListener("click", onFilterClick);
-    $("filters-body").addEventListener("change", (e) => {
-      const f = e.target.dataset.num;
-      if (f) {
-        q[f] = e.target.value === "" ? null : +e.target.value;
-        update(false);
-        $("filters-body").querySelector(`select[data-num="${f}"]`)?.focus();  // redrawn: keep the keyboard there
-      }
-    });
+    wireFilters();
+    wirePrefs();
+    wireSettings();
+    wireGallery();
     $("unplaced").addEventListener("toggle", renderUnplaced);
-    $("filters-body").addEventListener("input", (e) => { if (e.target.id === "station-q") stationList(); });
-    $("filters-body").addEventListener("toggle", (e) => {  // (toggle doesn't bubble: caught on the way down)
-      const el = e.target, k = el.dataset?.fold, g = el.dataset?.group;
-      if (k) {
-        if (el.open) openFolds.add(k); else openFolds.delete(k);
-        if (el.open && !el.querySelector(".fold-body").dataset.drawn) {  // drawn now (the keyboard stays on it)
-          const focused = el.contains(document.activeElement);
-          renderFilters();
-          if (focused) $("filters-body").querySelector(`[data-fold="${k}"] > summary`)?.focus();
-        }
-      } else if (g != null) {
-        if (el.open) openGroups.add(el.dataset.name); else openGroups.delete(el.dataset.name);
-        const box = el.querySelector(".opts");
-        if (el.open && !box.firstChild) box.innerHTML = areaChips(+g);
-      }
-    }, true);
-    $("filters-body").addEventListener("keydown", (e) => {  // Enter in the station search takes the first match
-      if (e.target.id !== "station-q" || e.key !== "Enter") return;
-      e.preventDefault();  // (else Enter also activates the chip that gets the focus, undoing it)
-      $("station-list").querySelector('button[aria-pressed="false"]')?.click();
-    });
-    $("pref").addEventListener("click", () => openPrefs(true));
-    $("prefs-close").addEventListener("click", () => openPrefs(false));
-    $("prefs").addEventListener("click", onPrefsClick);
-    $("prefs-q").addEventListener("input", renderPrefs);
-    $("prefs-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("prefs-list").querySelector(".pref-go")?.click(); });
-    $("settings-open").addEventListener("click", () => openSettings(true));
-    $("settings-close").addEventListener("click", () => openSettings(false));
-    $("settings").addEventListener("click", (e) => {
-      if (e.target === $("settings")) return openSettings(false);
-      const b = e.target.closest("[data-setting]");
-      if (!b) return;
-      settings[b.dataset.setting] = b.dataset.value;
-      saveSettings();
-      if (b.dataset.setting === "theme") applyTheme();
-      else if (b.dataset.setting === "usd") { render(); rerenderTab(); }
-      else { applyLanguage(); render(); rerenderTab(); }
-      renderSettings();
-      $("settings-body").querySelector(`[data-setting="${b.dataset.setting}"][data-value="${b.dataset.value}"]`)?.focus();
-    });
-    DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
+    $("sort").addEventListener("change", (e) => { q.sort = e.target.value; update(); });
     $("keep").addEventListener("click", () => {
       const key = searchKey(q), i = searches.findIndex((s) => s.c === key && !savedAway(s));
       if (i >= 0) unkeepSearch(i); else keepSearches(() => searches.push({ c: key, p: prefParam(chosen), seen: dataHour }), "searchKept");
@@ -2483,14 +2541,7 @@
       if (e.target === document.body && document.body.classList.contains("show-filters")) return openFilters(false);  // backdrop
       const fav = e.target.closest("[data-fav]");
       if (fav) { e.preventDefault(); toggleFav(fav.dataset.fav); return; }
-      const photoBox = e.target.closest("[data-gallery]") && $("panel-body");
-      if (photoBox) {  // the listing's gallery: a thumbnail or chip shows its photo, the photo opens the viewer
-        const ph = e.target.closest("[data-photo]");
-        if (ph) showPhoto(photoBox, +ph.dataset.photo);
-        else if (gallerySwiped) gallerySwiped = false;  // the click that ends a swipe doesn't open the viewer
-        else if (e.target.closest("[data-view]")) openViewer(photoBox);
-        return;
-      }
+      if (galleryClick(e)) return;
       const link = e.target.closest("a[data-key]");
       if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openTab(link.dataset.key); return; }
       const b = e.target.closest("button");
@@ -2539,11 +2590,6 @@
       e.preventDefault();
       strip.scrollLeft += d;
     }, { passive: false });
-    // the listing's photo swiped sideways: the next or previous one (as in the viewer)
-    onSwipe(document, (d) => {
-      const box = $("panel-body");
-      if (box.photos?.length > 1) { gallerySwiped = true; showPhoto(box, (box.photoAt || 0) + d); }
-    }, (e) => e.target.closest?.("#panel-body .g-main"));
     // a card pressed: its record asked for already (the bucket's ~200 ms round trip before the click lands); not on
     // touch screens, where a press may start a scroll
     document.addEventListener("pointerdown", (e) => {
