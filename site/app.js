@@ -26,6 +26,19 @@
   // SUUMO's free text, escaped: its m<sup>2</sup> comes as "m 2" (59.9m 2 → 59.9m²)
   const prose = (s) => esc(String(s ?? "").replace(/(\d)\s?[mｍ]\s[2２](?![\d.,])/g, "$1m²"));
   const icon = (name) => `<svg class="i"><use href="#i-${name}"/></svg>`;
+  // Caches are Maps in least recently used order: touch gives key's value (made when missing) and moves it last;
+  // recent does so and keeps at most max entries.
+  function touch(map, key, make) {
+    let v;
+    if (map.has(key)) { v = map.get(key); map.delete(key); } else v = make();
+    map.set(key, v);
+    return v;
+  }
+  function recent(map, key, max, make) {
+    const v = touch(map, key, make);
+    while (map.size > max) map.delete(map.keys().next().value);
+    return v;
+  }
 
   // ---------- settings: language and theme ----------
 
@@ -139,6 +152,14 @@
   const searches = [].concat(stored("suumo.searches", [])).filter((s) => typeof s?.c === "string");
   const searchKey = (query) => paramsFor({ ...query, sort: "new", since: null }).toString();
   const saveSearches = () => keep("suumo.searches", searches);
+  // a change to the saved searches (the star, a chip's ×): kept, said, redrawn
+  function keepSearches(change, said) {
+    change();
+    saveSearches();
+    toast(t(said));
+    renderSearches();
+  }
+  const unkeepSearch = (i) => keepSearches(() => searches.splice(i, 1), "searchRemoved");
   // The saved list is shared and kept on GitHub (saved.json, see suumo/saved.py): the heart opens a pre-filled
   // issue, a workflow applies it and rebuilds the site. Until then the request shows here as pending.
   const REPO = "https://github.com/huangwaylon/suumo";
@@ -210,6 +231,11 @@
     return car ? t("car", stationName(s), car) : t("bus", stationName(s), bus);
   }
   let cardW = 360;  // the width the cards' photos are asked for (listResults)
+  // A link to a listing (a click opens its tab, see the click actions; with a modifier key, a new browser tab)
+  const listingLink = (it, inner, cls = "") => `<a${cls ? ` class="${cls}"` : ""} href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${inner}</a>`;
+  // A listing's photo at w×h (lazy unless eager; removed when it fails, unless keep)
+  const photoTag = (it, w, h, { eager = false, keep = false } = {}) =>
+    `<img src="${esc(image(it, w, h))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async"${keep ? "" : ' onerror="this.remove()"'}>`;
   const cardPhoto = (it) => image(it, cardW, cardW * 3 / 4);
   function image(it, w, h) {
     if (it.image == null || it.image === "") return "";
@@ -307,9 +333,7 @@
   // A few states are kept, so going back to one is instant: the latest two and the unfiltered one (clearing the
   // conditions). cache: key -> {value, base}, least recently used first.
   function kept(cache, key, make, base = unfiltered()) {
-    let e = cache.get(key);
-    cache.delete(key);
-    cache.set(key, (e ||= { value: make(), base }));
+    const e = touch(cache, key, () => ({ value: make(), base }));
     const keys = [...cache.keys()], lastBase = keys.findLast((k) => cache.get(k).base);
     for (const k of keys.slice(0, -2)) if (k !== lastBase) cache.delete(k);
     return e.value;
@@ -509,11 +533,14 @@
   // the walk time never breaks across lines ("徒歩5分", "5 min walk")
   const nowrapWalk = (s) => esc(s).replace(/(徒歩\d+分|停歩\d+分|\d+ min walk)/, '<span class="nw">$1</span>');
   const fees = (it) => (isCondo(it.type) && it.fees != null ? t("feesCard", it.fees) : "");
+  // a condo's monthly costs: the index's fees, else from the record (management + repair fund (+ other monthly
+  // costs), unknown unless both are stated; catalog.Item's rule)
+  const monthlyFees = (it, r) => it?.fees ?? (r.mgmt_fee && r.repair_fee ? r.mgmt_fee + r.repair_fee + (r.other_monthly || 0) : null);
 
   function card(it, eager = false) {
     const spec = [value(it.layout), ...sizes(it), age(it)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("");
-    return `<article class="card${tabs.includes(it.key) ? " open" : ""}"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">
-      <div class="ph">${it.image != null ? `<img src="${esc(cardPhoto(it))}" alt=""${eager ? "" : ' loading="lazy"'} decoding="async" onerror="this.remove()">` : ""}${
+    return `<article class="card${tabs.includes(it.key) ? " open" : ""}">${listingLink(it, `
+      <div class="ph">${it.image != null ? photoTag(it, cardW, cardW * 3 / 4, { eager }) : ""}${
         it.photos > 1 ? `<span class="ph-n" aria-label="${esc(t("photosN", it.photos))}">${icon("camera")}${it.photos}</span>` : ""}</div>
       <div class="body">
         <div class="price num">${price(it, true)}${usd(it)}</div>
@@ -522,7 +549,7 @@
         <div class="meta">${esc([S.lang === "en" && it.town ? `${areaName(it.area)} · ${it.town.slice(it.areaName.length)}` : it.town, it.name].filter(Boolean).join(" · "))}</div>
         ${fees(it) ? `<div class="meta fees">${esc(fees(it))}</div>` : ""}
         <div class="tags">${tags(it)}</div>
-      </div></a>
+      </div>`)}
       <button class="fav" data-fav="${esc(it.key)}" aria-pressed="${favs.has(it.key)}" aria-label="${esc(t("favFor", money(it.price), it.layout, it.town || it.areaName))}">${icon("heart")}</button></article>`;
   }
 
@@ -544,7 +571,7 @@
       <div class="chips">${loosen}</div>${active.length ? `<button class="btn primary" data-clear="1">${esc(t("clearAll"))}</button>` : ""}</div>`;
   }
 
-  const freshCounts = new Map();
+  const freshCounts = new Map(), MAX_COUNTS = 100;  // (the saved searches' counts: key -> count)
   // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
   function renderSearches() {
     const box = $("searches"), key = searchKey(q), here = mode === "search", prefs = prefParam(chosen);
@@ -556,8 +583,7 @@
         const away = savedAway(s), query = away ? rawQuery(new URLSearchParams(s.c)) : queryFrom(new URLSearchParams(s.c));
         // the counts change only with the data and when it was seen; another prefecture's aren't loaded: none
         const k = `${chosen}|${dataVersion}|${s.seen}|${s.c}`;
-        if (s.seen && !away && !freshCounts.has(k)) freshCounts.set(k, Filter.count(db, { ...query, since: s.seen }));
-        const n = s.seen && !away ? freshCounts.get(k) : 0;
+        const n = s.seen && !away ? recent(freshCounts, k, MAX_COUNTS, () => Filter.count(db, { ...query, since: s.seen })) : 0;
         const where = away ? `${prefsFromParam(s.p).map(prefName).join(t("sep"))}: ` : "";
         const name = where + (label(query) || t("allListings"));
         return `<span class="chip saved${s.c === key && !away ? " on" : ""}"><button class="chip-label" data-saved-search="${i}">${esc(name)}</button>${
@@ -1088,10 +1114,10 @@
 
   // Markers: a town (丁目) is a pill with its count, or from PRICE_ZOOM a price tag (its lowest price, and how many);
   // a cluster of towns is a filled circle sized by its count (a tap zooms in). Icons are reused across redraws.
-  const pins = new Map();
-  const cachedIcon = (key, make) => pins.get(key) || pins.set(key, make()).get(key);
-  const countLabels = new Map();  // a marker's count as written (formatting tens of thousands of them adds up)
-  const countLabel = (n) => countLabels.get(S.lang + n) ?? countLabels.set(S.lang + n, num(n)).get(S.lang + n);
+  const icons = new Map(), countLabels = new Map(), MAX_ICONS = 4000;
+  const cachedIcon = (key, make) => recent(icons, key, MAX_ICONS, make);
+  // a marker's count as written (formatting tens of thousands of them adds up)
+  const countLabel = (n) => recent(countLabels, S.lang + n, MAX_ICONS, () => num(n));
   // (own: the homes' own point, not their town's: a pin of its own look)
   function townIcon(list, priced, own = false) {
     const cls = own ? "pin own" : "pin";
@@ -1521,8 +1547,8 @@
 
   function popup(town, list) {
     return `<strong>${esc(town)}</strong> ${t("count", num(list.length))}<ul class="popup-list">${Array.from(list.slice(0, 40), item).filter(Boolean).map((it) =>
-      `<li><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${it.image != null ? `<img src="${esc(image(it, 120, 90))}" alt="" loading="lazy">` : "<span></span>"}
-        <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span></a></li>`).join("")}</ul>`;
+      `<li>${listingLink(it, `${it.image != null ? photoTag(it, 120, 90, { keep: true }) : "<span></span>"}
+        <span><b class="num">${money(it.price)}</b> ${usd(it)}<br>${esc([value(it.layout) || typeName(it.type), age(it)].filter(Boolean).join(" · "))}<br>${esc(station(it))}</span>`)}</li>`).join("")}</ul>`;
   }
 
   // ---------- listing ----------
@@ -1532,13 +1558,6 @@
   // Rejects with Error("gone") when the bucket has no such listing (it ended), else Error("offline") (try again).
   // (the last few buckets and records are kept, least recently used out first)
   const buckets = new Map(), records = new Map(), MAX_BUCKETS = 8, MAX_RECORDS = 100;
-  const recent = (map, key, max, make) => {
-    let v = map.get(key);
-    if (v) map.delete(key); else v = make();
-    map.set(key, v);
-    while (map.size > max) map.delete(map.keys().next().value);
-    return v;
-  };
   function bucket(url) {
     return recent(buckets, url, MAX_BUCKETS, () => fetch(url, { cache: "no-cache" })
       .then((res) => (res.ok ? res.arrayBuffer().then(Filter.decode) : res.status === 404 ? {} : Promise.reject(new Error("offline"))))
@@ -1566,14 +1585,14 @@
     const recs = await Promise.all(list.map((it) => record(it.key).catch(() => null)));
     const cols = list.map((it, i) => [it, recs[i] || {}]);
     const yen = (v) => (v ? t("yen", num(v)) : "");
-    const monthly = ([it, r]) => (isCondo(it.type) ? it.fees ?? (r.mgmt_fee && r.repair_fee ? r.mgmt_fee + r.repair_fee + (r.other_monthly || 0) : null) : null);
+    const monthly = ([it, r]) => (isCondo(it.type) ? monthlyFees(it, r) : null);
     const walk = ([it]) => it.stations.reduce((m, [, w]) => (w != null && (m == null || w < m) ? w : m), null);
     const newBuild = (it) => it.type === "new_condo" || it.type === "new_house";
     // [label, cell html, best: [value of a column, "min" | "max"]]
     const ROWS = [
-      ["", ([it]) => `<div class="cmp-top"><a href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}"><div class="ph">${it.image != null ? `<img src="${esc(image(it, 240, 180))}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div></a>${
+      ["", ([it]) => `<div class="cmp-top">${listingLink(it, `<div class="ph">${it.image != null ? photoTag(it, 240, 180) : ""}</div>`)}${
         `<button class="cmp-x" data-tab-close="${esc(it.key)}" aria-label="${esc(t("cmpHide", money(it.price)))}">${icon("x")}</button>`}</div>`],
-      ["name", ([it]) => `<a class="cmp-name" href="${esc(hashFor({ id: it.key }))}" data-key="${esc(it.key)}">${esc(it.name || typeName(it.type))}</a>`],
+      ["name", ([it]) => listingLink(it, esc(it.name || typeName(it.type)), "cmp-name")],
       ["price", ([it]) => `<span class="num">${price(it, true)}</span>${usd(it)}`, [([it]) => it.price, "min"]],
       ["unit", ([it]) => esc(it.unit ? t("perM2", it.unit) : ""), [([it]) => it.unit, "min"]],
       ["feesMonthly", (c) => esc(monthly(c) ? t("perMonth", yen(monthly(c))) : ""), [monthly, "min"]],
@@ -1639,7 +1658,7 @@
     const txt = (s) => (s == null || s === "" ? null : esc(value(s)));
     const second = (main, sub) => esc(main) + (sub ? `<small>${esc(sub)}</small>` : "");  // 坪 on a line of its own
     const unit = it?.unit ? second(t("perM2", it.unit), !isCondo(type) && t("perTsubo", Math.round(it.unit * TSUBO))) : "";
-    const monthly = it?.fees ?? (r.mgmt_fee && r.repair_fee ? r.mgmt_fee + r.repair_fee + (r.other_monthly || 0) : null);
+    const monthly = monthlyFees(it, r);
     // what matters most first: price per ㎡, monthly fees, the walk; then the home itself
     const facts = [["unit", unit], ["feesMonthly", isCondo(type) && monthly ? esc(t("yen", num(monthly))) : ""],
       [it && !it.stations.length && it.stop ? "stop" : "station", it ? nowrapWalk(station(it)) : ""],
@@ -1735,6 +1754,19 @@
     }
   }
 
+  // A sideways swipe on el (a primary pointer moved over 40 px; only one that starts where from(e) says): step(1) for
+  // the next (a swipe to the left), step(-1) for the previous. A pinch or a scroll (pointercancel) is no swipe.
+  function onSwipe(el, step, from = () => true) {
+    let x0 = null;
+    el.addEventListener("pointerdown", (e) => { x0 = e.isPrimary && from(e) ? e.clientX : null; }, { passive: true });
+    el.addEventListener("pointercancel", () => { x0 = null; });
+    el.addEventListener("pointerup", (e) => {
+      const dx = x0 == null ? 0 : e.clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1);
+    });
+  }
+
   // The full-screen viewer: a history entry (back closes it); arrows, swipe, Escape.
   let viewer = null;
   let gallerySwiped = false;  // a swipe on the listing's photo just stepped it (its click is ignored)
@@ -1751,14 +1783,7 @@
       <figure><img alt="" decoding="async"><figcaption></figcaption></figure>
       <button class="v-next" data-viewer-step="1" aria-label="${esc(t("photoNext"))}">${icon("back")}</button>`;
     document.body.append(el);
-    let x0 = null;
-    el.addEventListener("pointerdown", (e) => { if (e.isPrimary) x0 = e.clientX; });
-    el.addEventListener("pointercancel", () => { x0 = null; });  // (a pinch, a scroll: no swipe)
-    el.addEventListener("pointerup", (e) => {
-      const dx = x0 == null ? 0 : e.clientX - x0;
-      x0 = null;
-      if (Math.abs(dx) > 40) { viewer.swiped = true; stepViewer(dx < 0 ? 1 : -1); }
-    });
+    onSwipe(el, (d) => { viewer.swiped = true; stepViewer(d); });
     el.addEventListener("click", (e) => {
       if (viewer.swiped) { viewer.swiped = false; return; }  // the click that ends a swipe neither steps nor closes
       const b = e.target.closest("button");
@@ -2332,10 +2357,7 @@
     DARK.addEventListener("change", () => { if (settings.theme === "auto") applyTheme(); });
     $("keep").addEventListener("click", () => {
       const key = searchKey(q), i = searches.findIndex((s) => s.c === key && !savedAway(s));
-      if (i >= 0) searches.splice(i, 1); else searches.push({ c: key, p: prefParam(chosen), seen: dataHour });
-      saveSearches();
-      toast(t(i >= 0 ? "searchRemoved" : "searchKept"));
-      renderSearches();
+      if (i >= 0) unkeepSearch(i); else keepSearches(() => searches.push({ c: key, p: prefParam(chosen), seen: dataHour }), "searchKept");
     });
     $("compare").addEventListener("click", () => compareFavs());
     $("favs").addEventListener("click", toggleFavorites);
@@ -2373,12 +2395,8 @@
       } else if (b.dataset.ignoredX) { ignoredNote = []; render(); }
       else if (b.dataset.prefOpen) openPrefs(true);
       else if (b.dataset.prefRemove) setPrefs(prefsFromHash().filter((s) => s !== b.dataset.prefRemove));
-      else if (b.dataset.unsaveSearch != null) {
-        searches.splice(+b.dataset.unsaveSearch, 1);
-        saveSearches();
-        toast(t("searchRemoved"));
-        renderSearches();
-      } else if (b.dataset.fit) { fitNext = "results"; placeMap(); }
+      else if (b.dataset.unsaveSearch != null) unkeepSearch(+b.dataset.unsaveSearch);
+      else if (b.dataset.fit) { fitNext = "results"; placeMap(); }
       else if (b.dataset.onMap) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
         fitNext = { id: b.dataset.onMap };
         map.closePopup();
@@ -2485,16 +2503,10 @@
       strip.scrollLeft += d;
     }, { passive: false });
     // the listing's photo swiped sideways: the next or previous one (as in the viewer)
-    let galleryX = null;
-    document.addEventListener("pointerdown", (e) => {
-      galleryX = e.isPrimary && e.target.closest?.("#panel-body .g-main") ? e.clientX : null;
-    }, { passive: true });
-    document.addEventListener("pointercancel", () => { galleryX = null; });
-    document.addEventListener("pointerup", (e) => {
-      const dx = galleryX == null ? 0 : e.clientX - galleryX, box = $("panel-body");
-      galleryX = null;
-      if (Math.abs(dx) > 40 && box.photos?.length > 1) { gallerySwiped = true; showPhoto(box, (box.photoAt || 0) + (dx < 0 ? 1 : -1)); }
-    });
+    onSwipe(document, (d) => {
+      const box = $("panel-body");
+      if (box.photos?.length > 1) { gallerySwiped = true; showPhoto(box, (box.photoAt || 0) + d); }
+    }, (e) => e.target.closest?.("#panel-body .g-main"));
     // a card pressed: its record asked for already (the bucket's ~200 ms round trip before the click lands); not on
     // touch screens, where a press may start a scroll
     document.addEventListener("pointerdown", (e) => {
