@@ -573,7 +573,7 @@
   const freshCounts = new Map(), MAX_COUNTS = 100;  // (the saved searches' counts: key -> count)
   // The saved searches, each with what's new or cheaper since it was last opened; the star saves the current one.
   function renderSearches() {
-    const box = $("searches"), key = searchKey(q), here = mode === "search", prefs = prefParam(chosen);
+    const box = $("searches"), key = searchKey(q), here = mode === "search";
     const label = (query) => activeConditions(query).filter(([, , s]) => s !== "quick").map(([l]) => l).slice(0, 3).join(t("sep"));
     box.hidden = !here || !searches.length;
     if (!box.hidden) {
