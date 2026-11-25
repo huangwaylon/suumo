@@ -1,5 +1,8 @@
 """data/ -> listings with the derived fields the site searches on (rooms, sizes, age, walk times, flags,
 duplicate groups, 新着 and 値下げ from data/events). Pure: reads files only (the railway stations are passed in).
+Item's flags: south/top/upper/nofee/ready/tower/parking; condos' monthly `fees`; near_minutes (周辺環境: minutes on
+foot to the closest of each NEAR kind, from a page record's env); one station spelling per prefecture
+(unify_station_names); price history from data/events.
 The search rules themselves live in site/filter.js.
 
 Listing keys are "type:id" strings (e.g. "used_condo:20205670").

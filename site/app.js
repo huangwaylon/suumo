@@ -1,6 +1,24 @@
 // The search page: a map and, beside it (a bottom sheet on phones and tablets), the list of the results in its view;
 // listings open as tabs in that panel. Conditions live in the URL (shareable). The search rules are in filter.js,
 // the strings in i18n.js.
+//
+// The URL: conditions (KEYS), the map's place (m=lat,lng,zoom, replaced on every move; the map moves only on the
+// refit triggers), an open listing (id=), the favorites' comparison (cmp=1). The panel's tabs: the list, opened
+// listings, 比較 of the open tabs. One filter panel (a rail ≥1280 px, a sheet elsewhere); favorites (the shared
+// saved list from the index's `saved` flag, plus this browser's pending requests); last search (localStorage
+// suumo.last); saved searches (suumo.searches, with their prefectures `p`).
+// Listings are filter.js handles everywhere (results, map points, favorites, tabs by key); objects only for what's
+// drawn (Filter.item). A listing's record comes from its bucket (`record`: fetch with cache "no-cache", the last 8
+// buckets and 100 records kept; no key or a 404 bucket → 掲載終了, other errors → 再読み込み).
+// The listing view: galleryHtml/showPhoto (chips by caption, 間取り図 first; lazy 120×90 strip), openViewer (full
+// screen, a history entry, arrows/swipe/Esc), textsHtml (folded), envHtml (周辺環境 by kind, closest first),
+// officeHtml, 「掲載情報 … 時点」 (page_date).
+// Map: town clusters to zoom 15 (CLUSTER_MAX, supercluster once per result set); from OWN_ZOOM (16) homes with an
+// own point get their own pin (.pin.own). Opening a listing, the photo viewer, the favorites view and the overlays
+// are history entries, so back closes them. Prefectures switched away from are released past maxPrefs (phones 10).
+// Layout: an app shell (the page never scrolls): ≥1024 px (or a phone on its side, ≤500 px high: SPLIT) map,
+// divider (settings.panel), panel; below, a bottom sheet over the map (peek/half/full, settings.sheet). Card
+// columns follow the panel's width (container queries).
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);

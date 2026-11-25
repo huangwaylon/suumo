@@ -1,5 +1,24 @@
-// Search rules for the site: load the index, match, sort, count choices.
+// Search rules for the site: load the index, match, sort, count choices. The only implementation of the rules.
 // Loaded by the page and, in tests, by Node (tests/test_site.py runs these rules on built indexes).
+//
+// The store: `load` turns a prefecture's columnar index into typed-array columns (the narrowest array holding each
+// column exactly; stations one flat array with offsets, tags bit words; opts.places: English area names for text
+// search) and drops the parsed JSON. Rows are ordered by place (type, area code, town, id) for a smaller gzip; `find`
+// binary-searches a (type, id) permutation (`keyed`) unless rows are in id order (older indexes). Town and
+// building-name tables are in text order; sparse columns ({at, v}) are expanded on load. A listing is a handle
+// (load number × 2^20 + row), lists of them Int32Arrays; `item(h)` makes the plain object the page shows (bounded
+// cache), `get.<field>(h)` reads one field; also every, positions, places, release (a replaced index).
+// Listing records: bucketOf(key, n); decode (by magic bytes: zstd through the vendored fzstd.min.js, an older
+// build's gzip through DecompressionStream, else JSON; the grouped layout back to {key: record}); suumoUrl.
+// Photos: photoPath (the port of extract.img_src), photoUrl(path, w, h) (120×90 strip, 360×270 cards, 640×480
+// viewer), gallery(id, img).
+// Rules: CHECKS/BUILDING, one check per condition (near: every chosen kind within q.nearWalk minutes, NEAR_WALK
+// by default; unknown fails), compiled per prefecture into a row test; search, count, spatial (a list's listings in
+// a box, by a grid of positions), counts (q and variants in one pass), facets (every choice count in one pass); text
+// search matches each prefecture's small tables (names, towns, areas, layouts, stations, bus stops); suggest; parse
+// + applyParse (search-box text → conditions; dictionaries per prefecture, built on first use).
+// Must work with an index older than itself (the service worker may serve one after a deploy): a missing column
+// reads as none, missing flags are 0.
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.Filter = factory();

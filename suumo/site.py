@@ -11,6 +11,18 @@ The same property listed by several agents (same dup_key: same building/address,
 as its best-documented listing; the others are linked from its record. The tricky fields (plan rank, sizes, age,
 walk times, flags) are computed here, so site/filter.js only compares values. The output is not committed:
 GitHub Actions builds it on every push.
+
+How: one prefecture in memory at a time, after a first pass that collects what they share (the station names they
+use, sizes, the saved list). index.json's `prefs` entries are [slug, name, count, share with the listing page
+fetched], plus `buckets`. A prefecture's index (build_index) is columnar: flag bits FLAGS, `fees` in ¥100; SPARSE
+columns (dlat/dlng: the own point, 1e-4° from the town's; photos; near: B64 minutes per catalog.NEAR kind) as
+{at: row deltas, v: values}. Listing records (Buckets) go through per-bucket temp files and are compressed in a
+process pool, each bucket single-threaded at ZSTD_LEVEL with zstandard pinned (deterministic); each page side line
+is parsed once (export.pages returns raw lines). listing_record drops id/type/dup_key/has_detail/area fields, writes
+`url` as pref/slug (_url) and `image` compactly (_image), adds `others` (with deal_type, no-commission agents first,
+URLs without https://suumo.jp) and the page side files' img, texts, env and agent (as `office`); lat/lng only from
+own_point (within OWN_KM of the town's 丁目 point, else inside pref_box). rail.json is rebuilt at build time:
+sections joined into paths, plus a coarse copy for zoom < 11 (line[5]; the page uses line[5] ?? line[4]).
 """
 import hashlib
 import json
