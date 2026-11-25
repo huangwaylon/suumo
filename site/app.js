@@ -107,6 +107,8 @@
   ];
   const COARSE = matchMedia("(pointer: coarse)");
   const WIDE = matchMedia("(min-width: 1280px)");  // filters, results and map side by side (style.css too)
+  // map and panel side by side (style.css too): wide screens, and phones on their side (too short for a sheet)
+  const SPLIT = matchMedia("(min-width: 1024px), (orientation: landscape) and (max-height: 500px) and (min-width: 640px)");
 
   // ---------- state ----------
 
@@ -143,6 +145,20 @@
   const PENDING_HOURS = 24;   // a request that never arrived (issue not sent) is forgotten after this
   let pending = stored("suumo.pending", {});  // key -> [save: true | false, time requested, prefecture]
   const favs = new Set();      // the saved list as it shows here: the site's list with the pending requests applied
+  // the map's place (the list is what's in its view)
+  let view = null;              // [south, west, north, east]: what the map shows (null: no map; everything is listed)
+  let waiting = true;           // the first list waits for the map's view (at most MAP_WAIT ms)
+  let mapAt = null;             // the view in the URL: "lat,lng,zoom" of its centre
+  let fitNext = null;           // where the map goes next: "results", {m: "lat,lng,zoom"}, {b: [s, w, n, e]}, {id: key}
+  let lastPlaces = [];          // the areas and stations drawn (naming another one fits the map to the results)
+  // the panel's tabs: the list, the listings opened from it, 比較
+  const MAX_TABS = 12;
+  const tabs = [];          // listing keys, in the order opened
+  let tab = "list";         // "list", a listing key or "compare"
+  let openedFrom = null;    // the card whose listing is open (focus returns to it)
+  const listY = {};         // the list's scroll position per mode (search, favorites)
+  const isListing = (k = tab) => k !== "list" && k !== "compare";
+  let sheetBefore = null;   // the sheet's state before a listing took all of it
 
   // ---------- formatting ----------
 
@@ -967,13 +983,11 @@
   // ---------- map: always there; the list is what's in its view ----------
 
   let leaflet = null, map = null;
-  let view = null;              // [south, west, north, east]: what the map shows (null: no map; everything is listed)
-  let waiting = true;           // the first list waits for the map's view (at most MAP_WAIT ms)
-  let mapAt = null;             // the view in the URL: "lat,lng,zoom" of its centre
-  let fitNext = null;           // where the map goes next: "results", {m: "lat,lng,zoom"}, {b: [s, w, n, e]}, {id: key}
-  let lastPlaces = [];          // the areas and stations drawn (naming another one fits the map to the results)
   let autopan = false;          // a popup moved the map: the list stays as it is
   const MAP_WAIT = 2500;
+  const CLUSTER_MAX = 15;       // zoomed in further, every town has its marker
+  const OWN_ZOOM = 16;          // from this zoom, a home with its own point (the listing page's map) is drawn there
+  const PRICE_ZOOM = 15;        // from this zoom, a town's marker is a price tag
   // The listings of a list in a box: looked up on the list's grid (Filter.spatial), made the first time it's asked.
   const grids = new WeakMap();
   const inArea = (list, b) => (grids.get(list) || grids.set(list, Filter.spatial(list)).get(list)).within(b);
@@ -1064,7 +1078,6 @@
 
   // Markers: a town (丁目) is a pill with its count, or from PRICE_ZOOM a price tag (its lowest price, and how many);
   // a cluster of towns is a filled circle sized by its count (a tap zooms in). Icons are reused across redraws.
-  const PRICE_ZOOM = 15;
   const pins = new Map();
   const cachedIcon = (key, make) => pins.get(key) || pins.set(key, make()).get(key);
   const countLabels = new Map();  // a marker's count as written (formatting tens of thousands of them adds up)
@@ -1153,8 +1166,6 @@
   // only the clusters and towns in and around the view, made as it moves. The current set, the one before it and the
   // unfiltered one are kept, so going back to one (clearing the conditions) is quick. Towns at one point are one
   // marker. A cluster counts the homes in it.
-  const CLUSTER_MAX = 15;       // zoomed in further, every town has its marker
-  const OWN_ZOOM = 16;          // from this zoom, a home with its own point (the listing page's map) is drawn there
   const clusterSets = new Map();  // drawn.set -> {index, lat, lng, start, homes, order}: see clusterSet
   const onMap = new Map();      // the markers on the map: "c" + cluster id or "p" + point -> marker
   let markerLayer = null, shownSet = null, shownLang = null;
@@ -1197,6 +1208,10 @@
   }
   // A loaded Supercluster, smaller: its points' features aren't kept (a point is read, by its number, only when it's
   // in view), and each zoom's numbers are a Float64Array rather than a growable array (the same values).
+  // This reaches into Supercluster's internals (8.0.1, vendored: site/supercluster.min.js): `points` (getClusters
+  // returns points[i] for a lone point; only its `properties` survive here, so getTile, which reads `geometry`, would
+  // break) and `trees[z].data` (each zoom's flat number array). Recheck both on any upgrade: a renamed field fails
+  // silently (wrong markers or none), not with an error.
   function compact(index, m) {
     index.points = new Proxy([], { get: (_, k) => (k === "length" ? m : typeof k === "string" ? { properties: { i: +k } } : undefined) });
     for (const tree of index.trees) if (tree) tree.data = Float64Array.from(tree.data);
@@ -1865,12 +1880,6 @@
 
   // ---------- the panel's tabs: the list, the listings opened from it, 比較 ----------
   // Opening a listing from the list is a history entry (back returns to the list); switching and closing tabs aren't.
-  const MAX_TABS = 12;
-  const tabs = [];          // listing keys, in the order opened
-  let tab = "list";         // "list", a listing key or "compare"
-  let openedFrom = null;    // the card whose listing is open (focus returns to it)
-  const listY = {};         // the list's scroll position per mode (search, favorites)
-  const isListing = (k = tab) => k !== "list" && k !== "compare";
   const addTabs = (keys) => { for (const k of keys) if (!tabs.includes(k)) tabs.push(k); tabs.splice(0, Math.max(0, tabs.length - MAX_TABS)); };
 
   // A listing (from a card, the map, the strip) or 比較.
@@ -1973,10 +1982,7 @@
 
   // ---------- the bottom sheet (below 1024 px): the panel over the map, at peek, half or full height ----------
 
-  // map and panel side by side (style.css too): wide screens, and phones on their side (too short for a sheet)
-  const SPLIT = matchMedia("(min-width: 1024px), (orientation: landscape) and (max-height: 500px) and (min-width: 640px)");
   const SHEETS = ["peek", "half", "full"];
-  let sheetBefore = null;   // the sheet's state before a listing took all of it
   let dragEnd = 0;
   function setSheet(state, save = true) {
     $("panel").dataset.sheet = state;
