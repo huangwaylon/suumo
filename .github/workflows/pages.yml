@@ -1,7 +1,8 @@
 # Test, build the static search site from data/ and geo/, and publish it on GitHub Pages.
 # The built site (~8k listing buckets, data/l/*.json.zst) is never committed; every push to main rebuilds it.
 # data/<pref>/ comes from the snapshot data/snapshot.json names (a release asset: .github/scripts/data.sh); a missing
-# or bad one fails the build, and Pages keeps serving the last deployment.
+# or bad one fails the build, and Pages keeps serving the last deployment. The front-end job (workflow and shell lint,
+# JS lint, the headless-browser smoke test) runs alongside the build; deploy needs both.
 name: Site
 
 on:
@@ -57,8 +58,39 @@ jobs:
         with:
           path: _site
 
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PLAYWRIGHT: "1.65.2"  # pinned: the smoke test's driver and its browser build
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: Workflow and shell lint
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+          shellcheck .github/scripts/*.sh
+      - name: JS lint (biome.json)
+        run: |
+          npx --yes @biomejs/biome@2.6.9 lint --reporter=github
+          for f in site/*.js; do node --check "$f"; done
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT }}
+      - name: Smoke test (tests/test_smoke.py)
+        run: |
+          uv run --with "playwright==$PLAYWRIGHT" playwright install --with-deps --only-shell chromium
+          uv run --with "playwright==$PLAYWRIGHT" pytest tests/test_smoke.py -q
+
   deploy:
-    needs: build
+    needs: [build, frontend]
     runs-on: ubuntu-latest
     permissions:
       pages: write

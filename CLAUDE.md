@@ -42,6 +42,7 @@ header (module docstring or top comment) has its details. Keep those three in st
 | `site/supercluster.min.js`, `fzstd.min.js` | Vendored: map clustering (ISC), zstd decoding (MIT) |
 | `.github/workflows/crawl.yml` | plan → canary → shards (≤ 8 at once) → combine (snapshot in, shards over it, gate, snapshot out, commit, push) |
 | `.github/workflows/pages.yml` | On push: lint, tests, snapshot unpack, build, size check, deploy |
+| `biome.json`, `tests/test_smoke.py` | Front-end checks (pages.yml's `frontend` job, deploy needs it): JS lint (correctness rules only) and a headless-browser smoke test of a fixture site |
 | `.github/workflows/watch.yml` | The watchdog (every 3 h): stale data, failed runs, disabled crawl → one tracking issue |
 | `.github/workflows/saved.yml` | Applies save/unsave issues to `saved.json` and rebuilds |
 | `.github/scripts/ci.py`, `state.sh`, `data.sh` | crawl.yml's decisions (tested), the shard states on `suumo-state`, the data snapshot on `suumo-data` |
@@ -206,6 +207,11 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
 - `uv sync`, then `uv run pytest -q` (offline, ~15 s; the site tests need `node`) and `uv run ruff check suumo tests`
   (line length 120). Tests never touch the network; each `tests/test_*.py` starts with what it covers; shared helpers
   in `tests/helpers.py`; real pages and records in `tests/fixtures/`.
+- Front end: `npx --yes @biomejs/biome@2.6.9 lint` (site/*.js minus vendored *.min.js; ~1 s) and
+  `uv run --with playwright==1.65.2 pytest tests/test_smoke.py -q` (~10 s; once:
+  `uv run --with playwright==1.65.2 playwright install --only-shell chromium`). The smoke test drives the DOM (ids,
+  roles, text) at desktop and phone sizes, offline (Leaflet from `tests/fixtures/leaflet/`, which must match app.js's
+  SRI); `uv run pytest` skips it without Playwright. Workflows: `actionlint`, `shellcheck .github/scripts/*.sh`.
 - The real data/: `GH_REPO=huangwaylon/suumo .github/scripts/data.sh get data` (the snapshot the pointer names).
 - Look at the site locally: `uv run python -m suumo site && cd _site && python3 -m http.server`.
 - Try changes on a copy: `--db`, `--data`, `--debug-dir` point anywhere. Derive changes: bump `PARSE_VERSION`, run

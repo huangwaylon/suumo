@@ -284,7 +284,7 @@ and names are in `data/<pref>/areas.json` after a run.
 | `geo/rail.json` | yes | railway lines (colour, simplified geometry) and stations for the map, from MLIT 鉄道データ and ODPT; rebuilt with `python -m suumo rail` |
 | `geo/stations.json` | yes | station → [kana, English, n] from Wikidata (CC0): a name found in several prefectures keeps the reading from the one whose listings mention it most (n times), gaps filled from the others; `_prefs` lists the prefectures fetched. Delete to refresh |
 | `site/` | yes | the site's source (index.html, app.js, filter.js, i18n.js, style.css, sw.js) |
-| `.github/workflows/pages.yml` | yes | tests, builds and deploys the site on every push |
+| `.github/workflows/pages.yml` | yes | tests (plus the front end's lint and smoke test), builds and deploys the site on every push |
 | release `suumo-state` | no (release assets) | one SQLite state per shard: listings and lifecycle, page records, areas, queue, events, runs, crawl times, tombstones (14 days), `meta` |
 | `uv.lock` | no | local lock (CI resolves from public PyPI) |
 
@@ -347,3 +347,19 @@ On the site, a listing's record (`data/l/`) is this one less what its key and it
 
 `uv run pytest -q` (offline; parsers are also checked against real pages in `tests/fixtures/`; the site's search
 rules in `filter.js` are tested with Node). `uv run ruff check suumo tests` for lint.
+
+The front end (pages.yml's `frontend` job runs all of these; a failure blocks the deploy):
+
+- JS lint: `npx --yes @biomejs/biome@2.6.9 lint` (`biome.json`: correctness rules only, no formatting, on
+  `site/*.js` minus the vendored `*.min.js`) and `for f in site/*.js; do node --check "$f"; done`. About 1 s.
+- Smoke test in a headless browser, `tests/test_smoke.py`: builds a site from `tests/fixtures/data` (plus page side
+  files from the fixture listing pages), serves it on localhost and drives it at 1280×800 and 390×844 (loads without
+  console errors, cards, a suggestion, a type chip, a listing and its photo viewer, back, a `#id=` link, English,
+  favorites). Offline: Leaflet comes from `tests/fixtures/leaflet/` (1.9.4, as app.js's SRI expects), tiles and photos
+  are stubbed. Skipped by `uv run pytest` unless Playwright is installed. About 10 s:
+
+  ```
+  uv run --with playwright==1.65.2 playwright install --only-shell chromium   # once
+  uv run --with playwright==1.65.2 pytest tests/test_smoke.py -q
+  ```
+- Workflows and scripts: `actionlint` (1.7.12, which also shellchecks `run:` blocks) and `shellcheck .github/scripts/*.sh`.

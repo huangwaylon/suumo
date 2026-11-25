@@ -1,0 +1,30 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.9/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"files": { "includes": ["site/*.js", "!site/*.min.js"] },
+	"formatter": { "enabled": false },
+	"assist": { "enabled": false },
+	"javascript": {
+		"globals": ["L", "I18N", "Filter", "Supercluster", "fzstd", "module"]
+	},
+	"linter": {
+		"rules": {
+			"preset": "none",
+			"correctness": {
+				"preset": "recommended",
+				"noUndeclaredVariables": "error",
+				"noUnusedVariables": "warn",
+				"noUnusedFunctionParameters": "off",
+				"noEmptyCharacterClassInRegex": "off"
+			},
+			"suspicious": {
+				"preset": "recommended",
+				"noAssignInExpressions": "off",
+				"noSelfCompare": "off",
+				"noControlCharactersInRegex": "off",
+				"noRedundantUseStrict": "off",
+				"useIterableCallbackReturn": "off"
+			}
+		}
+	}
+}
