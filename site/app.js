@@ -2339,6 +2339,78 @@
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
+  // ---------- click actions ----------
+  // A button's action by its data attribute (data-tab-close="all" -> ACTIONS.tabClose("all", button)), caught once on
+  // the document, so buttons drawn anywhere (cards, chips, popups, the listing) need no listener of their own. The
+  // first of ACTIONS' keys the button has wins. (The filter panel, the picker and settings have their own.)
+  const ACTIONS = {
+    remove(i) {  // a condition's ×
+      activeConditions()[+i][1](q);
+      update();
+      ($("chips").querySelector(".chip-x") || $("count")).focus();
+    },
+    clear: () => clearAll(),
+    edit: (section) => openFilters(true, section),  // a condition's label
+    alt(i) {  // 目黒区 ⇄ 目黒駅
+      const a = altSwaps[+i];
+      q[a.field] = q[a.field].filter((v) => v !== a.value);
+      q[a.alt.field] = [...new Set([...q[a.alt.field], a.alt.value])];
+      altSwaps[+i] = { ...a.alt, alt: { field: a.field, value: a.value, label: a.label } };
+      update(false);
+    },
+    ignoredX() { ignoredNote = []; render(); },
+    prefOpen: () => openPrefs(true),
+    prefRemove: (slug) => setPrefs(prefsFromHash().filter((s) => s !== slug)),
+    unsaveSearch: (i) => unkeepSearch(+i),
+    fit() { fitNext = "results"; placeMap(); },
+    onMap(key) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
+      fitNext = { id: key };
+      map.closePopup();
+      placeMap();
+      if (!SPLIT.matches) setSheet("half", false);
+    },
+    savedSearch(i) {  // open a saved search: what's new in it, if anything; then seen
+      const s = searches[+i];
+      if (savedAway(s)) {  // another prefecture's: there (route loads it), newest first
+        const p = new URLSearchParams(s.c);
+        p.set("p", s.p);
+        s.seen = dataHour;
+        saveSearches();
+        history.replaceState(history.state, "", "#" + p.toString());
+        prefsUrl = location.href;
+        fitNext = "results";
+        route();
+        return;
+      }
+      const query = queryFrom(new URLSearchParams(s.c));
+      const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
+      q = { ...query, sort: "new", since: fresh ? s.seen : null };
+      s.seen = dataHour;
+      saveSearches();
+      fitNext = "results";
+      update();
+    },
+    quick(f) {  // 新着 / 値下げ / since the last visit
+      q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
+      if (f === "dropsOnly") q.sort = q[f] ? "drop_desc" : "new";  // price cuts: biggest first
+      else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
+      update();
+    },
+    retry: () => rerenderTab(),  // a listing that couldn't be loaded: try again
+    tabShow: (key) => openTab(key),
+    tabClose: (key) => closeTab(key),
+    stationPick(name) {  // from a station on the map
+      q.stations = [name];
+      lastPlaces.push(name);  // it's in sight already: the map stays
+      map?.closePopup();
+      update(false);
+    },
+  };
+  function runAction(b) {
+    for (const k in ACTIONS) if (b.dataset[k] != null) { ACTIONS[k](b.dataset[k], b); return true; }
+    return false;
+  }
+
   function wire() {
     wireSearch();
     wireSplit();
@@ -2422,67 +2494,7 @@
       const link = e.target.closest("a[data-key]");
       if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); openTab(link.dataset.key); return; }
       const b = e.target.closest("button");
-      if (!b) return;
-      if (b.dataset.remove != null) {
-        activeConditions()[+b.dataset.remove][1](q);
-        update();
-        ($("chips").querySelector(".chip-x") || $("count")).focus();
-      }
-      else if (b.dataset.clear) clearAll();
-      else if (b.dataset.edit) openFilters(true, b.dataset.edit);
-      else if (b.dataset.alt != null) {  // 目黒区 ⇄ 目黒駅
-        const a = altSwaps[+b.dataset.alt];
-        q[a.field] = q[a.field].filter((v) => v !== a.value);
-        q[a.alt.field] = [...new Set([...q[a.alt.field], a.alt.value])];
-        altSwaps[+b.dataset.alt] = { ...a.alt, alt: { field: a.field, value: a.value, label: a.label } };
-        update(false);
-      } else if (b.dataset.ignoredX) { ignoredNote = []; render(); }
-      else if (b.dataset.prefOpen) openPrefs(true);
-      else if (b.dataset.prefRemove) setPrefs(prefsFromHash().filter((s) => s !== b.dataset.prefRemove));
-      else if (b.dataset.unsaveSearch != null) unkeepSearch(+b.dataset.unsaveSearch);
-      else if (b.dataset.fit) { fitNext = "results"; placeMap(); }
-      else if (b.dataset.onMap) {  // a listing's 地図で見る: the map goes there (phones: the sheet makes room)
-        fitNext = { id: b.dataset.onMap };
-        map.closePopup();
-        placeMap();
-        if (!SPLIT.matches) setSheet("half", false);
-      }
-      else if (b.dataset.savedSearch != null) {  // open a saved search: what's new in it, if anything; then seen
-        const s = searches[+b.dataset.savedSearch];
-        if (savedAway(s)) {  // another prefecture's: there (route loads it), newest first
-          const p = new URLSearchParams(s.c);
-          p.set("p", s.p);
-          s.seen = dataHour;
-          saveSearches();
-          history.replaceState(history.state, "", "#" + p.toString());
-          prefsUrl = location.href;
-          fitNext = "results";
-          route();
-          return;
-        }
-        const query = queryFrom(new URLSearchParams(s.c));
-        const fresh = s.seen && Filter.count(db, { ...query, since: s.seen });
-        q = { ...query, sort: "new", since: fresh ? s.seen : null };
-        s.seen = dataHour;
-        saveSearches();
-        fitNext = "results";
-        update();
-      } else if (b.dataset.quick) {
-        const f = b.dataset.quick;
-        q[f] = q[f] ? Filter.emptyQuery()[f] : f === "since" ? lastVisit : true;
-        if (f === "dropsOnly") q.sort = q[f] ? "drop_desc" : "new";  // price cuts: biggest first
-        else if (q[f]) q.sort = "new";                               // what's new: by day, newest first
-        update();
-      }
-      else if (b.dataset.retry) rerenderTab();  // a listing that couldn't be loaded: try again
-      else if (b.dataset.tabShow) openTab(b.dataset.tabShow);
-      else if (b.dataset.tabClose) closeTab(b.dataset.tabClose);
-      else if (b.dataset.stationPick) {  // from a station on the map
-        q.stations = [b.dataset.stationPick];
-        lastPlaces.push(b.dataset.stationPick);  // it's in sight already: the map stays
-        map?.closePopup();
-        update(false);
-      }
+      if (b) runAction(b);
     });
     document.querySelectorAll(".skip").forEach((a) => a.addEventListener("click", (e) => {
       e.preventDefault();  // the hash holds the search
