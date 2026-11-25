@@ -577,7 +577,11 @@
     if (box.hidden) return;
     const offers = { newOnly: true, dropsOnly: true, ...(lastVisit ? { since: lastVisit } : {}) }, patches = {};
     for (const [f, v] of Object.entries(offers)) if (q[f] !== v) patches[f] = { [f]: v };
-    const counts = Filter.counts(view ? { ...db, items: inView() } : db, q, patches);  // in view, in one pass
+    // In view, in one pass. Each offer only adds a condition to q (newOnly, dropsOnly; since unless another since is
+    // in force, which it would replace), so what it would show is among the results in view (hits): counted there,
+    // rather than over every listing in view (that was the work at every pan).
+    const narrows = q.since == null || !patches.since;
+    const counts = Filter.counts(narrows ? { ...db, items: hits } : view ? { ...db, items: inView() } : db, q, patches);
     const chip = (field, label, value) => {
       const on = q[field] === value, n = on ? hits.length : counts[field];
       return n || on ? `<button class="chip" data-quick="${field}" aria-pressed="${on}">${esc(label)}<span class="n">${num(n)}</span></button>` : "";
@@ -994,7 +998,13 @@
   let viewItems = null, viewItemsFor = null;  // the chosen prefectures' listings in view (the quick chips count them)
   const inView = () => (viewItemsFor === `${dataVersion}|${view}` ? viewItems : ((viewItemsFor = `${dataVersion}|${view}`), (viewItems = inArea(db.items, view))));
 
-  // After a pan or zoom: the list, its counts and the URL follow (the URL is replaced, not a history entry).
+  // After a pan or zoom (the map's one moveend handler): the markers at once, the lines and stations in view, then
+  // shortly (onMapMove) the list, its counts and the URL (replaced, not a history entry).
+  function onMoveEnd() {
+    drawMarkers();
+    railMoved();
+    onMapMove();
+  }
   let moveTimer = null;
   function onMapMove() {
     clearTimeout(moveTimer);
@@ -1119,8 +1129,7 @@
     });
     map.on("popupclose", () => setTimeout(drawMarkers));  // (its marker was kept while it was open)
     map.on("autopanstart", () => { autopan = true; });
-    map.on("moveend", onMapMove);
-    map.on("moveend", drawMarkers);
+    map.on("moveend", onMoveEnd);
     markerLayer = L.layerGroup().addTo(map);
     if (!COARSE.matches) L.control.zoom({ position: "topright", zoomInTitle: t("zoomIn"), zoomOutTitle: t("zoomOut") }).addTo(map);
     map.attributionControl.setPrefix(false);  // no "Leaflet" and flag: only the data credits, kept short
@@ -1370,8 +1379,15 @@
     });
     for (const el of [open, panel]) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); $("map").append(el); }
     map.on("zoomend", showRail);
-    map.on("moveend", () => { if (!panel.hidden) railPanel(); cullRail(); stationLabels(); });
     showRail();
+  }
+
+  // The map moved: the lines panel lists the operators in view, the lines and stations in view are drawn.
+  function railMoved() {
+    if (!railStations) return;  // (not drawn yet)
+    if (!$("map").querySelector(".rail-panel").hidden) railPanel();
+    cullRail();
+    stationLabels();
   }
 
   // Station names on the map once zoomed in (14+): only those in view, so a few dozen labels at most. Those still in
@@ -1962,21 +1978,29 @@
   }
 
   // The tab strip, shown once a listing is open: the list, each listing (×), 比較 with two or more, すべて閉じる.
+  // The cards are drawn marked (card()): marked again only when the tabs change, and the strip rewritten only when
+  // what it says changes (not at every pan).
+  let markedTabs = "", stripHtml = "";
   function renderTabs() {
-    const strip = $("tabs");
-    document.querySelectorAll(".card").forEach((c) => c.classList.toggle("open", tabs.includes(c.querySelector("[data-key]")?.dataset.key)));
+    const strip = $("tabs"), open = tabs.join("\n");
+    if (open !== markedTabs) {
+      markedTabs = open;
+      for (const a of document.querySelectorAll(".card > a[data-key]")) a.parentElement.classList.toggle("open", tabs.includes(a.dataset.key));
+    }
     strip.hidden = !tabs.length;
     if (strip.hidden) return;
     const button = (id, label, x) => `<span class="tab${tab === id ? " on" : ""}" role="presentation">
       <button role="tab" aria-selected="${tab === id}" aria-controls="${id === "list" ? "results" : "panel-body"}" data-tab-show="${esc(id)}">${
       id === "list" ? icon("back") : ""}${esc(label)}</button>${
       x ? `<button class="tab-x" data-tab-close="${esc(id)}" aria-label="${esc(t("closeTab", label))}">${icon("x")}</button>` : ""}</span>`;
-    strip.innerHTML = button("list", `${t(mode === "favorites" ? "favorites" : view ? "listTab" : "listAll")} ${num(hits.length)}`) +
+    const html = button("list", `${t(mode === "favorites" ? "favorites" : view ? "listTab" : "listAll")} ${num(hits.length)}`) +
       tabs.map((key) => {
         const it = listing(key);
         return button(key, it ? `${money(it.price)} ${value(it.layout) || typeName(it.type)}` : typeName(key.split(":")[0]) || key, true);
       }).join("") + (tabs.length > 1 ? button("compare", t("compareTab")) : "") +
       `<button class="tab-all" data-tab-close="all">${esc(t("closeAll"))}</button>`;
+    if (html === stripHtml && strip.firstChild) return;
+    strip.innerHTML = stripHtml = html;
     strip.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
