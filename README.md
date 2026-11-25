@@ -65,7 +65,8 @@ two or more 比較 shows them side by side. The listing has a sticky 「お気�
   Conditions live in the URL (and the map's place, `m=lat,lng,zoom`), so any search or listing can be shared.
 
 One property listed by several agents (same `dup_key`: building/address, size and price) appears once, with
-「ほかN社も掲載」. 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings
+「ほかN社も掲載」; so does a condo unit listed as both 新築 and 中古 (same 丁目, size and price; it shows under its
+best-documented listing's type). 新着 = new or relisted in the last 7 days (the first crawl of an area records its listings
 silently), 値下げ = a price drop in the last 30 days. Names that are agents' ad copy aren't shown.
 Conditions from the listing pages (only listings whose page was fetched have them; the manifest says what share
 that is per prefecture): 南向き (direction 南/南東/南西 or a south tag), 最上階, 2階以上, タワー (20+ floors),

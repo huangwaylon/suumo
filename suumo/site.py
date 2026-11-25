@@ -8,8 +8,9 @@
                                                    photos, the page's texts)
 
 The same property listed by several agents (same dup_key: same building/address, size and price) appears once,
-as its best-documented listing; the others are linked from its record. The tricky fields (plan rank, sizes, age,
-walk times, flags) are computed here, so site/filter.js only compares values. The output is not committed:
+as its best-documented listing; the others are linked from its record (a condo unit listed under both new_condo
+and used_condo too: catalog.join_condo_units). The tricky fields (plan rank, sizes, age, walk times, flags) are
+computed here, so site/filter.js only compares values. The output is not committed:
 GitHub Actions builds it on every push.
 
 How: one prefecture in memory at a time, after a first pass that collects what they share (the station names they

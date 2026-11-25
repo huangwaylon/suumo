@@ -97,6 +97,37 @@ def test_an_agent_listing_two_or_two_floors_are_not_one_property(tmp_path):
     assert [i.rec["id"] for i in s.groups["same"]] == ["6", "7", "8"]
 
 
+def unit(i, type_, **kw):
+    """One condo unit: 東和泉２, 71.51 m², 1億2990万円; a new_condo listing has no dup_key (the crawl's is per type)."""
+    kw.setdefault("dup_key", "u" if type_ == "used_condo" else None)
+    return rec(i, type_, **{"address": "東京都狛江市東和泉２", "floor_m2": 71.51, "price": 129_900_000, **kw})
+
+
+def test_a_unit_listed_as_new_and_used_condo_is_one_property(tmp_path):
+    s = snap(tmp_path, unit(1, "new_condo", name="ザ・晴海", address="狛江市東和泉２-3"),        # 番地, no 東京都
+             unit(2, "used_condo", name="晴海タワー"),
+             unit(3, "used_condo", agent="B"),
+             unit(4, "new_condo", price=120_000_000), unit(5, "new_condo", floor_m2=70.0),         # another unit
+             unit(6, "new_condo", floor_m2_max=90.0),                                    # a development's range
+             unit(7, "new_condo", address="狛江市西和泉２"))                                # another place
+    assert list(s.groups) == ["u"]
+    assert sorted(i.key for i in s.groups["u"]) == ["new_condo:1", "used_condo:2", "used_condo:3"]
+    # a used listing without a dup_key (no name) still joins; two used dup_keys for one unit: two buildings
+    s = snap(tmp_path / "b", unit(1, "new_condo"), unit(2, "used_condo", dup_key=None))
+    assert [sorted(i.key for i in g) for g in s.groups.values()] == [["new_condo:1", "used_condo:2"]]
+    s = snap(tmp_path / "c", unit(1, "new_condo"), unit(2, "used_condo", dup_key="x"), unit(3, "used_condo"))
+    assert s.groups == {}
+
+
+def test_a_new_and_used_unit_with_an_agent_twice_or_two_floors_is_not_one_property(tmp_path):
+    s = snap(tmp_path, unit(1, "new_condo", agent="A"), unit(2, "used_condo", agent="A"))
+    assert s.groups == {}
+    s = snap(tmp_path / "b", unit(1, "new_condo", agent="A", floor=3), unit(2, "used_condo", agent="B", floor=5))
+    assert s.groups == {}
+    s = snap(tmp_path / "c", unit(1, "new_condo", agent="A", floor=3), unit(2, "used_condo", agent="B", floor=3))
+    assert len(s.groups) == 1
+
+
 def test_bus_stops_are_told_from_stations_by_the_railway_nearby(tmp_path):
     bus = {"line": "しずてつジャストライン", "name": "丸子橋入口", "walk": 7}         # SUUMO gives only the bus company
     far = {"line": "20", "name": "体育館前", "walk": 3}  # a tram stop of that name is far away

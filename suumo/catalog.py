@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .export import prefectures, records
+from .geo import town_of
 from .parse import TYPES
 
 LEASEHOLD = {"地上権", "定期借地権", "普通借地権", "旧法借地権", "借地権"}
@@ -229,6 +230,7 @@ class Snapshot:
     groups: dict = field(default_factory=dict)    # dup_key -> [Item] (only groups of 2 or more)
 
     def __post_init__(self):
+        join_condo_units(i for i in self.items if not (i.saved or i.gone))
         by_dup = defaultdict(list)
         for i in self.items:
             if i.dup and not (i.saved or i.gone):  # a saved listing stays itself (its key is what was saved)
@@ -254,6 +256,37 @@ class Snapshot:
         """(YYYYMMDDHH, old_price, new_price) of the latest price drop within DROP_DAYS, else None."""
         d = self.drops.get(item.key)
         return d if d and d[0] >= hour(self.today - timedelta(days=DROP_DAYS)) else None
+
+
+def unit_key(item):
+    """A condo unit by place (its 丁目: geo.town_of, as some addresses add the 番地), size and price, the same under
+    new_condo and used_condo (the names differ: a development's vs the building's); None for a development's range
+    or when a part is unknown."""
+    r = item.rec
+    if item.type not in CONDOS or r.get("price_max") or r.get("floor_m2_max"):
+        return None
+    parts = (town_of(r.get("address"), item.pref), r.get("floor_m2"), r.get("price"))
+    return None if any(p is None for p in parts) else parts
+
+
+def join_condo_units(items):
+    """SUUMO lists some units under both new_condo and used_condo (a building just completed). The crawl's dup_key
+    includes the type (each type's lead gets its page), so the site joins them here: the new_condo listings of a
+    unit take the dup_key of its used_condo listings (one shared key, else a key made from the unit; two used
+    dup_keys for one unit key are two buildings: nothing is joined). one_property still decides the group."""
+    by_unit = defaultdict(list)
+    for i in items:
+        if (k := unit_key(i)) is not None:
+            by_unit[k].append(i)
+    for k, group in by_unit.items():
+        used = [i for i in group if i.type == "used_condo"]
+        new = [i for i in group if i.type == "new_condo"]
+        dups = {i.dup for i in used}
+        if not new or not used or len(dups) > 1:
+            continue
+        key = dups.pop() or "unit:" + repr(k)
+        for i in group:
+            i.dup = key
 
 
 def one_property(group):

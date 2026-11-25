@@ -48,8 +48,8 @@ header (module docstring or top comment) has its details. Keep those three in st
 | `docs/decisions.md` | The owner's decisions, dated, with reasons |
 
 Imports flow one way (no cycles): `cli` → everything; `maintenance`/`migrate` → `pipeline` → `export`/`detail`;
-`site` → `stations` → `geo`, with `site` and `stations` also using `catalog`, and `site` using `rail`; `snapshot` →
-`export`; `canary` → `extract`/`detail`. The bottom layer (`parse`, `scope`, `db`, `util`, `http`, `extract`) imports
+`site` → `stations` → `geo`, with `site` and `stations` also using `catalog`, `catalog` using `geo.town_of`, and
+`site` using `rail`; `snapshot` → `export`; `canary` → `extract`/`detail`. The bottom layer (`parse`, `scope`, `db`, `util`, `http`, `extract`) imports
 nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure (`catalog` only reads files).
 `catalog`, `geo`, `stations`, `site`, `maintenance` and `snapshot` read data/ only through `export`.
 
@@ -85,7 +85,7 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
   goes missing, ends or is gone, a copy is fetched. (docs/decisions.md 2026-10-15.)
 - **A `dup_key` group in which a known `agent` appears twice is not one property, nor is a condo group whose fetched
   listings have two different known `floor`s.** Their listings stand alone: the crawler applies the agent half when
-  queueing, the site applies both when folding (`catalog.Snapshot`).
+  queueing, the site applies both when folding (`catalog.Snapshot`, also to a new_condo/used_condo pair).
 
 ## Invariants (keep these true)
 
@@ -134,6 +134,10 @@ nothing of ours but `parse`. `parse`, `extract`, `detail` and `catalog` are pure
 - **Rules the site shows:**
   - Duplicates (`dup_key`) fold at build time into the listing with its page fetched and most tags; the others
     become `others` links. Land listed under both new_house and land is kept once, as land.
+  - A condo unit listed under both new_condo and used_condo (a building just completed: same 丁目 by `geo.town_of`,
+    `floor_m2` and `price`, no range) folds the same way (`catalog.join_condo_units`: the new_condo listings join
+    the used ones' `dup_key` group, site side only; the crawl's `dup_key` keeps the type). It shows as its
+    representative's type and is found only under that type; the other type's listing is an `others` link.
   - Stations are identified by name, one spelling per prefecture (`catalog.unify_station_names`: 荻窪駅 → 荻窪).
   - A building condition (間取り, 広さ, 築年数, 新耐震) excludes land unless 土地 was chosen explicitly.
   - 周辺環境: each chosen kind within N minutes on foot (default 10) by the page's nearby facilities; a listing whose

@@ -66,6 +66,20 @@ def test_duplicates_are_one_property(tmp_path):
 
 
 @needs_node
+def test_a_unit_listed_as_new_and_used_condo_is_one_property(tmp_path):
+    unit = dict(address="東京都狛江市東和泉２", floor_m2=71.51, price=129_900_000)
+    recs = [rec(1, "new_condo", **unit, url="https://suumo.jp/ms/shinchiku/tokyo/sc_komae/nc_1/"),
+            rec(2, "used_condo", **unit, dup_key="u", has_detail=True),
+            rec(3, "used_condo", **{**unit, "price": 119_900_000}, dup_key="v")]       # another price
+    found = site_queries(tmp_path, recs, [{"query": {}}, {"query": {"types": ["used_condo"]}},
+                                          {"query": {"types": ["new_condo"]}}])
+    assert found[0] == {"ids": ["3", "2"], "others": [0, 1], "count": 2}   # the one with its page fetched shows
+    assert found[1]["ids"] == ["3", "2"] and found[2]["ids"] == []          # under its own type only
+    [other] = listing(tmp_path / "site", "used_condo:2")["others"]
+    assert other["url"] == "/ms/shinchiku/tokyo/sc_komae/nc_1/"
+
+
+@needs_node
 def test_price_uses_the_range(tmp_path):
     recs = [rec(1, price=30_000_000), rec(2, price=45_000_000, price_max=60_000_000), rec(3, price=None),
             rec(4, price=80_000_000)]
