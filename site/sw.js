@@ -23,7 +23,8 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(SWR.test(url.pathname) ? staleWhileRevalidate(e) : networkFirst(e.request));
 });
 
-// (a network that doesn't answer within NET_WAIT: the cached copy, when there is one; the fetch still updates it)
+// (a network that doesn't answer within NET_WAIT: the cached copy, when there is one, except for scripts; the fetch still
+// updates it)
 const NET_WAIT = 4000;
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
@@ -33,6 +34,11 @@ async function networkFirst(request) {
   });
   net.catch(() => {});  // (lost to the cached copy: no unhandled rejection)
   const cached = () => cache.match(request);
+  // The page's modules must all come from one deploy (a stale one importing a renamed export stops them all): a
+  // script waits for the network and falls back to its cached copy only when offline, never because it's slow
+  if (new URL(request.url).pathname.endsWith(".js")) {
+    try { return await net; } catch (err) { return (await cached()) || Promise.reject(err); }
+  }
   const slow = new Promise((ok) => setTimeout(ok, NET_WAIT)).then(cached);
   try {
     return await Promise.race([net, slow.then((hit) => hit || net)]);
