@@ -136,7 +136,6 @@
   let hits = new Int32Array(0), shown = 0;
   let mapHits = hits;           // the results, on the map (hits: those in its view)
   let byDay = false;            // the list has a heading per day (what's new, newest first)
-  let lastFocus = null;
   let facets = null, facetsFor = null;
   let listStale = false;        // the list is drawn when it's in sight again (the phone filter sheet, another tab)
   let sayTimer = null;          // the count is said aloud shortly after the conditions change
@@ -962,23 +961,23 @@
     $("prefs-note").textContent = full && !BIG ? t("prefMax", maxPrefs()) : "";
   }
 
-  // Back closes the picker and keeps what it chose (as the filter sheet does).
-  function openPrefs(open, popped) {
+  // Back closes the picker and keeps what it chose (as the filter sheet does). A popover on desktop, else modal.
+  const PREFS = {
+    entry: "prefs", el: () => $("prefs"), state: () => ({ prefs: true }), modal: () => !WIDE.matches,
+    show(open) { $("prefs").hidden = !open; $("pref").setAttribute("aria-expanded", open); },
+    back() {  // keeping what it chose
+      history.replaceState(history.state, "", prefsUrl);
+      closeOverlay(PREFS, true);
+      route();
+    },
+  };
+  function openPrefs(open) {
+    if (!open) { closeOverlay(PREFS); return; }
+    if (!openOverlay(PREFS)) return;
+    prefsUrl = location.href;
+    $("prefs-q").value = "";
+    renderPrefs();
     const box = $("prefs");
-    if (open === !box.hidden) return;
-    if (!open && !popped && history.state?.prefs) { history.back(); return; }  // popstate closes it
-    if (open) {
-      lastFocus = document.activeElement;
-      history.pushState({ prefs: true }, "", location.href);
-      prefsUrl = location.href;
-      $("prefs-q").value = "";
-      renderPrefs();
-    }
-    box.hidden = !open;
-    $("pref").setAttribute("aria-expanded", open);
-    const modal = open && !WIDE.matches;
-    for (const el of [document.querySelector(".bar"), document.querySelector(".layout")]) el.inert = modal;
-    if (!open) { lastFocus?.focus(); return; }
     if (WIDE.matches) {  // a popover under the button
       const r = $("pref").getBoundingClientRect(), panel = box.firstElementChild;
       panel.style.top = `${r.bottom + 6}px`;
@@ -1768,11 +1767,22 @@
   }
 
   // The full-screen viewer: a history entry (back closes it); arrows, swipe, Escape.
-  let viewer = null;
+  let viewer = null;  // the open one: {box: the listing's, at: the photo shown, el, swiped}
+  const VIEWER = {
+    entry: "viewer", el: () => viewer.el, state: (now) => ({ ...now, viewer: 1 }), modal: () => true,
+    show(open) { if (open) document.body.append(viewer.el); else { viewer.el.remove(); viewer = null; } },
+    closed: (focus) => focus?.focus({ preventScroll: true }),
+    keys(e) {  // arrows step, Escape closes, Tab stays inside; no other key reaches the page
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepViewer(e.key === "ArrowLeft" ? -1 : 1); }
+      else if (e.key === "Escape") { e.preventDefault(); closeViewer(); }
+      else if (e.key === "Tab") trapFocus(e, viewer.el);
+      return true;
+    },
+  };
   let gallerySwiped = false;  // a swipe on the listing's photo just stepped it (its click is ignored)
-  function openViewer(box, popped) {
+  function openViewer(box) {
     if (viewer || !box.photos?.length) return;
-    viewer = { box, at: box.photoAt || 0, el: document.createElement("div"), focus: document.activeElement, swiped: false };
+    viewer = { box, at: box.photoAt || 0, el: document.createElement("div"), swiped: false };
     const el = viewer.el;
     el.className = "viewer";
     el.setAttribute("role", "dialog");
@@ -1782,7 +1792,6 @@
       <button class="v-prev" data-viewer-step="-1" aria-label="${esc(t("photoPrev"))}">${icon("back")}</button>
       <figure><img alt="" decoding="async"><figcaption></figcaption></figure>
       <button class="v-next" data-viewer-step="1" aria-label="${esc(t("photoNext"))}">${icon("back")}</button>`;
-    document.body.append(el);
     onSwipe(el, (d) => { viewer.swiped = true; stepViewer(d); });
     el.addEventListener("click", (e) => {
       if (viewer.swiped) { viewer.swiped = false; return; }  // the click that ends a swipe neither steps nor closes
@@ -1790,7 +1799,7 @@
       if (b?.dataset.viewerStep) stepViewer(+b.dataset.viewerStep);
       else if (b?.dataset.viewerClose != null || e.target === el) closeViewer();
     });
-    if (!popped) history.pushState({ ...history.state, viewer: 1 }, "", location.href);
+    openOverlay(VIEWER);
     stepViewer(0);
     el.querySelector(".v-x").focus();
   }
@@ -1804,15 +1813,7 @@
     for (const k of [1, -1]) new Image().src = Filter.photoUrl(photos[(viewer.at + k + n) % n].path, 640, 480);  // the next ones, ahead
     showPhoto(box, viewer.at);
   }
-  // Closes it (going back in history, unless the browser already did).
-  function closeViewer(popped) {
-    if (!viewer) return;
-    if (!popped && history.state?.viewer) { history.back(); return; }  // popstate closes it
-    const { el, focus } = viewer;
-    el.remove();
-    viewer = null;
-    focus?.focus({ preventScroll: true });
-  }
+  const closeViewer = () => closeOverlay(VIEWER);
 
   // The page's free texts (agents' copy, as written): each folded under its heading; PR open when it's short.
   function textsHtml(r, keys) {
@@ -2232,7 +2233,55 @@
     update(false);
   }
 
-  // On phones and tablets the filter panel is a modal sheet: dialog semantics, the page behind inert.
+  // ---------- overlays: the photo viewer, the filter sheet (phones), the prefecture picker, settings ----------
+  // Each is a history entry (back closes the top one), closed by Escape too; Tab stays inside it; while it's modal
+  // the page behind is inert; closed, the focus goes back where it was (or where its `closed` says). An overlay:
+  // {entry: its history state's key, el(), state(current state): its entry's, modal(), show(open), and optionally
+  // back() (what back does, else it closes), closed(focus) (after closing), keys(e) (true: the key is handled)}.
+  const overlays = [];  // the open ones, the top last
+  const topOverlay = () => overlays.at(-1) ?? null;
+  const isOpen = (o) => overlays.includes(o);
+  function openOverlay(o) {  // false when it's open already
+    if (isOpen(o)) return false;
+    o.focus = document.activeElement;
+    overlays.push(o);
+    history.pushState(o.state(history.state), "", location.href);
+    o.show(true);
+    pageInert();
+    return true;
+  }
+  // Closing goes back in history while its entry is the current one (popstate closes it: popped), else at once.
+  function closeOverlay(o, popped = false) {
+    if (!isOpen(o)) return;
+    if (!popped && history.state?.[o.entry]) { history.back(); return; }
+    dropOverlay(o);
+    if (o.closed) o.closed(o.focus); else o.focus?.focus();
+  }
+  function dropOverlay(o) {  // (its history entry and the focus left as they are)
+    overlays.splice(overlays.indexOf(o), 1);
+    o.show(false);
+    pageInert();
+  }
+  // What a modal overlay leaves out of reach: the filter sheet the header, the panel and the map (it's in the
+  // layout); the others the header and the layout. A full bottom sheet hides the map.
+  function pageInert() {
+    const sheet = isOpen(FILTERS), dialog = overlays.some((o) => o !== FILTERS && o.modal());
+    document.querySelector(".bar").inert = sheet || dialog;
+    document.querySelector(".layout").inert = dialog;
+    $("panel").inert = sheet;
+    $("map").inert = sheet || (!SPLIT.matches && $("panel").dataset.sheet === "full");
+  }
+
+  // On phones and tablets the filter panel is a modal sheet (an overlay): dialog semantics, the page behind inert.
+  const FILTERS = {
+    entry: "sheet", el: () => $("filters"), state: () => ({ sheet: true }), modal: () => true,
+    show(open) { document.body.classList.toggle("show-filters", open); sheetSemantics(); },
+    back() {  // keeping its changes (the entry gone back to keeps its own state)
+      history.replaceState(history.state, "", hashFor());
+      closeOverlay(FILTERS, true);
+    },
+    closed() { if (listStale) render(); $("filters-open").focus(); },
+  };
   function sheetSemantics() {
     const open = document.body.classList.contains("show-filters"), sheet = $("filters");
     if (WIDE.matches) { sheet.removeAttribute("role"); sheet.removeAttribute("aria-modal"); } else {
@@ -2240,8 +2289,7 @@
       sheet.setAttribute("aria-modal", "true");
     }
     $("filters-open").setAttribute("aria-expanded", WIDE.matches ? railOn() : open);
-    for (const el of [document.querySelector(".bar"), $("panel")]) el.inert = open;
-    $("map").inert = open || (!SPLIT.matches && $("panel").dataset.sheet === "full");
+    pageInert();
     const full = $("panel").dataset.sheet === "full";
     // peek: its head (on the layout: the map's credits sit above it too)
     $("panel").parentElement.style.setProperty("--peek", `${$("panel").querySelector(".panel-head").offsetHeight}px`);
@@ -2261,29 +2309,25 @@
       sheetSemantics();
       if (!open) { $("filters-open").focus(); return; }
     }
-    if (open && !WIDE.matches && !document.body.classList.contains("show-filters")) {
-      history.pushState({ sheet: true }, "", location.href);  // browser back closes the sheet
-    }
-    if (!open && history.state?.sheet) { history.back(); return; }  // popstate closes it
-    document.body.classList.toggle("show-filters", open && !WIDE.matches);
-    sheetSemantics();
-    if (open) {
-      if (section) openFolds.add(section);
-      renderFilters();
-      const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
-      if (sec) sec.scrollIntoView({ block: "start" }); else $("filters-body").scrollTop = 0;
-      (WIDE.matches ? (sec || $("filters-body")).querySelector("button:not(:disabled), input, select") : $("filters-close"))?.focus();
+    if (!open) {  // the sheet: closed by going back (FILTERS.back)
+      if (isOpen(FILTERS)) closeOverlay(FILTERS); else { sheetSemantics(); FILTERS.closed(); }
       return;
     }
-    if (listStale) render();
-    $("filters-open").focus();
+    if (WIDE.matches) sheetSemantics(); else openOverlay(FILTERS);
+    if (section) openFolds.add(section);
+    renderFilters();
+    const sec = section && $("filters-body").querySelector(`[data-sec="${section}"]`);
+    if (sec) sec.scrollIntoView({ block: "start" }); else $("filters-body").scrollTop = 0;
+    (WIDE.matches ? (sec || $("filters-body")).querySelector("button:not(:disabled), input, select") : $("filters-close"))?.focus();
   }
 
-  function openSettings(open, popped) {
-    if (open && $("settings").hidden) history.pushState({ settings: true }, "", location.href);  // back closes it
-    if (!open && !popped && history.state?.settings) { history.back(); return; }  // popstate closes it
-    $("settings").hidden = !open;
-    if (open) { lastFocus = document.activeElement; renderSettings(); $("settings-close").focus(); } else lastFocus?.focus();
+  const SETTINGS = { entry: "settings", el: () => $("settings"), state: () => ({ settings: true }), modal: () => true,
+    show(open) { $("settings").hidden = !open; } };
+  function openSettings(open) {
+    if (!open) { closeOverlay(SETTINGS); return; }
+    if (!openOverlay(SETTINGS)) return;
+    renderSettings();
+    $("settings-close").focus();
   }
 
   // Keep Tab inside an open dialog.
@@ -2450,34 +2494,17 @@
       }
     }));
     window.addEventListener("popstate", () => {
-      if (viewer) { closeViewer(true); return; }  // back from the photo viewer
-      if (document.body.classList.contains("show-filters")) {  // back from the sheet: keep its changes
-        history.replaceState(history.state, "", hashFor());  // (the entry gone back to keeps its own state)
-        openFilters(false);
-        return;
-      }
-      if (!$("settings").hidden) { openSettings(false, true); return; }
-      if (!$("prefs").hidden) {  // back from the picker: keep what it chose
-        history.replaceState(history.state, "", prefsUrl);
-        openPrefs(false, true);
-        route();
-        return;
-      }
+      const o = topOverlay();  // back from an overlay: it closes
+      if (o) { if (o.back) o.back(); else closeOverlay(o, true); return; }
       const before = mode;
       if (tab === "list") listY[mode] = $("results").scrollTop;
       route();
       if (mode !== before && tab === "list") restoreList();
     });
     document.addEventListener("keydown", (e) => {
-      if (viewer) {  // the photo viewer: arrows step, Escape closes, Tab stays inside
-        if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepViewer(e.key === "ArrowLeft" ? -1 : 1); }
-        else if (e.key === "Escape") { e.preventDefault(); closeViewer(); }
-        else if (e.key === "Tab") trapFocus(e, viewer.el);
-        return;
-      }
-      const dialog = !$("settings").hidden ? $("settings") : !$("prefs").hidden ? $("prefs")
-        : document.body.classList.contains("show-filters") ? $("filters") : null;
-      if (e.key === "Tab" && dialog) trapFocus(e, dialog);
+      const dialog = topOverlay();
+      if (dialog?.keys?.(e)) return;  // (the photo viewer's own)
+      if (e.key === "Tab" && dialog) trapFocus(e, dialog.el());
       if (e.key === "/" && !dialog && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $("q").focus(); }
       if (e.key !== "Escape" || e.target.matches("#q, select, textarea")) return;  // (the search box has its own)
       const railPanel = $("map").querySelector(".rail-panel:not([hidden])");
@@ -2485,9 +2512,7 @@
         if (railPanel) { railPanel.hidden = true; $("map").querySelector(".rail-btn").focus(); }
         else { map.closePopup(); $("map").focus({ preventScroll: true }); }
       }
-      else if (!$("settings").hidden) openSettings(false);
-      else if (!$("prefs").hidden) openPrefs(false);
-      else if (document.body.classList.contains("show-filters")) openFilters(false);
+      else if (dialog) closeOverlay(dialog);
       else if (tab !== "list" && (e.target === document.body || $("panel").contains(e.target))) toList();
     });
     // a mouse wheel over a strip that scrolls sideways (tabs, chips, thumbnails: no scrollbar shown) scrolls it, while it
@@ -2516,8 +2541,8 @@
     }, { passive: true });
     WIDE.addEventListener("change", () => {
       // a tablet turned past 1280 with the sheet open: the rail takes over (the sheet's history entry goes)
-      if (WIDE.matches && document.body.classList.contains("show-filters")) {
-        document.body.classList.remove("show-filters");
+      if (WIDE.matches && isOpen(FILTERS)) {
+        dropOverlay(FILTERS);
         if (history.state?.sheet) history.back();
       }
       sheetSemantics();
