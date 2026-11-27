@@ -1,0 +1,916 @@
+[
+ {
+  "area_code": "02202",
+  "id": "22275861",
+  "kind": "new",
+  "payload": {
+   "price": 18900000
+  },
+  "pref": "aomori",
+  "seq": 674391,
+  "type": "used_house"
+ },
+ {
+  "area_code": "02202",
+  "id": "22277865",
+  "kind": "new",
+  "payload": {
+   "price": 11000000
+  },
+  "pref": "aomori",
+  "seq": 674392,
+  "type": "used_house"
+ },
+ {
+  "area_code": "02203",
+  "id": "22270906",
+  "kind": "new",
+  "payload": {
+   "price": 7500000
+  },
+  "pref": "aomori",
+  "seq": 674393,
+  "type": "used_house"
+ },
+ {
+  "area_code": "02205",
+  "id": "22278405",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "aomori",
+  "seq": 674394,
+  "type": "used_house"
+ },
+ {
+  "area_code": "02206",
+  "id": "21296140",
+  "kind": "relisted",
+  "payload": {
+   "price": 19300000
+  },
+  "pref": "aomori",
+  "seq": 674395,
+  "type": "used_house"
+ },
+ {
+  "area_code": "02201",
+  "id": "75213572",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 2900000,
+   "price": 2200000
+  },
+  "pref": "aomori",
+  "seq": 674396,
+  "type": "land"
+ },
+ {
+  "area_code": "02201",
+  "id": "78050309",
+  "kind": "new",
+  "payload": {
+   "price": 8300000
+  },
+  "pref": "aomori",
+  "seq": 674397,
+  "type": "land"
+ },
+ {
+  "area_code": "34101",
+  "id": "21274567",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28800000,
+   "price": 27800000
+  },
+  "pref": "hiroshima",
+  "seq": 674398,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34101",
+  "id": "22276824",
+  "kind": "new",
+  "payload": {
+   "price": 42900000
+  },
+  "pref": "hiroshima",
+  "seq": 674399,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34101",
+  "id": "22246125",
+  "kind": "new",
+  "payload": {
+   "price": 85000000
+  },
+  "pref": "hiroshima",
+  "seq": 674400,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34102",
+  "id": "22277361",
+  "kind": "new",
+  "payload": {
+   "price": 32900000
+  },
+  "pref": "hiroshima",
+  "seq": 674401,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34103",
+  "id": "22274953",
+  "kind": "new",
+  "payload": {
+   "price": 24800000
+  },
+  "pref": "hiroshima",
+  "seq": 674402,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34103",
+  "id": "22259856",
+  "kind": "new",
+  "payload": {
+   "price": 70800000
+  },
+  "pref": "hiroshima",
+  "seq": 674403,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34103",
+  "id": "22277512",
+  "kind": "new",
+  "payload": {
+   "price": 79800000
+  },
+  "pref": "hiroshima",
+  "seq": 674404,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34104",
+  "id": "22277112",
+  "kind": "new",
+  "payload": {
+   "price": 11500000
+  },
+  "pref": "hiroshima",
+  "seq": 674405,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34104",
+  "id": "21377029",
+  "kind": "new",
+  "payload": {
+   "price": 16900000
+  },
+  "pref": "hiroshima",
+  "seq": 674406,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34105",
+  "id": "21706479",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15800000,
+   "price": 14990000
+  },
+  "pref": "hiroshima",
+  "seq": 674407,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34106",
+  "id": "21380414",
+  "kind": "new",
+  "payload": {
+   "price": 11900000
+  },
+  "pref": "hiroshima",
+  "seq": 674408,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34202",
+  "id": "22277210",
+  "kind": "new",
+  "payload": {
+   "price": 11220000
+  },
+  "pref": "hiroshima",
+  "seq": 674409,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34205",
+  "id": "22277638",
+  "kind": "new",
+  "payload": {
+   "price": 3800000
+  },
+  "pref": "hiroshima",
+  "seq": 674410,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "34103",
+  "id": "22039160",
+  "kind": "relisted",
+  "payload": {
+   "price": 43980000
+  },
+  "pref": "hiroshima",
+  "seq": 674411,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34104",
+  "id": "22278672",
+  "kind": "new",
+  "payload": {
+   "price": 43800000
+  },
+  "pref": "hiroshima",
+  "seq": 674412,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34105",
+  "id": "21448589",
+  "kind": "relisted",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "hiroshima",
+  "seq": 674413,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34105",
+  "id": "21113540",
+  "kind": "relisted",
+  "payload": {
+   "price": 39800000
+  },
+  "pref": "hiroshima",
+  "seq": 674414,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21164315",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23300000
+  },
+  "pref": "hiroshima",
+  "seq": 674415,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21808811",
+  "kind": "relisted",
+  "payload": {
+   "price": 22800000
+  },
+  "pref": "hiroshima",
+  "seq": 674416,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21808811",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 22800000
+  },
+  "pref": "hiroshima",
+  "seq": 674417,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21692849",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23300000
+  },
+  "pref": "hiroshima",
+  "seq": 674418,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21692867",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23800000
+  },
+  "pref": "hiroshima",
+  "seq": 674419,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21154529",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 25800000,
+   "price": 24800000
+  },
+  "pref": "hiroshima",
+  "seq": 674420,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "21991131",
+  "kind": "new",
+  "payload": {
+   "price": 33980000
+  },
+  "pref": "hiroshima",
+  "seq": 674421,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "22275859",
+  "kind": "new",
+  "payload": {
+   "price": 38800000
+  },
+  "pref": "hiroshima",
+  "seq": 674422,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "21082092",
+  "kind": "relisted",
+  "payload": {
+   "price": 16500000
+  },
+  "pref": "hiroshima",
+  "seq": 674423,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "21082092",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16880000,
+   "price": 16500000
+  },
+  "pref": "hiroshima",
+  "seq": 674424,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "22276922",
+  "kind": "new",
+  "payload": {
+   "price": 42750000
+  },
+  "pref": "hiroshima",
+  "seq": 674425,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "22278430",
+  "kind": "new",
+  "payload": {
+   "price": 27800000
+  },
+  "pref": "hiroshima",
+  "seq": 674426,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "22278151",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "hiroshima",
+  "seq": 674427,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34202",
+  "id": "22278582",
+  "kind": "new",
+  "payload": {
+   "price": 30800000
+  },
+  "pref": "hiroshima",
+  "seq": 674428,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34207",
+  "id": "21507400",
+  "kind": "relisted",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "hiroshima",
+  "seq": 674429,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34207",
+  "id": "22273876",
+  "kind": "new",
+  "payload": {
+   "price": 10000000
+  },
+  "pref": "hiroshima",
+  "seq": 674430,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "21334328",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27880000,
+   "price": 25880000
+  },
+  "pref": "hiroshima",
+  "seq": 674431,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "21896810",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 27880000,
+   "price": 25880000
+  },
+  "pref": "hiroshima",
+  "seq": 674432,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "22227723",
+  "kind": "new",
+  "payload": {
+   "price": 46800000
+  },
+  "pref": "hiroshima",
+  "seq": 674433,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "21730331",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 42920000,
+   "price": 39950000
+  },
+  "pref": "hiroshima",
+  "seq": 674434,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "22271349",
+  "kind": "new",
+  "payload": {
+   "price": 38900000
+  },
+  "pref": "hiroshima",
+  "seq": 674435,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34300",
+  "id": "21565801",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 31960000,
+   "price": 29970000
+  },
+  "pref": "hiroshima",
+  "seq": 674436,
+  "type": "new_house"
+ },
+ {
+  "area_code": "34104",
+  "id": "21006769",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32800000
+  },
+  "pref": "hiroshima",
+  "seq": 674437,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34105",
+  "id": "20856403",
+  "kind": "new",
+  "payload": {
+   "price": 5300000
+  },
+  "pref": "hiroshima",
+  "seq": 674438,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34105",
+  "id": "20611883",
+  "kind": "new",
+  "payload": {
+   "price": 21800000
+  },
+  "pref": "hiroshima",
+  "seq": 674439,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34105",
+  "id": "20611919",
+  "kind": "new",
+  "payload": {
+   "price": 25000000
+  },
+  "pref": "hiroshima",
+  "seq": 674440,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "70360595",
+  "kind": "relisted",
+  "payload": {
+   "price": 5500000
+  },
+  "pref": "hiroshima",
+  "seq": 674441,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "20360539",
+  "kind": "new",
+  "payload": {
+   "price": 23000000
+  },
+  "pref": "hiroshima",
+  "seq": 674442,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34108",
+  "id": "20855536",
+  "kind": "new",
+  "payload": {
+   "price": 12800000
+  },
+  "pref": "hiroshima",
+  "seq": 674443,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34108",
+  "id": "22278138",
+  "kind": "new",
+  "payload": {
+   "price": 21990000
+  },
+  "pref": "hiroshima",
+  "seq": 674444,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34205",
+  "id": "21697813",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11000000,
+   "price": 9900000
+  },
+  "pref": "hiroshima",
+  "seq": 674445,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34207",
+  "id": "22060444",
+  "kind": "relisted",
+  "payload": {
+   "price": 19300000
+  },
+  "pref": "hiroshima",
+  "seq": 674446,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34212",
+  "id": "90634429",
+  "kind": "relisted",
+  "payload": {
+   "price": 3800000
+  },
+  "pref": "hiroshima",
+  "seq": 674447,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34212",
+  "id": "73681917",
+  "kind": "new",
+  "payload": {
+   "price": 6000000
+  },
+  "pref": "hiroshima",
+  "seq": 674448,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "20856502",
+  "kind": "new",
+  "payload": {
+   "price": 26000000
+  },
+  "pref": "hiroshima",
+  "seq": 674449,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "22268258",
+  "kind": "new",
+  "payload": {
+   "price": 29000000
+  },
+  "pref": "hiroshima",
+  "seq": 674450,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34213",
+  "id": "20611845",
+  "kind": "new",
+  "payload": {
+   "price": 43000000
+  },
+  "pref": "hiroshima",
+  "seq": 674451,
+  "type": "used_house"
+ },
+ {
+  "area_code": "34106",
+  "id": "78453015",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 6500000,
+   "price": 5800000
+  },
+  "pref": "hiroshima",
+  "seq": 674452,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "96051750",
+  "kind": "new",
+  "payload": {
+   "price": 2900000
+  },
+  "pref": "hiroshima",
+  "seq": 674453,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "20307143",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 8000000,
+   "price": 6800000
+  },
+  "pref": "hiroshima",
+  "seq": 674454,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "78702486",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11800000,
+   "price": 10800000
+  },
+  "pref": "hiroshima",
+  "seq": 674455,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "78702423",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13800000,
+   "price": 12800000
+  },
+  "pref": "hiroshima",
+  "seq": 674456,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "74751538",
+  "kind": "new",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "hiroshima",
+  "seq": 674457,
+  "type": "land"
+ },
+ {
+  "area_code": "34202",
+  "id": "77985753",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 16300000,
+   "price": 15800000
+  },
+  "pref": "hiroshima",
+  "seq": 674458,
+  "type": "land"
+ },
+ {
+  "area_code": "34207",
+  "id": "22017515",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 39800000,
+   "price": 37800000
+  },
+  "pref": "hiroshima",
+  "seq": 674459,
+  "type": "land"
+ },
+ {
+  "area_code": "34207",
+  "id": "22273876",
+  "kind": "new",
+  "payload": {
+   "price": 10000000
+  },
+  "pref": "hiroshima",
+  "seq": 674460,
+  "type": "land"
+ },
+ {
+  "area_code": "34207",
+  "id": "74426737",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12000000,
+   "price": 11000000
+  },
+  "pref": "hiroshima",
+  "seq": 674461,
+  "type": "land"
+ },
+ {
+  "area_code": "34212",
+  "id": "95743392",
+  "kind": "new",
+  "payload": {
+   "price": 3500000
+  },
+  "pref": "hiroshima",
+  "seq": 674462,
+  "type": "land"
+ },
+ {
+  "area_code": "42201",
+  "id": "78414600",
+  "kind": "relisted",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "nagasaki",
+  "seq": 674463,
+  "type": "new_house"
+ },
+ {
+  "area_code": "42201",
+  "id": "22275785",
+  "kind": "new",
+  "payload": {
+   "price": 29880000
+  },
+  "pref": "nagasaki",
+  "seq": 674464,
+  "type": "new_house"
+ },
+ {
+  "area_code": "42204",
+  "id": "22095050",
+  "kind": "new",
+  "payload": {
+   "price": 37800000
+  },
+  "pref": "nagasaki",
+  "seq": 674465,
+  "type": "new_house"
+ },
+ {
+  "area_code": "42300",
+  "id": "20851831",
+  "kind": "relisted",
+  "payload": {
+   "price": 14530000
+  },
+  "pref": "nagasaki",
+  "seq": 674466,
+  "type": "new_house"
+ },
+ {
+  "area_code": "42201",
+  "id": "21099069",
+  "kind": "new",
+  "payload": {
+   "price": 7900000
+  },
+  "pref": "nagasaki",
+  "seq": 674467,
+  "type": "used_house"
+ },
+ {
+  "area_code": "42202",
+  "id": "22229615",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 24800000,
+   "price": 23800000
+  },
+  "pref": "nagasaki",
+  "seq": 674468,
+  "type": "used_house"
+ },
+ {
+  "area_code": "42300",
+  "id": "22276670",
+  "kind": "new",
+  "payload": {
+   "price": 14990000
+  },
+  "pref": "nagasaki",
+  "seq": 674469,
+  "type": "used_house"
+ },
+ {
+  "area_code": "42201",
+  "id": "78414600",
+  "kind": "relisted",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "nagasaki",
+  "seq": 674470,
+  "type": "land"
+ },
+ {
+  "area_code": "42300",
+  "id": "20851831",
+  "kind": "relisted",
+  "payload": {
+   "price": 14530000
+  },
+  "pref": "nagasaki",
+  "seq": 674471,
+  "type": "land"
+ }
+]
