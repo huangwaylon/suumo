@@ -1,5 +1,5 @@
 {
- "asset": "data-20261127T0619-45891645829-1.tar.zst",
+ "asset": "data-20261127T0959-45918759085-1.tar.zst",
  "groups": {
   "aichi/areas.json": {
    "files": 1,
@@ -597,31 +597,31 @@
   "kanagawa/land": {
    "files": 50,
    "records": 5979,
-   "sha256": "32f30545d713f0f2a20def4a44b93013de52f1d05a4d59ab064823a2a82cf513"
+   "sha256": "c316154c123e5a14c462803f4f0ebf9a1b806ba9d81328eb200338ce2cea3fdc"
   },
   "kanagawa/new_condo": {
    "files": 35,
    "records": 164,
-   "sha256": "e1d03e310055e28914f9ba6e98fe85cd93ebad25944a24d94be0e77abfb50700"
+   "sha256": "597cae12eed145331f4d558a9941fc2f7bb1da8142b4b559857c323cfe15c276"
   },
   "kanagawa/new_house": {
    "files": 50,
    "records": 12947,
-   "sha256": "ae8628bebf3b85857b75bba1fdb1d7f72ae9a7010cd6cc2098a2fff34152a405"
+   "sha256": "fc70c4a5f5d362cbb02e75981272ffa98cb9a9876cdfb92288040e9709dde2b3"
   },
   "kanagawa/pages": {
    "files": 233,
-   "sha256": "14776be8a0a6af55b1dcd1aa66cdf08a62d2ff1a1b042de541ca07dc1b62b304"
+   "sha256": "7da9881e7d513c6aa7f10f46788f3cec1010e8b727f54a66de1819179fc84460"
   },
   "kanagawa/used_condo": {
    "files": 48,
    "records": 14655,
-   "sha256": "e6abec9d9324b8f5e47bc3e2f16413fdefd72a350a90c8c7f7370be367a906d7"
+   "sha256": "5256823895da909fd12856adf3e1fb662f87c63e5b292550282f953ccbe7a9ae"
   },
   "kanagawa/used_house": {
    "files": 50,
    "records": 8504,
-   "sha256": "6f28963e457fedba931131089ee0ca50727be01267542ec7d5af167d5aec2945"
+   "sha256": "933b6ef1e2095d91301121447e8157b984fd23435fbc1dd2b01ac14e90b09598"
   },
   "kochi/areas.json": {
    "files": 1,
@@ -1059,7 +1059,7 @@
   "osaka/land": {
    "files": 67,
    "records": 7753,
-   "sha256": "f2a3f70069ff03559b363b3f95024b01f368a0a4188e6f45904a2492f6a5a75d"
+   "sha256": "ae7904711aae10138995ec7fa2f56df65256b7af8fef152077f0557535fea866"
   },
   "osaka/new_condo": {
    "files": 43,
@@ -1069,21 +1069,21 @@
   "osaka/new_house": {
    "files": 67,
    "records": 8363,
-   "sha256": "8c24dee895a09cbd547486e58d843b1a6be3d10174c04d692e2f85828c2c963e"
+   "sha256": "eabccf970cebf93d56b61070894c44bf3202e6e42ade9e95999ea05721c4dc2a"
   },
   "osaka/pages": {
    "files": 310,
-   "sha256": "82834ff7662959f84f5fa4f6a76dba3df8a4d980a8efcceb9e40e818c7128764"
+   "sha256": "07ee694dafbae3bc564b19a4a4231c2169fd20d43d3b43c453a13c2fe308450f"
   },
   "osaka/used_condo": {
    "files": 66,
    "records": 15637,
-   "sha256": "4b58a596925a30d5e9e4436efd66193d8908a0d18b8a8a29374658ba41068fea"
+   "sha256": "aec44c01084274e2d17358bd88fdef0289ac27ca793ecedc0becccbed1fb9e16"
   },
   "osaka/used_house": {
    "files": 67,
    "records": 11365,
-   "sha256": "1bcf672836d59508a3a1d9b8da11e0596ef8e0a4f6b1f1265ec5c6ae926b91ef"
+   "sha256": "90a513cb7e7cfb1a9350a95d19ecd444b104d54d9a8002f14d8635943b6f157d"
   },
   "saga/areas.json": {
    "files": 1,
@@ -1125,31 +1125,31 @@
   "saitama/land": {
    "files": 57,
    "records": 5014,
-   "sha256": "23950c4144846edd18d04700f84fa9b446536422e404aada69a5321205328069"
+   "sha256": "118c56171da7045f6825ac4f969b8e9e67dfe5d7b276e257547237df2d362917"
   },
   "saitama/new_condo": {
    "files": 33,
    "records": 147,
-   "sha256": "a12e769e40d273cb948b3673d8fc4bdc74f930bd8564428b5bab6928383229a1"
+   "sha256": "157f53a5ac97b1f24744d843f61b6ebb7b3a2b199e05a62e516af85288fcd275"
   },
   "saitama/new_house": {
    "files": 56,
    "records": 13740,
-   "sha256": "ef8467141f7e556b4487005514c9bab53513b3c2a24609965efc5f37be54e5ac"
+   "sha256": "7c089065c61003413b423c5c6517cb9e8530582584f6a5f42c3b49e79baa84d5"
   },
   "saitama/pages": {
    "files": 254,
-   "sha256": "5b9e24927176860fdf46efa76dff239fcaf107236e30be910f039216e46061eb"
+   "sha256": "e7978174e5d0ffbef7f084b8f06b4418fbdccb2059a4f1eac201e12b7e2c2539"
   },
   "saitama/used_condo": {
    "files": 51,
    "records": 7304,
-   "sha256": "71ffce802c43ca20e165439ceceb84f51433c652c8cd7d45d18d82b1b2ddaa4e"
+   "sha256": "27945c61d967bc94da42f09cd113b3b114abaae0cf7eded4c4ff6e54b8b00688"
   },
   "saitama/used_house": {
    "files": 57,
    "records": 7691,
-   "sha256": "110fa43e4544e78d192d7d77d434e3c11a7fe6e763068001d0571b1ee5ca0308"
+   "sha256": "43d7e3ce375714fb2fdce2e0a929c5021bf4f1e8b5453be0dd35877e1b9865d3"
   },
   "shiga/areas.json": {
    "files": 1,
@@ -1323,31 +1323,31 @@
   "tokyo/land": {
    "files": 52,
    "records": 8733,
-   "sha256": "33efa70231738f7c3e0193ec1ef1ffc91989cd475a5f1b28fb71db9def58e811"
+   "sha256": "cdcf96c4e9e3c10484577d84da8dd07e3665fc06ec89a951ee6e349d3d8dd6e7"
   },
   "tokyo/new_condo": {
    "files": 43,
    "records": 928,
-   "sha256": "c74f649b820f839714381ee7a1c95a29acf236d34aa6cacb2721a2912e6429fe"
+   "sha256": "3ea59887995f4b8165468e77a5e097b14b65b29b914f61434a36559a9280b8db"
   },
   "tokyo/new_house": {
    "files": 50,
    "records": 13052,
-   "sha256": "a6e1ed91972ccdd30a66f4af44644a955e44a6c61cb9eeacbfa8f0fdd00d20d0"
+   "sha256": "450f44973380ffb2aef81d5ba1de943ef9fddcb0183148b4634edd697c66ac0d"
   },
   "tokyo/pages": {
    "files": 244,
-   "sha256": "a7b58f633773c5e66f3ed0d35cdc81d258dfc96acbaa36ab5a9afacc6dfa8529"
+   "sha256": "f843ea8511c7d4f0743e1ebaddedcde998da88c41c4d9a014147ff9a90761d52"
   },
   "tokyo/used_condo": {
    "files": 49,
    "records": 39309,
-   "sha256": "03219517211aa29b1b48dc8fb5fe0e18fe43aa44ba5b7d01f841709cf6bd3cb0"
+   "sha256": "c0c3f1559ad0be75f2f158d3dcbcaf6cc284aee3c823d2e5ac4da81ba6bbc793"
   },
   "tokyo/used_house": {
    "files": 50,
    "records": 9153,
-   "sha256": "9ca45b02015d9631ab93fc898c8bf2f0ba035b003dcd1839c4fd517904630885"
+   "sha256": "467cb3c60e697b7e8dc81a1c0f226f263b9833e18024dfd5931cb8c93891de16"
   },
   "tottori/areas.json": {
    "files": 1,
@@ -1543,7 +1543,7 @@
    "sha256": "7fa567aa5d241217147e2db429b00971a0d1925557958416d31e0dab5a1a7904"
   }
  },
- "sha256": "61797598cd80aac4559d841bab947b22cb470427e595c9913691c879066873fc",
- "size": 272735159,
+ "sha256": "aa24e72aba9ae32953bb80c77aeb70f1b064b8dec9af0b7d169e0b9f72f4ad1d",
+ "size": 273102960,
  "tag": "suumo-data"
 }
