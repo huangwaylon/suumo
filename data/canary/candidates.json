@@ -1,55 +1,91 @@
 {
  "land": [
   [
-   "78699725",
-   "/tochi/tokyo/sc_adachi/nc_78699725/"
+   "22282838",
+   "/tochi/tokyo/sc_edogawa/nc_22282838/"
   ],
   [
-   "22278615",
-   "/tochi/tokyo/sc_bunkyo/nc_22278615/"
+   "22282837",
+   "/tochi/tokyo/sc_tachikawa/nc_22282837/"
   ],
   [
-   "22278532",
-   "/tochi/tokyo/sc_hachioji/nc_22278532/"
+   "22282835",
+   "/tochi/tokyo/sc_tachikawa/nc_22282835/"
   ],
   [
-   "22277241",
-   "/tochi/tokyo/sc_itabashi/nc_22277241/"
+   "22282828",
+   "/tochi/tokyo/sc_setagaya/nc_22282828/"
   ],
   [
-   "22277231",
-   "/tochi/tokyo/sc_koganei/nc_22277231/"
+   "22282827",
+   "/tochi/tokyo/sc_ota/nc_22282827/"
   ],
   [
-   "22276858",
-   "/tochi/tokyo/sc_bunkyo/nc_22276858/"
+   "22282772",
+   "/tochi/tokyo/sc_setagaya/nc_22282772/"
   ],
   [
-   "22276666",
-   "/tochi/tokyo/sc_edogawa/nc_22276666/"
+   "22282770",
+   "/tochi/tokyo/sc_shinjuku/nc_22282770/"
   ],
   [
-   "22276566",
-   "/tochi/tokyo/sc_meguro/nc_22276566/"
+   "22282767",
+   "/tochi/tokyo/sc_koto/nc_22282767/"
   ],
   [
-   "22276444",
-   "/tochi/tokyo/sc_ota/nc_22276444/"
+   "22282764",
+   "/tochi/tokyo/sc_edogawa/nc_22282764/"
   ],
   [
-   "22276273",
-   "/tochi/tokyo/sc_meguro/nc_22276273/"
+   "22282670",
+   "/tochi/tokyo/sc_mitaka/nc_22282670/"
   ],
   [
-   "22276254",
-   "/tochi/tokyo/sc_setagaya/nc_22276254/"
+   "22282665",
+   "/tochi/tokyo/sc_ota/nc_22282665/"
   ],
   [
-   "22276226",
-   "/tochi/tokyo/sc_nerima/nc_22276226/"
+   "22282613",
+   "/tochi/tokyo/sc_itabashi/nc_22282613/"
   ]
  ],
  "new_condo": [
+  [
+   "22282612",
+   "/ms/shinchiku/tokyo/sc_minato/nc_22282612/"
+  ],
+  [
+   "22282611",
+   "/ms/shinchiku/tokyo/sc_minato/nc_22282611/"
+  ],
+  [
+   "22281602",
+   "/ms/shinchiku/tokyo/sc_suginami/nc_22281602/"
+  ],
+  [
+   "22281590",
+   "/ms/shinchiku/tokyo/sc_meguro/nc_22281590/"
+  ],
+  [
+   "22280941",
+   "/ms/shinchiku/tokyo/sc_shinagawa/nc_22280941/"
+  ],
+  [
+   "22280760",
+   "/ms/shinchiku/tokyo/sc_edogawa/nc_22280760/"
+  ],
+  [
+   "22280759",
+   "/ms/shinchiku/tokyo/sc_edogawa/nc_22280759/"
+  ],
+  [
+   "22280758",
+   "/ms/shinchiku/tokyo/sc_edogawa/nc_22280758/"
+  ],
+  [
+   "22279070",
+   "/ms/shinchiku/tokyo/sc_setagaya/nc_22279070/"
+  ],
   [
    "22274162",
    "/ms/shinchiku/tokyo/sc_chuo/nc_22274162/"
@@ -61,242 +97,206 @@
   [
    "22270842",
    "/ms/shinchiku/tokyo/sc_minato/nc_22270842/"
-  ],
-  [
-   "22270646",
-   "/ms/shinchiku/tokyo/sc_suginami/nc_22270646/"
-  ],
-  [
-   "22270339",
-   "/ms/shinchiku/tokyo/sc_chuo/nc_22270339/"
-  ],
-  [
-   "22269956",
-   "/ms/shinchiku/tokyo/sc_meguro/nc_22269956/"
-  ],
-  [
-   "22269909",
-   "/ms/shinchiku/tokyo/sc_meguro/nc_22269909/"
-  ],
-  [
-   "22077996",
-   "/ms/shinchiku/tokyo/sc_nakano/nc_22077996/"
-  ],
-  [
-   "22016496",
-   "/ms/shinchiku/tokyo/sc_minato/nc_22016496/"
-  ],
-  [
-   "21978246",
-   "/ms/shinchiku/tokyo/sc_nakano/nc_21978246/"
-  ],
-  [
-   "21938197",
-   "/ms/shinchiku/tokyo/sc_minato/nc_21938197/"
-  ],
-  [
-   "21936253",
-   "/ms/shinchiku/tokyo/sc_edogawa/nc_21936253/"
   ]
  ],
  "new_house": [
   [
-   "79227044",
-   "/ikkodate/tokyo/sc_higashimurayama/nc_79227044/"
+   "22282894",
+   "/ikkodate/tokyo/sc_nerima/nc_22282894/"
   ],
   [
-   "78926808",
-   "/ikkodate/tokyo/sc_adachi/nc_78926808/"
+   "22282879",
+   "/ikkodate/tokyo/sc_setagaya/nc_22282879/"
   ],
   [
-   "22278597",
-   "/ikkodate/tokyo/sc_kodaira/nc_22278597/"
+   "22282850",
+   "/ikkodate/tokyo/sc_adachi/nc_22282850/"
   ],
   [
-   "22278578",
-   "/ikkodate/tokyo/sc_meguro/nc_22278578/"
+   "22282848",
+   "/ikkodate/tokyo/sc_adachi/nc_22282848/"
   ],
   [
-   "22278489",
-   "/ikkodate/tokyo/sc_setagaya/nc_22278489/"
+   "22282787",
+   "/ikkodate/tokyo/sc_fuchu/nc_22282787/"
   ],
   [
-   "22278095",
-   "/ikkodate/tokyo/sc_ota/nc_22278095/"
+   "22282786",
+   "/ikkodate/tokyo/sc_fuchu/nc_22282786/"
   ],
   [
-   "22277810",
-   "/ikkodate/tokyo/sc_chofu/nc_22277810/"
+   "22282668",
+   "/ikkodate/tokyo/sc_kokubunji/nc_22282668/"
   ],
   [
-   "22277717",
-   "/ikkodate/tokyo/sc_adachi/nc_22277717/"
+   "22282609",
+   "/ikkodate/tokyo/sc_taito/nc_22282609/"
   ],
   [
-   "22277711",
-   "/ikkodate/tokyo/sc_higashikurume/nc_22277711/"
+   "22282533",
+   "/ikkodate/tokyo/sc_adachi/nc_22282533/"
   ],
   [
-   "22277642",
-   "/ikkodate/tokyo/sc_ome/nc_22277642/"
+   "22282497",
+   "/ikkodate/tokyo/sc_adachi/nc_22282497/"
   ],
   [
-   "22277526",
-   "/ikkodate/tokyo/sc_machida/nc_22277526/"
+   "22282494",
+   "/ikkodate/tokyo/sc_kokubunji/nc_22282494/"
   ],
   [
-   "22277495",
-   "/ikkodate/tokyo/sc_edogawa/nc_22277495/"
+   "22282493",
+   "/ikkodate/tokyo/sc_chofu/nc_22282493/"
   ]
  ],
  "new_house/tochi": [
   [
-   "22278623",
-   "/tochi/tokyo/sc_setagaya/nc_22278623/"
+   "22282083",
+   "/tochi/tokyo/sc_bunkyo/nc_22282083/"
   ],
   [
-   "22277231",
-   "/tochi/tokyo/sc_koganei/nc_22277231/"
+   "22281639",
+   "/tochi/tokyo/sc_shinagawa/nc_22281639/"
   ],
   [
-   "22276858",
-   "/tochi/tokyo/sc_bunkyo/nc_22276858/"
+   "22281630",
+   "/tochi/tokyo/sc_nakano/nc_22281630/"
   ],
   [
-   "22276444",
-   "/tochi/tokyo/sc_ota/nc_22276444/"
+   "22281042",
+   "/tochi/tokyo/sc_suginami/nc_22281042/"
   ],
   [
-   "22276254",
-   "/tochi/tokyo/sc_setagaya/nc_22276254/"
+   "22280903",
+   "/tochi/tokyo/sc_suginami/nc_22280903/"
   ],
   [
-   "22276031",
-   "/tochi/tokyo/sc_kita/nc_22276031/"
+   "22280607",
+   "/tochi/tokyo/sc_suginami/nc_22280607/"
   ],
   [
-   "22275728",
-   "/tochi/tokyo/sc_toshima/nc_22275728/"
+   "22280549",
+   "/tochi/tokyo/sc_kita/nc_22280549/"
   ],
   [
-   "22274779",
-   "/tochi/tokyo/sc_taito/nc_22274779/"
+   "22280459",
+   "/tochi/tokyo/sc_edogawa/nc_22280459/"
   ],
   [
-   "22274645",
-   "/tochi/tokyo/sc_fuchu/nc_22274645/"
+   "22280436",
+   "/tochi/tokyo/sc_katsushika/nc_22280436/"
   ],
   [
-   "22274389",
-   "/tochi/tokyo/sc_setagaya/nc_22274389/"
+   "22280403",
+   "/tochi/tokyo/sc_edogawa/nc_22280403/"
   ],
   [
-   "22274276",
-   "/tochi/tokyo/sc_arakawa/nc_22274276/"
+   "22280391",
+   "/tochi/tokyo/sc_edogawa/nc_22280391/"
   ],
   [
-   "22274246",
-   "/tochi/tokyo/sc_taito/nc_22274246/"
+   "22280332",
+   "/tochi/tokyo/sc_katsushika/nc_22280332/"
   ]
  ],
  "used_condo": [
   [
-   "79081000",
-   "/ms/chuko/tokyo/sc_adachi/nc_79081000/"
+   "22282923",
+   "/ms/chuko/tokyo/sc_bunkyo/nc_22282923/"
   ],
   [
-   "79075252",
-   "/ms/chuko/tokyo/sc_minato/nc_79075252/"
+   "22282876",
+   "/ms/chuko/tokyo/sc_minato/nc_22282876/"
   ],
   [
-   "78970072",
-   "/ms/chuko/tokyo/sc_koto/nc_78970072/"
+   "22282875",
+   "/ms/chuko/tokyo/sc_minato/nc_22282875/"
   ],
   [
-   "78578195",
-   "/ms/chuko/tokyo/sc_chuo/nc_78578195/"
+   "22282866",
+   "/ms/chuko/tokyo/sc_setagaya/nc_22282866/"
   ],
   [
-   "78520507",
-   "/ms/chuko/tokyo/sc_minato/nc_78520507/"
+   "22282846",
+   "/ms/chuko/tokyo/sc_bunkyo/nc_22282846/"
   ],
   [
-   "78466111",
-   "/ms/chuko/tokyo/sc_sumida/nc_78466111/"
+   "22282841",
+   "/ms/chuko/tokyo/sc_tama/nc_22282841/"
   ],
   [
-   "78375658",
-   "/ms/chuko/tokyo/sc_minato/nc_78375658/"
+   "22282839",
+   "/ms/chuko/tokyo/sc_suginami/nc_22282839/"
   ],
   [
-   "78354220",
-   "/ms/chuko/tokyo/sc_shibuya/nc_78354220/"
+   "22282836",
+   "/ms/chuko/tokyo/sc_akishima/nc_22282836/"
   ],
   [
-   "78125259",
-   "/ms/chuko/tokyo/sc_arakawa/nc_78125259/"
+   "22282831",
+   "/ms/chuko/tokyo/sc_shinagawa/nc_22282831/"
   ],
   [
-   "78002420",
-   "/ms/chuko/tokyo/sc_nishitokyo/nc_78002420/"
+   "22282830",
+   "/ms/chuko/tokyo/sc_setagaya/nc_22282830/"
   ],
   [
-   "75729795",
-   "/ms/chuko/tokyo/sc_adachi/nc_75729795/"
+   "22282820",
+   "/ms/chuko/tokyo/sc_inagi/nc_22282820/"
   ],
   [
-   "22278737",
-   "/ms/chuko/tokyo/sc_koto/nc_22278737/"
+   "22282808",
+   "/ms/chuko/tokyo/sc_kita/nc_22282808/"
   ]
  ],
  "used_house": [
   [
-   "79184991",
-   "/chukoikkodate/tokyo/sc_shinjuku/nc_79184991/"
+   "22282785",
+   "/chukoikkodate/tokyo/sc_hachioji/nc_22282785/"
   ],
   [
-   "78849834",
-   "/chukoikkodate/tokyo/sc_hachioji/nc_78849834/"
+   "22282780",
+   "/chukoikkodate/tokyo/sc_shibuya/nc_22282780/"
   ],
   [
-   "78607962",
-   "/chukoikkodate/tokyo/sc_tachikawa/nc_78607962/"
+   "22282733",
+   "/chukoikkodate/tokyo/sc_higashikurume/nc_22282733/"
   ],
   [
-   "78099854",
-   "/chukoikkodate/tokyo/sc_taito/nc_78099854/"
+   "22282732",
+   "/chukoikkodate/tokyo/sc_nishitokyo/nc_22282732/"
   ],
   [
-   "22278068",
-   "/chukoikkodate/tokyo/sc_mitaka/nc_22278068/"
+   "22282689",
+   "/chukoikkodate/tokyo/sc_kokubunji/nc_22282689/"
   ],
   [
-   "22277834",
-   "/chukoikkodate/tokyo/sc_setagaya/nc_22277834/"
+   "22282392",
+   "/chukoikkodate/tokyo/sc_katsushika/nc_22282392/"
   ],
   [
-   "22277698",
-   "/chukoikkodate/tokyo/sc_machida/nc_22277698/"
+   "22282251",
+   "/chukoikkodate/tokyo/sc_hino/nc_22282251/"
   ],
   [
-   "22277674",
-   "/chukoikkodate/tokyo/sc_toshima/nc_22277674/"
+   "22282113",
+   "/chukoikkodate/tokyo/sc_hamura/nc_22282113/"
   ],
   [
-   "22277224",
-   "/chukoikkodate/tokyo/sc_edogawa/nc_22277224/"
+   "22281421",
+   "/chukoikkodate/tokyo/sc_ota/nc_22281421/"
   ],
   [
-   "22277080",
-   "/chukoikkodate/tokyo/sc_hamura/nc_22277080/"
+   "22281394",
+   "/chukoikkodate/tokyo/sc_shinagawa/nc_22281394/"
   ],
   [
-   "22276958",
-   "/chukoikkodate/tokyo/sc_sumida/nc_22276958/"
+   "22281307",
+   "/chukoikkodate/tokyo/sc_nerima/nc_22281307/"
   ],
   [
-   "22276755",
-   "/chukoikkodate/tokyo/sc_ota/nc_22276755/"
+   "22280766",
+   "/chukoikkodate/tokyo/sc_shinagawa/nc_22280766/"
   ]
  ]
 }
