@@ -1,0 +1,497 @@
+[
+ {
+  "area_code": "21201",
+  "id": "22286439",
+  "kind": "new",
+  "payload": {
+   "price": 18600000
+  },
+  "pref": "gifu",
+  "seq": 627779,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "21201",
+  "id": "22251059",
+  "kind": "new",
+  "payload": {
+   "price": 29800000
+  },
+  "pref": "gifu",
+  "seq": 627780,
+  "type": "new_house"
+ },
+ {
+  "area_code": "21201",
+  "id": "21505262",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 35800000,
+   "price": 34800000
+  },
+  "pref": "gifu",
+  "seq": 627781,
+  "type": "new_house"
+ },
+ {
+  "area_code": "21300",
+  "id": "22282729",
+  "kind": "new",
+  "payload": {
+   "price": 28800000
+  },
+  "pref": "gifu",
+  "seq": 627782,
+  "type": "new_house"
+ },
+ {
+  "area_code": "21218",
+  "id": "22150579",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 33800000,
+   "price": 32800000
+  },
+  "pref": "gifu",
+  "seq": 627783,
+  "type": "used_house"
+ },
+ {
+  "area_code": "21201",
+  "id": "79085859",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 8900000,
+   "price": 8500000
+  },
+  "pref": "gifu",
+  "seq": 627784,
+  "type": "land"
+ },
+ {
+  "area_code": "21202",
+  "id": "20767077",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 2480000,
+   "price": 2380000
+  },
+  "pref": "gifu",
+  "seq": 627785,
+  "type": "land"
+ },
+ {
+  "area_code": "21202",
+  "id": "20182658",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9180000,
+   "price": 8980000
+  },
+  "pref": "gifu",
+  "seq": 627786,
+  "type": "land"
+ },
+ {
+  "area_code": "21202",
+  "id": "21474132",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 12580000,
+   "price": 11780000
+  },
+  "pref": "gifu",
+  "seq": 627787,
+  "type": "land"
+ },
+ {
+  "area_code": "21360",
+  "id": "22116716",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 6300000,
+   "price": 5800000
+  },
+  "pref": "gifu",
+  "seq": 627788,
+  "type": "land"
+ },
+ {
+  "area_code": "45201",
+  "id": "22188199",
+  "kind": "new",
+  "payload": {
+   "price": 18800000
+  },
+  "pref": "miyazaki",
+  "seq": 627789,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "45201",
+  "id": "22286965",
+  "kind": "new",
+  "payload": {
+   "price": 39900000
+  },
+  "pref": "miyazaki",
+  "seq": 627790,
+  "type": "new_house"
+ },
+ {
+  "area_code": "45201",
+  "id": "22214533",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 13890000,
+   "price": 11890000
+  },
+  "pref": "miyazaki",
+  "seq": 627791,
+  "type": "used_house"
+ },
+ {
+  "area_code": "45201",
+  "id": "21067361",
+  "kind": "relisted",
+  "payload": {
+   "price": 13800000
+  },
+  "pref": "miyazaki",
+  "seq": 627792,
+  "type": "used_house"
+ },
+ {
+  "area_code": "45202",
+  "id": "21013800",
+  "kind": "new",
+  "payload": {
+   "price": 12980000
+  },
+  "pref": "miyazaki",
+  "seq": 627793,
+  "type": "used_house"
+ },
+ {
+  "area_code": "45202",
+  "id": "21462376",
+  "kind": "new",
+  "payload": {
+   "price": 13480000
+  },
+  "pref": "miyazaki",
+  "seq": 627794,
+  "type": "used_house"
+ },
+ {
+  "area_code": "45202",
+  "id": "21484385",
+  "kind": "new",
+  "payload": {
+   "price": 13980000
+  },
+  "pref": "miyazaki",
+  "seq": 627795,
+  "type": "used_house"
+ },
+ {
+  "area_code": "45202",
+  "id": "21566855",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28000000,
+   "price": 27500000
+  },
+  "pref": "miyazaki",
+  "seq": 627796,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22009205",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15990000,
+   "price": 14990000
+  },
+  "pref": "kagoshima",
+  "seq": 627797,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "46201",
+  "id": "21771006",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 7600000,
+   "price": 6800000
+  },
+  "pref": "kagoshima",
+  "seq": 627798,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "46201",
+  "id": "21227690",
+  "kind": "relisted",
+  "payload": {
+   "price": 9800000
+  },
+  "pref": "kagoshima",
+  "seq": 627799,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "46201",
+  "id": "21913121",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 15990000,
+   "price": 14990000
+  },
+  "pref": "kagoshima",
+  "seq": 627800,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "46201",
+  "id": "22285462",
+  "kind": "new",
+  "payload": {
+   "price": 20900000
+  },
+  "pref": "kagoshima",
+  "seq": 627801,
+  "type": "used_condo"
+ },
+ {
+  "area_code": "46201",
+  "id": "20895464",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 43800000,
+   "price": 41800000
+  },
+  "pref": "kagoshima",
+  "seq": 627802,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "72694159",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 28000000,
+   "price": 27500000
+  },
+  "pref": "kagoshima",
+  "seq": 627803,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "21153518",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 29800000,
+   "price": 27800000
+  },
+  "pref": "kagoshima",
+  "seq": 627804,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22287536",
+  "kind": "new",
+  "payload": {
+   "price": 27980000
+  },
+  "pref": "kagoshima",
+  "seq": 627805,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22287537",
+  "kind": "new",
+  "payload": {
+   "price": 29980000
+  },
+  "pref": "kagoshima",
+  "seq": 627806,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22287718",
+  "kind": "new",
+  "payload": {
+   "price": 32800000
+  },
+  "pref": "kagoshima",
+  "seq": 627807,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22286544",
+  "kind": "new",
+  "payload": {
+   "price": 37550000
+  },
+  "pref": "kagoshima",
+  "seq": 627808,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46220",
+  "id": "22287538",
+  "kind": "new",
+  "payload": {
+   "price": 33900000
+  },
+  "pref": "kagoshima",
+  "seq": 627809,
+  "type": "new_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22017189",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10990000,
+   "price": 9990000
+  },
+  "pref": "kagoshima",
+  "seq": 627810,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22287546",
+  "kind": "new",
+  "payload": {
+   "price": 9990000
+  },
+  "pref": "kagoshima",
+  "seq": 627811,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "21913120",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10990000,
+   "price": 9990000
+  },
+  "pref": "kagoshima",
+  "seq": 627812,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "22287245",
+  "kind": "new",
+  "payload": {
+   "price": 45000000
+  },
+  "pref": "kagoshima",
+  "seq": 627813,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46225",
+  "id": "21605742",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 10990000,
+   "price": 9990000
+  },
+  "pref": "kagoshima",
+  "seq": 627814,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46225",
+  "id": "21605744",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 14490000,
+   "price": 13990000
+  },
+  "pref": "kagoshima",
+  "seq": 627815,
+  "type": "used_house"
+ },
+ {
+  "area_code": "46201",
+  "id": "20317579",
+  "kind": "relisted",
+  "payload": {
+   "price": 9500000
+  },
+  "pref": "kagoshima",
+  "seq": 627816,
+  "type": "land"
+ },
+ {
+  "area_code": "46201",
+  "id": "20317579",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9900000,
+   "price": 9500000
+  },
+  "pref": "kagoshima",
+  "seq": 627817,
+  "type": "land"
+ },
+ {
+  "area_code": "46201",
+  "id": "73134004",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 9800000,
+   "price": 9500000
+  },
+  "pref": "kagoshima",
+  "seq": 627818,
+  "type": "land"
+ },
+ {
+  "area_code": "46201",
+  "id": "21253379",
+  "kind": "price_changed",
+  "payload": {
+   "old_price": 11500000,
+   "price": 10500000
+  },
+  "pref": "kagoshima",
+  "seq": 627819,
+  "type": "land"
+ },
+ {
+  "area_code": "46201",
+  "id": "77919198",
+  "kind": "relisted",
+  "payload": {
+   "price": 12500000
+  },
+  "pref": "kagoshima",
+  "seq": 627820,
+  "type": "land"
+ },
+ {
+  "area_code": "46203",
+  "id": "77014200",
+  "kind": "relisted",
+  "payload": {
+   "price": 8630000
+  },
+  "pref": "kagoshima",
+  "seq": 627821,
+  "type": "land"
+ }
+]
