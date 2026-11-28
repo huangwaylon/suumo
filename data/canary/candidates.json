@@ -1,12 +1,20 @@
 {
  "land": [
   [
+   "78803311",
+   "/tochi/tokyo/sc_koganei/nc_78803311/"
+  ],
+  [
    "22286079",
    "/tochi/tokyo/sc_taito/nc_22286079/"
   ],
   [
    "22285973",
    "/tochi/tokyo/sc_nerima/nc_22285973/"
+  ],
+  [
+   "22285925",
+   "/tochi/tokyo/sc_suginami/nc_22285925/"
   ],
   [
    "22285753",
@@ -21,32 +29,24 @@
    "/tochi/tokyo/sc_machida/nc_22285750/"
   ],
   [
+   "22285741",
+   "/tochi/tokyo/sc_toshima/nc_22285741/"
+  ],
+  [
+   "22285511",
+   "/tochi/tokyo/sc_shinagawa/nc_22285511/"
+  ],
+  [
+   "22285510",
+   "/tochi/tokyo/sc_setagaya/nc_22285510/"
+  ],
+  [
    "22285509",
    "/tochi/tokyo/sc_setagaya/nc_22285509/"
   ],
   [
    "22285388",
    "/tochi/tokyo/sc_nakano/nc_22285388/"
-  ],
-  [
-   "22285381",
-   "/tochi/tokyo/sc_shinjuku/nc_22285381/"
-  ],
-  [
-   "22285380",
-   "/tochi/tokyo/sc_shinjuku/nc_22285380/"
-  ],
-  [
-   "22285379",
-   "/tochi/tokyo/sc_shinjuku/nc_22285379/"
-  ],
-  [
-   "22285288",
-   "/tochi/tokyo/sc_sumida/nc_22285288/"
-  ],
-  [
-   "22285276",
-   "/tochi/tokyo/sc_suginami/nc_22285276/"
   ]
  ],
  "new_condo": [
@@ -95,8 +95,8 @@
    "/ms/shinchiku/tokyo/sc_setagaya/nc_22279070/"
   ],
   [
-   "21918273",
-   "/ms/shinchiku/tokyo/sc_edogawa/nc_21918273/"
+   "22136331",
+   "/ms/shinchiku/tokyo/sc_minato/nc_22136331/"
   ]
  ],
  "new_house": [
@@ -151,6 +151,10 @@
  ],
  "new_house/tochi": [
   [
+   "78803311",
+   "/tochi/tokyo/sc_koganei/nc_78803311/"
+  ],
+  [
    "22285925",
    "/tochi/tokyo/sc_suginami/nc_22285925/"
   ],
@@ -193,13 +197,13 @@
   [
    "22283231",
    "/tochi/tokyo/sc_shinagawa/nc_22283231/"
-  ],
-  [
-   "22283154",
-   "/tochi/tokyo/sc_bunkyo/nc_22283154/"
   ]
  ],
  "used_condo": [
+  [
+   "79188712",
+   "/ms/chuko/tokyo/sc_edogawa/nc_79188712/"
+  ],
   [
    "22286094",
    "/ms/chuko/tokyo/sc_chiyoda/nc_22286094/"
@@ -243,13 +247,13 @@
   [
    "22285805",
    "/ms/chuko/tokyo/sc_ota/nc_22285805/"
-  ],
-  [
-   "22285565",
-   "/ms/chuko/tokyo/sc_shibuya/nc_22285565/"
   ]
  ],
  "used_house": [
+  [
+   "77535631",
+   "/chukoikkodate/tokyo/sc_hachioji/nc_77535631/"
+  ],
   [
    "22286012",
    "/chukoikkodate/tokyo/sc_shinjuku/nc_22286012/"
@@ -293,10 +297,6 @@
   [
    "22284273",
    "/chukoikkodate/tokyo/sc_hino/nc_22284273/"
-  ],
-  [
-   "22284216",
-   "/chukoikkodate/tokyo/sc_shibuya/nc_22284216/"
   ]
  ]
 }
